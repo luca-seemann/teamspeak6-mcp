@@ -40,7 +40,7 @@ public static class QueryResponseParser
     {
         ArgumentNullException.ThrowIfNull(raw);
 
-        var records = new List<IReadOnlyDictionary<string, string>>();
+        var records = new List<QueryRecord>();
         QueryError? error = null;
 
         foreach (var line in EnumerateLines(raw))
@@ -54,7 +54,7 @@ public static class QueryResponseParser
             // A payload line holds one or more records separated by '|'.
             foreach (var record in line.Split('|', StringSplitOptions.RemoveEmptyEntries))
             {
-                records.Add(ParseRecord(record));
+                records.Add(new QueryRecord(ParseRecord(record)));
             }
         }
 

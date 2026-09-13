@@ -48,14 +48,14 @@ public static class WebQueryResponseParser
                 throw new QueryProtocolException("The WebQuery response carried no 'status' object.");
             }
 
-            var records = new List<IReadOnlyDictionary<string, string>>();
+            var records = new List<QueryRecord>();
 
             // 'body' is absent, not empty, when there are no results.
             if (root.TryGetProperty("body", out var body) && body.ValueKind is JsonValueKind.Array)
             {
                 foreach (var element in body.EnumerateArray())
                 {
-                    records.Add(ParseRecord(element));
+                    records.Add(new QueryRecord(ParseRecord(element)));
                 }
             }
 

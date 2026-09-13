@@ -9,7 +9,7 @@ public class FakeQueryTransportTests
     public async Task Returns_registered_response_and_records_the_command()
     {
         var expected = new QueryResponse(
-            [new Dictionary<string, string> { ["virtualserver_id"] = "1" }],
+            [new QueryRecord(new Dictionary<string, string> { ["virtualserver_id"] = "1" })],
             new QueryError(0, "ok"));
 
         await using var transport = new FakeQueryTransport().Returns("whoami", expected);
