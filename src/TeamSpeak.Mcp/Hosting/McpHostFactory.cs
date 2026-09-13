@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+using TeamSpeak.Mcp.Configuration;
 
 namespace TeamSpeak.Mcp.Hosting;
 
@@ -15,6 +18,17 @@ namespace TeamSpeak.Mcp.Hosting;
 public static class McpHostFactory
 {
     /// <summary>
+    /// The environment variable prefix configuration is also read from.
+    /// </summary>
+    /// <remarks>
+    /// Secrets belong in the environment rather than in a file, so
+    /// <c>TSMCP_TeamSpeak__Profiles__prod__Password</c> overrides whatever the file says. This is
+    /// also the only practical way to configure the server from an MCP client's own JSON config or
+    /// from a container.
+    /// </remarks>
+    public const string EnvironmentPrefix = "TSMCP_";
+
+    /// <summary>
     /// Builds a host that serves MCP over stdin/stdout.
     /// </summary>
     /// <param name="args">The process arguments, forwarded to the configuration system.</param>
@@ -26,6 +40,9 @@ public static class McpHostFactory
         // stdout carries the MCP protocol itself, so every log line has to go to stderr.
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
+
+        builder.Configuration.AddEnvironmentVariables(EnvironmentPrefix);
+        AddTeamSpeak(builder.Services, builder.Configuration);
 
         builder.Services
             .AddMcpServer()
@@ -48,6 +65,9 @@ public static class McpHostFactory
         var builder = WebApplication.CreateBuilder(args);
         builder.WebHost.UseUrls(url);
 
+        builder.Configuration.AddEnvironmentVariables(EnvironmentPrefix);
+        AddTeamSpeak(builder.Services, builder.Configuration);
+
         builder.Services
             .AddMcpServer()
             .WithHttpTransport()
@@ -58,5 +78,30 @@ public static class McpHostFactory
         var app = builder.Build();
         app.MapMcp();
         return app;
+    }
+
+    /// <summary>
+    /// Registers the TeamSpeak options and the profile registry.
+    /// </summary>
+    /// <param name="services">The service collection to add to.</param>
+    /// <param name="configuration">The configuration to bind from.</param>
+    /// <returns>The service collection, for chaining.</returns>
+    /// <remarks>
+    /// Profiles are validated while the registry is being built, so a mistyped host or a missing
+    /// password fails at startup with a clear message rather than on the first tool call.
+    /// </remarks>
+    public static IServiceCollection AddTeamSpeak(IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        services.Configure<TeamSpeakMcpOptions>(configuration.GetSection(TeamSpeakMcpOptions.SectionName));
+
+        services.AddSingleton(provider =>
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<TeamSpeakMcpOptions>>()
+                    .Value
+                    .BuildRegistry());
+
+        return services;
     }
 }
