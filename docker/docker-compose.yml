@@ -1,0 +1,49 @@
+# Brings up a TeamSpeak 6 server with both query interfaces enabled, plus this MCP server
+# alongside it. Intended for development and for the integration test suite.
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# The TeamSpeak server prints a generated serveradmin password on first start unless you set
+# TSSERVER_QUERY_ADMIN_PASSWORD, which this file does.
+
+services:
+  teamspeak:
+    image: teamspeaksystems/teamspeak6-server:latest
+    container_name: teamspeak6
+    environment:
+      TSSERVER_LICENSE_ACCEPTED: accept
+      # Query interfaces are off by default; the MCP server needs them.
+      TSSERVER_QUERY_SSH_ENABLED: "1"
+      TSSERVER_QUERY_SSH_PORT: "10022"
+      TSSERVER_QUERY_HTTP_ENABLED: "1"
+      TSSERVER_QUERY_HTTP_PORT: "10080"
+      # Development credentials only. Never use these on a reachable server.
+      TSSERVER_QUERY_ADMIN_PASSWORD: ${TSSERVER_QUERY_ADMIN_PASSWORD:-devpassword}
+    ports:
+      - "9987:9987/udp"   # voice
+      - "30033:30033"     # file transfer
+      - "10022:10022"     # SSH query
+      - "10080:10080"     # HTTP WebQuery
+    volumes:
+      - teamspeak-data:/var/tsserver/
+    restart: unless-stopped
+
+  teamspeak6-mcp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: teamspeak6-mcp
+    depends_on:
+      - teamspeak
+    environment:
+      TSMCP_PROFILES__DEFAULT__HOST: teamspeak
+      TSMCP_PROFILES__DEFAULT__SSH_PORT: "10022"
+      TSMCP_PROFILES__DEFAULT__HTTP_PORT: "10080"
+      TSMCP_PROFILES__DEFAULT__USERNAME: serveradmin
+      TSMCP_PROFILES__DEFAULT__PASSWORD: ${TSSERVER_QUERY_ADMIN_PASSWORD:-devpassword}
+    ports:
+      - "7801:7801"
+    restart: unless-stopped
+
+volumes:
+  teamspeak-data:

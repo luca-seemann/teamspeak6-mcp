@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Transport-agnostic client library for the TeamSpeak 6 ServerQuery interface (SSH and HTTP/HTTPS WebQuery).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SSH.NET" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>In-memory fake of the TeamSpeak 6 ServerQuery interface, used to test transports and tools without a live server.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TeamSpeak.Query\TeamSpeak.Query.csproj" />
+  </ItemGroup>
+
+</Project>

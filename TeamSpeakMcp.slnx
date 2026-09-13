@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj" />
+    <Project Path="src/TeamSpeak.Query/TeamSpeak.Query.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TeamSpeak.Mcp.IntegrationTests/TeamSpeak.Mcp.IntegrationTests.csproj" />
+    <Project Path="tests/TeamSpeak.Mcp.Tests/TeamSpeak.Mcp.Tests.csproj" />
+    <Project Path="tests/TeamSpeak.Query.FakeServer/TeamSpeak.Query.FakeServer.csproj" />
+    <Project Path="tests/TeamSpeak.Query.Tests/TeamSpeak.Query.Tests.csproj" />
+  </Folder>
+</Solution>
