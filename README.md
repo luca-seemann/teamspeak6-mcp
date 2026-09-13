@@ -27,8 +27,20 @@ TeamSpeak 6 removed the unencrypted raw TCP query that TeamSpeak 3 had. What rem
 | HTTPS WebQuery | 10443 | `--query-https-enable` / `TSSERVER_QUERY_HTTPS_ENABLED` | no |
 
 Both speak the same command set, so this project models them as two implementations of one
-`IQueryTransport` and keeps everything above that line transport-agnostic. The one asymmetry is
-events: `servernotifyregister` needs a persistent session and works over SSH only.
+`IQueryTransport` and keeps everything above that line transport-agnostic.
+
+Three things about them are worth knowing before you set this up, none of which are in TeamSpeak's
+documentation — all were measured against a live 6.0.0-beta12.1 server:
+
+- **Events are SSH-only.** `servernotifyregister` needs a persistent session, which the WebQuery
+  does not offer.
+- **The WebQuery authenticates with `x-api-key` and nothing else.** HTTP Basic Auth with correct
+  `serveradmin` credentials is refused. Keys come from `apikeyadd scope=manage lifetime=0`, which
+  you can only run over SSH — so SSH is also the bootstrap path for using the WebQuery at all.
+- **The server throttles hard.** Commands sent faster than roughly one every 150 ms are rejected
+  with `524 client is flooding`, and *continuing to send through that rejection* escalates to an IP
+  block that takes both interfaces down for minutes. This server keeps one long-lived connection
+  per profile and paces itself; see [reference/README.md](reference/README.md) for the details.
 
 ## Safety
 

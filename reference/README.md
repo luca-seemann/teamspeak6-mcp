@@ -28,10 +28,26 @@ The capture scripts are not committed; they are throwaway. To rebuild the refere
 session and issue `help` followed by `help <command>` for each name in the first column, writing the
 raw bytes out unmodified.
 
-**Pace it.** The server flood-bans the client IP after about five queries in quick succession,
-which takes down *both* the SSH and the HTTP interface for several minutes. Raising
-`TSSERVER_QUERY_POOL_SIZE` does not help and neither does
-`TSSERVER_QUERY_SKIP_BRUTE_FORCE_CHECK` — the exemption is the flood allow list
-(`TSSERVER_QUERY_ALLOW_LIST`, a *file* of CIDRs, default `query_ip_allowlist.txt`, which ships
-containing only `127.0.0.1/32` and `::1/128`). Reuse a single connection, put a delay between
-commands, and never retry in a tight loop.
+**Pace it — roughly 150 ms between commands is enough.** The reference above was captured that way,
+160 commands in one SSH session, without ever being throttled.
+
+Send faster and the server rejects with a perfectly ordinary status that says exactly what is
+wrong:
+
+```json
+{"status":{"code":524,"extra_message":"please wait 1 seconds","message":"client is flooding"}}
+```
+
+Honour it. **Continuing to send through a 524 escalates to an IP-level block that takes down both
+the SSH and the HTTP interface for several minutes**, and that block presents as a connection
+closed before the SSH identification string, or an empty HTTP reply — which looks nothing like rate
+limiting. Polling to check whether it has lifted keeps it alive.
+
+No server-side setting avoids this, and three plausible-looking ones do nothing:
+`TSSERVER_QUERY_POOL_SIZE` (tested at 32), `TSSERVER_QUERY_SKIP_BRUTE_FORCE_CHECK` (that covers
+failed *logins*), and the flood allow list (tested with the client IP verifiably loaded — see the
+startup log line `CIDRManager | updated query_ip_allowlist ips:`). Note also that
+`TSSERVER_QUERY_ALLOW_LIST` names a *file* of CIDRs, not an IP value; pointing it at an address
+stops the query interfaces from starting at all.
+
+`tests/.../Fixtures/http/flooding.json` is a real 524, captured the hard way.
