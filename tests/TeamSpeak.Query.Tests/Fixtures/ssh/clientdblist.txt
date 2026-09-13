@@ -1,0 +1,4 @@
+cldbid=2 client_unique_identifier=ServerQuery client_nickname=ServerQuery\sGuest client_created=1789334717 client_lastconnected=1789334717 client_totalconnections=0 client_description client_lastip client_login_name|cldbid=3 client_unique_identifier=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ= client_nickname=Alice client_created=1789334805 client_lastconnected=1789339205 client_totalconnections=5 client_description client_lastip=172.20.0.1 client_login_name
+
+error id=0 msg=ok
+

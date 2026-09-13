@@ -4,3 +4,5 @@
 *.png binary
 *.jpg binary
 *.ico binary
+reference/** linguist-documentation
+tests/**/Fixtures/** -text

@@ -1,0 +1,4 @@
+pid=0 channel_name=Default\sChannel channel_topic=Default\sChannel\shas\sno\stopic channel_description=This\sis\sthe\sdefault\schannel channel_password channel_codec=4 channel_codec_quality=6 channel_maxclients=-1 channel_maxfamilyclients=-1 channel_order=0 channel_flag_permanent=1 channel_flag_semi_permanent=0 channel_flag_default=1 channel_flag_password=0 channel_codec_latency_factor=1 channel_codec_is_unencrypted=1 channel_security_salt channel_delete_delay=0 channel_unique_identifier=00000000-0000-4000-8000-000000000001 channel_flag_maxclients_unlimited=1 channel_flag_maxfamilyclients_unlimited=1 channel_flag_maxfamilyclients_inherited=0 channel_filepath=files\/virtualserver_1\/channel_1 channel_needed_talk_power=0 channel_forced_silence=0 channel_name_phonetic channel_icon_id=0 channel_banner_gfx_url channel_banner_mode=0 channel_storage_quota=4294967295 seconds_empty=-1
+
+error id=0 msg=ok
+

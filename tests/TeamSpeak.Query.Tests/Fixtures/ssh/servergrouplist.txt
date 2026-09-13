@@ -1,0 +1,4 @@
+sgid=1 name=Guest\sServer\sQuery type=2 iconid=0 savedb=0 sortid=0 namemode=0 n_modifyp=100 n_member_addp=0 n_member_removep=0|sgid=2 name=Admin\sServer\sQuery type=2 iconid=500 savedb=1 sortid=0 namemode=0 n_modifyp=100 n_member_addp=100 n_member_removep=100|sgid=3 name=Server\sAdmin type=0 iconid=300 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=75 n_member_removep=75|sgid=4 name=Normal type=0 iconid=0 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=60 n_member_removep=60|sgid=5 name=Guest type=0 iconid=0 savedb=0 sortid=0 namemode=0 n_modifyp=75 n_member_addp=0 n_member_removep=0|sgid=6 name=Server\sAdmin type=1 iconid=300 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=75 n_member_removep=75|sgid=7 name=Normal type=1 iconid=0 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=60 n_member_removep=60|sgid=8 name=Guest type=1 iconid=0 savedb=0 sortid=0 namemode=0 n_modifyp=75 n_member_addp=0 n_member_removep=0
+
+error id=0 msg=ok
+

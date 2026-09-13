@@ -1,0 +1,4 @@
+cid=1 pid=0 channel_order=0 channel_name=Default\sChannel total_clients=3 channel_needed_subscribe_power=0
+
+error id=0 msg=ok
+

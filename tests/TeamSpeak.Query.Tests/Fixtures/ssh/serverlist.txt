@@ -1,0 +1,4 @@
+virtualserver_id=1 virtualserver_port=9987 virtualserver_status=online virtualserver_clientsonline=3 virtualserver_queryclientsonline=2 virtualserver_maxclients=32 virtualserver_uptime=224 virtualserver_name=TeamSpeak\s6\sServer virtualserver_autostart=1 virtualserver_machine_id virtualserver_weblist_enabled=0 guest_can_create_channels=1 guest_can_create_homebase=0
+
+error id=0 msg=ok
+

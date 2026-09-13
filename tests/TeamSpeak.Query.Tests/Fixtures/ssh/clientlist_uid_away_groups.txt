@@ -1,0 +1,4 @@
+clid=4 cid=1 client_database_id=1 client_nickname=serveradmin1 client_type=1 client_away=0 client_away_message client_unique_identifier=serveradmin client_servergroups=2 client_channel_group_id=8 client_channel_group_inherited_channel_id=1|clid=3 cid=1 client_database_id=1 client_nickname=serveradmin client_type=1 client_away=0 client_away_message client_unique_identifier=serveradmin client_servergroups=2 client_channel_group_id=8 client_channel_group_inherited_channel_id=1|clid=1 cid=1 client_database_id=3 client_nickname=Alice client_type=0 client_away=0 client_away_message client_unique_identifier=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ= client_servergroups=6 client_channel_group_id=8 client_channel_group_inherited_channel_id=1
+
+error id=0 msg=ok
+

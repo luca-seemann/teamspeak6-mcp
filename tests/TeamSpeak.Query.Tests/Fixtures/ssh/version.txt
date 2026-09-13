@@ -1,0 +1,4 @@
+version=6.0.0-beta12.1 build=1785239375 platform=Linux
+
+error id=0 msg=ok
+

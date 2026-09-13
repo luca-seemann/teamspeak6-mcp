@@ -1,0 +1,5862 @@
+# TeamSpeak 6 ServerQuery command reference
+# Captured from a live server on 2026-09-13
+# Server: version=6.0.0-beta12.1 build=1785239375 platform=Linux
+# Commands: 141
+
+## help
+TeamSpeak 6 Server :: ServerQuery
+
+(c) TeamSpeak Systems GmbH
+
+
+ServerQuery is a command-line interface built into the TeamSpeak 6 Server which
+
+allows powerful scripting and automation tools to be built based on the exact
+
+same instruction set and functionality provided by the TeamSpeak 6 Client. For
+
+example, you can use scripts to automate the management of virtual servers or
+
+nightly backups. In short, you can perform operations more efficiently by using
+
+ServerQuery scripts than you can by using a user interface.
+
+
+Command Overview:
+
+   apikeyadd                   | create a apikey
+
+   apikeydel                   | delete a apikey
+
+   apikeylist                  | list apikeys
+
+   authenticationtoken         | create an authentication token
+
+   banadd                      | create a ban rule
+
+   banclient                   | ban a client
+
+   bandel                      | delete a ban rule
+
+   bandelall                   | delete all ban rules
+
+   banfind                     | find bans on a virtual server
+
+   banlist                     | list ban rules on a virtual server
+
+   bindinglist                 | list IP addresses used by the server instance
+
+   channeladdperm              | assign permission to channel
+
+   channelclientaddperm        | assign permission to channel-client combi
+
+   channelclientdelperm        | remove permission from channel-client combi
+
+   channelclientpermlist       | list channel-client specific permissions
+
+   channelcreate               | create a channel
+
+   channeldelete               | delete a channel
+
+   channeldelperm              | remove permission from channel
+
+   channeledit                 | change channel properties
+
+   channelfind                 | find channel by name
+
+   channelgroupadd             | create a channel group
+
+   channelgroupaddperm         | assign permission to channel group
+
+   channelgroupclientlist      | find channel groups by client ID
+
+   channelgroupcopy            | copy a channel group
+
+   channelgroupdel             | delete a channel group
+
+   channelgroupdelperm         | remove permission from channel group
+
+   channelgrouplist            | list channel groups
+
+   channelgrouppermlist        | list channel group permissions
+
+   channelgrouprename          | rename a channel group
+
+   channelinfo                 | display channel properties
+
+   channellist                 | list channels on a virtual server
+
+   channelmove                 | move channel to new parent
+
+   channelpermlist             | list channel specific permissions
+
+   chatlogintoken              | create login token for matrix chat
+
+   clientaddperm               | assign permission to client
+
+   clientdbdelete              | delete client database properties
+
+   clientdbedit                | change client database properties
+
+   clientdbfind                | find client database ID by nickname or UID
+
+   clientdbinfo                | display client database properties
+
+   clientdblist                | list known client UIDs
+
+   clientdelperm               | remove permission from client
+
+   clientedit                  | change client properties
+
+   clientfind                  | find client by nickname
+
+   clientgetdbidfromuid        | find client database ID by UID
+
+   clientgetids                | find client IDs by UID
+
+   clientgetnamefromdbid       | find client nickname by database ID
+
+   clientgetnamefromuid        | find client nickname by UID
+
+   clientgetuidfromclid        | find client UID by client ID
+
+   clientinfo                  | display client properties
+
+   clientkick                  | kick a client
+
+   clientlist                  | list clients online on a virtual server
+
+   clientmove                  | move a client
+
+   clientpermlist              | list client specific permissions
+
+   clientpoke                  | poke a client
+
+   clientsetserverquerylogin   | set own login credentials
+
+   clientupdate                | set own properties
+
+   complainadd                 | create a client complaint
+
+   complaindel                 | delete a client complaint
+
+   complaindelall              | delete all client complaints
+
+   complainlist                | list client complaints on a virtual server
+
+   custominfo                  | display custom client properties
+
+   customsearch                | search for custom client properties
+
+   customset                   | add or update a custom client property.
+
+   customdelete                | remove a custom client property.
+
+   ftcreatedir                 | create a directory
+
+   ftdeletefile                | delete a file
+
+   ftgetchannelfilehttptoken   | create a login token for http file transfer
+
+   ftgetfileinfo               | display details about a file
+
+   ftgetfilelist               | list files stored in a channel filebase
+
+   ftinitdownload              | init a file download
+
+   ftinitupload                | init a file upload
+
+   ftlist                      | list active file transfers
+
+   ftrenamefile                | rename a file
+
+   ftstop                      | stop a file transfer
+
+   gm                          | send global text message
+
+   help                        | read help files
+
+   hostinfo                    | display server instance connection info
+
+   instanceedit                | change server instance properties
+
+   instanceinfo                | display server instance properties
+
+   licensesignmessage          | sign arbitrary message with license key
+
+   logadd                      | add custom entry to log
+
+   login                       | authenticate with the server
+
+   logout                      | deselect virtual server and log out
+
+   logview                     | list recent log entries
+
+   messageadd                  | send an offline message
+
+   messagedel                  | delete an offline message from your inbox
+
+   messageget                  | display an offline message from your inbox
+
+   messagelist                 | list offline messages from your inbox
+
+   messageupdateflag           | mark an offline message as read
+
+   permfind                    | find permission assignments by ID
+
+   permget                     | display client permission value for yourself
+
+   permidgetbyname             | find permission ID by name
+
+   permissionlist              | list permissions available
+
+   permoverview                | display client permission overview
+
+   permreset                   | delete all server and channel groups and
+
+                               | restore default permissions
+
+   privilegekeyadd             | creates a new privilege key
+
+   privilegekeydelete          | delete an existing privilege key
+
+   privilegekeylist            | list all existing privilege keys on this server
+
+   privilegekeyuse             | use a privilege key
+
+   queryloginadd               | add a query client login
+
+   querylogindel               | remove a query client login
+
+   queryloginlist              | list all query client logins
+
+   quit                        | close connection
+
+   sendtextmessage             | send text message
+
+   servercreate                | create a virtual server
+
+   serverdelete                | delete a virtual server
+
+   serveredit                  | change virtual server properties
+
+   servergroupadd              | create a server group
+
+   servergroupaddclient        | add client to server group
+
+   servergroupaddperm          | assign permissions to server group
+
+   servergroupautoaddperm      | globally assign permissions to server groups
+
+   servergroupautodelperm      | globally remove permissions from server group
+
+   servergroupclientlist       | list clients in a server group
+
+   servergroupcopy             | create a copy of an existing server group
+
+   servergroupdel              | delete a server group
+
+   servergroupdelclient        | remove client from server group
+
+   servergroupdelperm          | remove permissions from server group
+
+   servergrouplist             | list server groups
+
+   servergrouppermlist         | list server group permissions
+
+   servergrouprename           | rename a server group
+
+   servergroupsbyclientid      | get all server groups of specified client
+
+   serveridgetbyport           | find database ID by virtual server port
+
+   serverinfo                  | display virtual server properties
+
+   serverlist                  | list virtual servers
+
+   servernotifyregister        | register for event notifications
+
+   servernotifyunregister      | unregister from event notifications
+
+   serverprocessstop           | shutdown server process
+
+   serverrequestconnectioninfo | display virtual server connection info
+
+   serversnapshotcreate        | create snapshot of a virtual server
+
+   serversnapshotdeploy        | deploy snapshot of a virtual server
+
+   serverstart                 | start a virtual server
+
+   serverstop                  | stop a virtual server
+
+   servertemppasswordadd       | create a new temporary server password
+
+   servertemppassworddel       | delete an existing temporary server password
+
+   servertemppasswordlist      | list all existing temporary server passwords
+
+   setclientchannelgroup       | set a clients channel group
+
+   tokenadd                    | alias for privilegekeyadd
+
+   tokendelete                 | alias for privilegekeydelete
+
+   tokenlist                   | alias for privilegekeylist
+
+   tokenuse                    | alias for privilegekeyuse
+
+   use                         | select virtual server
+
+   version                     | display version information
+
+   whoami                      | display current session info
+
+
+
+error id=0 msg=ok
+
+## apikeyadd
+Usage: apikeyadd scope={manage|write|read} [lifetime={days}] [cldbid={clientDBID}]
+
+
+Permissions:
+
+  b_virtualserver_apikey_add
+
+  b_virtualserver_apikey_manage
+
+
+Description:
+
+  Creates a new apikey using the specified scope, for the invoking user.
+
+  The default lifetime of a token is 14 days, a zero lifetime means no expiration.
+
+  It is possible to create apikeys for other users using `b_virtualserver_apikey_manage.`
+
+
+Parameters:
+
+  scope : `manage`,`write` or `read`
+
+  lifetime : integer : lifetime of the token in days; default `14`, `0` means unlimited
+
+  cldbid : integer : id of owner; Default is invoker
+
+
+Example:
+
+  apikeyadd scope=manage
+
+  apikey=AQB8J1sfuvq4wFAFdo6rsfFq+jAQO9asz3zGq5X id=4 sid=0 cldbid=1 scope=read time_left=1209599
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## apikeydel
+Usage: apikeydel id={ID}
+
+
+Permissions:
+
+  b_virtualserver_apikey_manage
+
+
+Description:
+
+  Delete an apikey. Any apikey owned by the current user can always be deleted.
+
+  Deleting apikeys from another user requires `b_virtualserver_apikey_manage`.
+
+  
+
+Parameters:
+
+  id : integer : Id of API key to be deleted
+
+
+Example:
+
+  apikeydel id=4
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## apikeylist
+Usage: apikeylist [cldbid={clientDBID|*}] [start={offset}] [duration={limit}] [-count]
+
+
+Permissions:
+
+  b_virtualserver_apikey_manage
+
+
+Description:
+
+  Lists all apikeys owned by the user, or of all users using `cldbid`=`*.`
+
+  Usage of `cldbid`=... requires `b_virtualserver_apikey_manage`.
+
+
+Parameters:
+
+  cldbid : list the API keys of the client; Defaults to invoker, `*` to list API keys of all clients
+
+  start : integer : skip the first `n` entries
+
+  duration : integer : only return `n` entries
+
+  -count : also return the total number of entries
+
+
+Example:
+
+  apikeylist
+
+  id=2 sid=0 cldbid=1 scope=read time_left=327449 created_at=1580110002 expires_at=1580441202|id=4 sid=0 cldbid=1 scope=read time_left=1206186 created_at=1580110339 expires_at=1581319939
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## authenticationtoken
+Usage: authenticationtoken duration={duration}
+
+
+Permissions:
+
+
+Description:
+
+  This command gives a token which can be used by other services or TeamSpeak
+
+  commands as proof that his server identifies you as a user. An example of
+
+  such a command is permget with the forauthenticationtoken parameter. The
+
+  token returned is a JWT signed with the identity of the server.
+
+
+Parameters:
+
+  duration : integer : time in seconds for which this token is valid (max 1h)
+
+
+Example:
+
+  authenticationtoken duration=3600
+
+  token=...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## banadd
+Usage: banadd [ip={regexp}] [name={regexp}] [uid={clientUID}] [mytsid=({mytsid}|empty)]
+
+       [time={timeInSeconds}] [banreason={text}] [lastnickname={nickname}]
+
+
+Permissions:
+
+  b_client_ban_create
+
+
+Description:
+
+  Adds a new ban rule on the selected virtual server. All parameters are
+
+  optional but at least one of the following must be set: `ip`, `name`, `uid`, or `mytsid`.
+
+
+Parameters:
+
+  ip : regex matching the client ip
+
+  name : regex matching the client nickname
+
+  uid : Uid of client
+
+  mytsid : myTS id of client
+
+  time : integer : time in seconds the ban will be active
+
+  banreason : text describing the reason
+
+  lastnickname : 
+
+
+Example:
+
+  banadd ip=1.2.3.4 banreason=just\s4\sfun
+
+  banid=1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## banclient
+Usage: banclient [-continueonerror] [time={timeInSeconds}] [banreason={text}] clid={clientID}...
+
+
+Permissions:
+
+  i_client_ban_power
+
+  i_client_needed_ban_power
+
+
+Description:
+
+  Bans one or more clients specified with the given client ids from the server. Please note that this
+
+  will create two or three separate ban rules for the each of the targeted clients IP address,
+
+  his unique identifier and, if available, the mytsid.
+
+
+  Specifying -continueonerror will ignore certain errors when processing.
+
+
+Parameters:  
+
+  -continueonerror : if specified, will skip to the next clid if an error occurs (rather than stopping)
+
+  clid : integer : id of client to be banned
+
+  time : integer : time in seconds the ban will be active
+
+  banreason : text describing the reason
+
+
+Example:
+
+  banclient time=3600 clid=4|clid=5
+
+  banid=2
+
+  banid=3
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## bandel
+Usage: bandel banid={banID}
+
+
+Permissions:
+
+  b_client_ban_delete
+
+  b_client_ban_delete_own
+
+
+Description:
+
+  Deletes the ban rule with ID banid from the server.
+
+
+Parameters:
+
+  banid : integer : id of ban to be deleted
+
+  
+
+Example:
+
+  bandel banid=3
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## bandelall
+Usage: bandelall
+
+
+Permissions:
+
+  b_client_ban_delete
+
+
+Description:
+
+  Deletes all active ban rules from the server.
+
+  
+
+Example:
+
+  bandelall
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## banfind
+Usage: banfind [ip={ip}] [name={name}] [uid={clientUID}] [mytsid=(mytsid)]
+
+
+Permissions:
+
+  b_client_ban_list
+
+
+Description:
+
+  Displays a list of matching bans on the selected virtual server.
+
+  Optional but at least one of the following must be set: `ip`, `name`, `uid`, or `mytsid`.
+
+
+Parameters:
+
+  ip : ip that will match the ban entry
+
+  name : client nickname that will match the ban entry
+
+  uid : Uid of client stored in the ban entry
+
+  mytsid : myTS id of client in the ban entry
+
+
+Example:
+
+  banfind ip=1.2.3.4
+
+  banid=7 ip=ip=1\\.2\\.[0-9]+\\.[0-9]+ name=r.*ben uid mytsid lastnickname created=1625661106 duration=1500 invokername=Admin invokercldbid=12 
+
+  invokeruid=oHhi9WzXLNEFQOwAu4JYKGU+C+c= reason=spam enforcements=23|banid=13 ip=1.2.90.10 ....
+
+  error id=0 msg=ok
+
+  
+
+  
+
+  banfind name=Ruben
+
+  banid=7 ip=1\.2\.[0-9]+\.[0-9]+ name=r.*ben uid mytsid lastnickname created=1625661106 duration=1500 invokername=Admin invokercldbid=12 
+
+  invokeruid=oHhi9WzXLNEFQOwAu4JYKGU+C+c= reason=spam enforcements=23
+
+
+error id=0 msg=ok
+
+## banlist
+Usage: banlist [start={offset}] [duration={limit}] [-count]
+
+
+Permissions:
+
+  b_client_ban_list
+
+
+Description:
+
+  Displays a list of active bans on the selected virtual server.
+
+
+  If provided, the `duration` argument is capped at 200.
+
+
+Parameters:
+
+  -count : also return the total number of entries
+
+  start : integer : skip the first `n` entries
+
+  duration : integer : only return `n` entries
+
+
+Example:
+
+  banlist
+
+  banid=7 ip=1.2.3.4 created=1259444002242 invokername=Sven invokercldbid=56 invokeruid=oHhi9WzXLNEFQOwAu4JYKGU+C+c= reason enforcements=0
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## bindinglist
+Usage: bindinglist [subsystem={voice|query|filetransfer}]
+
+
+Permissions:
+
+  b_serverinstance_binding_list
+
+
+Description:
+
+  Displays a list of IP addresses used by the server instance on multi-homed
+
+  machines. If no subsystem is specified, `voice` is used by default.
+
+
+Parameters:
+
+  subsystem : `voice`, `query` or `filetransfer`; default `voice`
+
+  
+
+Example:
+
+  bindinglist
+
+  ip=0.0.0.0|ip=0::0
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channeladdperm
+Usage: channeladdperm [-continueonerror] cid={channelID} [permid={permID}...]
+
+       [permsid={permName}...] permvalue={permValue}...
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Adds a set of specified permissions to a channel. Multiple permissions can be
+
+  added by providing the two parameters of each permission. A permission can be
+
+  specified by `permid` or `permsid`.
+
+
+Parameters:
+
+  -continueonerror : ignore some errors
+
+  cid : integer : id of channel
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+  permvalue : value of the permission
+
+
+Example:
+
+  channeladdperm cid=16 permid=17276 permvalue=50|permid=21415 permvalue=20
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelclientaddperm
+Usage: channelclientaddperm [-continueonerror] cid={channelID} cldbid={clientDBID}
+
+       [permid={permID}...] [permsid={permName}...] permvalue={permValue}...
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Adds a set of specified permissions to a client in a specific channel.
+
+  Multiple permissions can be added by providing the three parameters of each
+
+  permission. A permission can be specified by permid or permsid.
+
+
+Parameters:
+
+  -continueonerror : continue processing on errors
+
+  cid : integer : id of channel
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+  permvalue : value of the permission
+
+
+Example:
+
+  channelclientaddperm cid=12 cldbid=3 permid=17276 permvalue=50|permid=21415 permvalue=20
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelclientdelperm
+Usage: channelclientdelperm cid={channelID} cldbid={clientDBID}
+
+       [permid={permID}...] [permsid={permName}...]
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Removes a set of specified permissions from a client in a specific channel.
+
+  Multiple permissions can be removed at once. A permission can be specified by
+
+  permid or permsid.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  cldbid : integer : id of client
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+
+Example:
+
+  channelclientdelperm cid=12 cldbid=3 permid=17276|permid=21415
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelclientpermlist
+Usage: channelclientpermlist cid={channelID} cldbid={clientDBID} [-permsid]
+
+
+Permissions:
+
+  b_virtualserver_channelclient_permission_list
+
+
+Description:
+
+  Displays a list of permissions defined for a client in a specific channel.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  cldbid : integer : id of client
+
+  -permsid : include `permsid`
+
+
+Example:
+
+  channelclientpermlist cid=12 cldbid=3
+
+  cid=12 cldbid=3 permid=4353 permvalue=1 permnegated=0 permskip=0|permid=17276 permvalue=50 permnegated=0 permskip=0|permid=21415 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelcreate
+Usage: channelcreate channel_name={channelName} [channel_properties...]
+
+
+Permissions:
+
+  i_channel_min_depth
+
+  i_channel_max_depth
+
+  b_channel_create_child
+
+  b_channel_create_permanent
+
+  b_channel_create_semi_permanent
+
+  b_channel_create_temporary
+
+  b_channel_create_with_topic
+
+  b_channel_create_with_description
+
+  b_channel_create_with_password
+
+  b_channel_create_with_banner
+
+  i_channel_create_modify_with_codec_maxquality
+
+  i_channel_create_modify_with_codec_latency_factor_min
+
+  b_channel_create_with_maxclients
+
+  b_channel_create_with_maxfamilyclients
+
+  b_channel_create_with_sortorder
+
+  b_channel_create_with_default
+
+  b_channel_create_with_needed_talk_power
+
+
+Description:
+
+  Creates a new channel using the given properties and displays its ID. Note
+
+  that this command accepts multiple properties which means that you're able to
+
+  specifiy all settings of the new channel at once.
+
+  For detailed information, see Channel Properties.
+
+
+Parameters:
+
+  channel_name : Name of the channel
+
+
+Example:
+
+  channelcreate channel_name=My\sChannel channel_topic=My\sTopic
+
+  cid=16
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channeldelete
+Usage: channeldelete cid={channelID} force={1|0}
+
+
+Permissions:
+
+  b_channel_delete_permanent
+
+  b_channel_delete_semi_permanent
+
+  b_channel_delete_temporary
+
+  b_channel_delete_flag_force
+
+
+Description:
+
+  Deletes an existing channel by ID. If force is set to 1, the channel will be
+
+  deleted even if there are clients within. The clients will be kicked to the
+
+  default channel with an appropriate reason message.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  force : integer : set to 1 to force deletion
+
+
+Example:
+
+  channeldelete cid=16 force=1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channeldelperm
+Usage: channeldelperm cid=123 [permid={permID}...] [permsid={permName}...]
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Removes a set of specified permissions from a channel. Multiple permissions
+
+  can be removed at once. A permission can be specified by permid or permsid.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+
+Example:
+
+  channeldelperm cid=16 permid=17276|permid=21415
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channeledit
+Usage: channeledit cid={channelID} [channel_properties...]
+
+
+Permissions:
+
+  i_channel_min_depth
+
+  i_channel_max_depth
+
+  b_channel_modify_parent
+
+  b_channel_modify_make_default
+
+  b_channel_modify_make_permanent
+
+  b_channel_modify_make_semi_permanent
+
+  b_channel_modify_make_temporary
+
+  b_channel_modify_name
+
+  b_channel_modify_topic
+
+  b_channel_modify_description
+
+  b_channel_modify_password
+
+  b_channel_modify_banner
+
+  b_channel_modify_codec
+
+  b_channel_modify_codec_quality
+
+  b_channel_create_modify_with_codec_maxquality
+
+  b_channel_modify_codec_latency_factor
+
+  b_channel_modify_make_codec_encrypted
+
+  b_channel_modify_maxclients
+
+  b_channel_modify_maxfamilyclients
+
+  b_channel_modify_sortorder
+
+  b_channel_modify_needed_talk_power
+
+  i_channel_modify_power
+
+  i_channel_needed_modify_power
+
+
+Description:
+
+  Changes a channels configuration using given properties. Note that this
+
+  command accepts multiple properties which means that you're able to change
+
+  all settings of the channel specified with cid at once.
+
+  For detailed information, see Channel Properties.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  cpid : The channels parent ID
+
+  channel_name : Name of the channel
+
+  channel_topic : Topic of the channel
+
+  channel_description : Description of the channel
+
+  channel_password : Password of the channel
+
+  channel_codec : Codec used by the channel (`4` for opus voice, `5` for opus music)
+
+  channel_codec_quality : Codec quality used by the channel (from 0 as lowest, to 10 as highest). Higher quality may be higher bandwidth
+
+  channel_maxclients : Individual max number of clients for the channel
+
+  channel_maxfamilyclients : Individual max number of clients for the channel family
+
+  channel_order : ID of the channel below which the channel is positioned
+
+  channel_flag_permanent : Indicates whether the channel is permanent or not
+
+  channel_flag_semi_permanent : Indicates whether the channel is semi-permanent or not
+
+  channel_flag_default : Indicates whether the channel is the virtual servers default channel or not
+
+  channel_codec_is_unencrypted : Indicates whether speech data transmitted in this channel is encrypted or not
+
+  channel_delete_delay : Time in seconds before this channel will be auto deleted when empty (if set to do that)
+
+  channel_flag_maxclients_unlimited : Indicates whether the channel has a max clients limit or not
+
+  channel_flag_maxfamilyclients_unlimited : Indicates whether the channel has a max family clients limit or not
+
+  channel_flag_maxfamilyclients_inherited : Indicates whether the channel inherits the max family clients from his parent channel or not
+
+  channel_needed_talk_power : Needed talk power for this channel
+
+  channel_name_phonetic : Phonetic name of the channel
+
+  channel_icon_id : CRC32 checksum of the channel icon
+
+  channel_banner_gfx_url : URL of the channel banner
+
+  channel_banner_mode : The mode to render the channel banner (`0` to not adjust, `1` to adjust but ignore aspect ratio, `2` to adjust and keep aspect ratio)
+
+  
+
+
+Example:
+
+  channeledit cid=15 channel_codec_quality=3 channel_description=My\sDescription
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelfind
+Usage: channelfind pattern={channelName}
+
+
+Permissions:
+
+  b_virtualserver_channel_search
+
+
+Description:
+
+  Displays a list of channels matching a given name pattern.
+
+
+Parameters:
+
+  pattern : pattern must be part of the channels name (case insensitive)
+
+  property : channel variable to search on. Default is "channel_name"
+
+
+Example:
+
+  channelfind pattern=default
+
+  cid=15 channel_name=Default\sChannel
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgroupadd
+Usage: channelgroupadd name={groupName} [type={groupDbType}]
+
+
+Permissions:
+
+  b_virtualserver_channelgroup_create
+
+
+Description:
+
+  Creates a new channel group using a given name and displays its ID. The
+
+  optional type parameter can be used to create template groups.
+
+  For detailed information, see Definitions.
+
+
+Parameters:
+
+  name : name of the channel group
+
+  type : integer:`0` (template), `1` (regular), `2` (query); Default: `1`
+
+
+Example:
+
+  channelgroupadd name=Channel\sAdmin
+
+  cgid=13
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgroupaddperm
+Usage: channelgroupaddperm [-continueonerror] cgid={groupID}
+
+       [permid={permID}...] [permsid={permName}...] permvalue={permValue}...
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Adds a set of specified permissions to a channel group. Multiple permissions
+
+  can be added by providing the two parameters of each permission. A permission
+
+  can be specified by permid or permsid.
+
+
+Parameters:
+
+  -continueonerror : continue on some errors
+
+  cgid : integer : id of channel group
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+  permvalue : value of the permission
+
+
+Example:
+
+  channelgroupaddperm cgid=13 permid=17276 permvalue=50|permid=21415 permvalue=20
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgroupclientlist
+Usage: channelgroupclientlist [cid={channelID}] [cldbid={clientDBID}]
+
+       [cgid={groupID}]
+
+
+Permissions:
+
+  b_virtualserver_channelgroup_client_list
+
+
+Description:
+
+  Displays all the client and/or channel IDs currently assigned to channel
+
+  groups. All three parameters are optional so you're free to choose the most
+
+  suitable combination for your requirements.
+
+
+Parameters:
+
+  cid : integer : only list entries of this channel
+
+  cldbid : integer : only list entries of this client
+
+  cgid : integer : only list entries of this channel group
+
+
+Example:
+
+  channelgroupclientlist cid=2 cgid=9
+
+  cid=2 cldbid=9 cgid=9|cid=2 cldbid=24 cgid=9|cid=2 cldbid=47 cgid=9
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgroupcopy
+Usage: channelgroupcopy scgid={sourceGroupID} tcgid={targetGroupID}
+
+       name={groupName} type={groupDbType}
+
+
+Permissions:
+
+  b_virtualserver_channelgroup_create
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+
+Description:
+
+  Creates a copy of the channel group specified with scgid. If tcgid is set to
+
+  0, the server will create a new group. To overwrite an existing group, simply
+
+  set tcgid to the ID of a designated target group. If a target group is set,
+
+  the name parameter will be ignored. The type parameter can be used to create
+
+  template groups.
+
+  For detailed information, see Definitions.
+
+
+Parameters:
+
+  scgid : integer : the channel group to copy
+
+  tcgid : integer : the target group
+
+  name : string : the name of the new group (ignored if `tcgid` is set)
+
+  type : integer : group type `0` (template), `1` (regular), `2` (query)
+
+
+Example:
+
+  channelgroupcopy scgid=4 tcgid=0 name=My\sGroup\s(Copy) type=1
+
+  cgid=33
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgroupdel
+Usage: channelgroupdel cgid={groupID} force={1|0}
+
+
+Permissions:
+
+  b_virtualserver_channelgroup_delete
+
+
+Description:
+
+  Deletes a channel group by ID. If force is set to 1, the channel group will
+
+  be deleted even if there are clients within.
+
+
+Parameters:
+
+  cgid : integer : channel group id
+
+  force : integer : set to 1 to force deletion even if clients are present
+
+  
+
+Example:
+
+  channelgroupdel cgid=13
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgroupdelperm
+Usage: channelgroupdelperm [-continueonerror] cgid={groupID}
+
+       [permid={permID}...] [permsid={permName}...]
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Removes a set of specified permissions from the channel group. Multiple
+
+  permissions can be removed at once. A permission can be specified by permid
+
+  or permsid.
+
+
+Parameters:
+
+  -continueonerror : continue on some errors
+
+  cgid : integer : id of channel group
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+
+Example:
+
+  channelgroupdelperm cgid=16 permid=17276|permid=21415
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgrouplist
+Usage: channelgrouplist
+
+
+Permissions:
+
+  b_virtualserver_channelgroup_list
+
+  b_serverinstance_modify_templates
+
+
+Description:
+
+  Displays a list of channel groups available on the selected virtual server.
+
+
+Example:
+
+  channelgrouplist
+
+  cgid=1 name=Channel\sAdmin type=2 iconid=100 savedb=1|cgid=2 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgrouppermlist
+Usage: channelgrouppermlist cgid={groupID} [-permsid]
+
+
+Permissions:
+
+  b_virtualserver_channelgroup_permission_list
+
+
+Description:
+
+  Displays a list of permissions assigned to the channel group specified with
+
+  cgid. If the -permsid option is specified, the output will contain the
+
+  permission names instead of the internal IDs.
+
+
+Parameters:
+
+  cgid : integer : id of channel group
+
+  -permsid : include `permsid`
+
+
+Example:
+
+  channelgrouppermlist cgid=13
+
+  permid=8470 permvalue=1 permnegated=0 permskip=0|permid=8475 permvalue=1 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelgrouprename
+Usage: channelgrouprename cgid={groupID} name={groupName}
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+
+Description:
+
+  Changes the name of a specified channel group.
+
+
+Parameters:
+
+  cgid : integer:id of channel group
+
+  name : new name of the channel group
+
+
+Example:
+
+  channelgrouprename cgid=13 name=New\sName
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelinfo
+Usage: channelinfo cid={channelID}
+
+
+Permissions:
+
+  b_channel_info_view
+
+
+Description:
+
+  Displays detailed configuration information about a channel including ID,
+
+  topic, description, etc.
+
+  For detailed information, see Channel Properties.
+
+
+Parameters:
+
+  cid : integer : The channel you're interested in
+
+
+Example:
+
+  channelinfo cid=1
+
+  channel_name=Default\sChannel channel_topic=Default\sChannel\shas\sno\s[b]topic[\/b] channel_description=This\sis\sthe\sdefault\schannel ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channellist
+Usage: channellist [-topic] [-flags] [-voice] [-limits] [-icon] [-secondsempty] [-banners]
+
+
+Permissions:
+
+  b_virtualserver_channel_list
+
+
+Description:
+
+  Displays a list of channels created on a virtual server including their ID,
+
+  order, name, etc. The output can be modified using several command options.
+
+
+Parameters:
+
+  -topic : include `channel_topic`
+
+  -flags : include `channel_flag_default`, `channel_flag_password`, `channel_flag_permanent` and `channel_flag_semi_permanent`
+
+  -voice : include `channel_codec`, `channel_codec_quality` and `channel_needed_talk_power`
+
+  -limits : include `total_clients_family`
+
+  -icon : include `channel_icon_id`
+
+  -secondsempty : include `seconds_empty`
+
+  -banners : include `channel_banner_gfx_url` and `channel_banner_mode`
+
+
+Example:
+
+  channellist -topic
+
+  cid=15 pid=0 channel_order=0 channel_name=Default\sChannel channel_topic=Default\sChannel\shas\sno\s[b]topic[\/b] total_clients=2|cid=16 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelmove
+Usage: channelmove cid={channelID} cpid={channelParentID}
+
+       [order={channelSortOrder}]
+
+
+Permissions:
+
+  i_channel_min_depth
+
+  i_channel_max_depth
+
+  b_channel_modify_parent
+
+  b_channel_modify_sortorder
+
+
+Description:
+
+  Moves a channel to a new parent channel with the ID cpid. If order is
+
+  specified, the channel will be sorted right under the channel with the
+
+  specified ID. If order is set to 0, the channel will be sorted right below
+
+  the new parent.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  cpid : integer : id of parent channel
+
+  order : integer : id of upper sibling channel 
+
+
+Example:
+
+  channelmove cid=16 cpid=1 order=0
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## channelpermlist
+Usage: channelpermlist cid={channelID} [-permsid]
+
+
+Permissions:
+
+  b_virtualserver_channel_permission_list
+
+
+Description:
+
+  Displays a list of permissions defined for a channel.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  -permsid : include `permsid`
+
+
+Example:
+
+  channelpermlist cid=2
+
+  cid=2 permid=4353 permvalue=1 permnegated=0 permskip=0|permid=17276 permvalue=50 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## chatlogintoken
+Usage: chatlogintoken
+
+
+Permissions:
+
+
+Description:
+
+  When the TeamSpeak server is configured to use Matrix servers for chat,
+
+  this command returns a JSON Web Token that can be used to login to the
+
+  Matrix server. Currently only the Synapse Matrix server is supported.
+
+
+Parameters:
+
+
+Example:
+
+  chatlogintoken
+
+  token=...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientaddperm
+Usage: clientaddperm [-continueonerror] cldbid={clientDBID} [permid={permID}...]
+
+       [permsid={permName}...] permvalue={permValue}... permskip={1|0}...
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Adds a set of specified permissions to a client. Multiple permissions can be
+
+  added by providing the three parameters of each permission. A permission can
+
+  be specified by `permid` or `permsid`.
+
+
+Parameters:
+
+  -continueonerror : continue processing on some errors
+
+  cldbid : integer : id of client in database
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+  permvalue : value of the permission
+
+  permskip : integer : 
+
+
+Example:
+
+  clientaddperm cldbid=16 permid=17276 permvalue=50 permskip=1|permid=21415 permvalue=20 permskip=0
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientdbdelete
+Usage: clientdbdelete cldbid={clientDBID}
+
+
+Permissions:
+
+  b_client_delete_dbproperties
+
+
+Description:
+
+  Deletes a clients properties from the database.
+
+
+Parameters:
+
+  cldbid : integer : id of client in database
+
+  
+
+Example:
+
+  clientdbdelete cldbid=56
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientdbedit
+Usage: clientdbedit cldbid={clientDBID} [client_properties...]
+
+
+Permissions:
+
+  b_client_modify_dbproperties
+
+  b_client_modify_description
+
+  b_client_set_talk_power
+
+
+Description:
+
+  Changes a clients settings using given properties.
+
+  For detailed information, see Client Properties.
+
+
+Parameters:
+
+  cldbid : integer : id of client in database
+
+  client_description : description of client
+
+
+Example:
+
+  clientdbedit cldbid=56 client_description=Best\sguy\sever!
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientdbfind
+Usage: clientdbfind [-uid] pattern={clientName|clientUID}
+
+       clientdbfind [-uid] pattern={clientName|clientUID}|pattern={clientName|clientUID}
+
+
+Permissions:
+
+  b_virtualserver_client_dbsearch
+
+
+Description:
+
+  Displays a list of client database IDs matching a given pattern. You can
+
+  either search for a clients last known nickname or his unique identity by
+
+  using the -uid option.
+
+  		The pattern parameter can include regular characters and SQL wildcard
+
+  characters (e.g. %).
+
+
+Parameters:
+
+  pattern : matches the value, allowing for sql style pattern matching
+
+  -uid : when set search in `client_unique_id`; otherwise search in `client_nickname`
+
+
+Example:
+
+  clientdbfind pattern=%Sven%
+
+  cldbid=56
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientdbinfo
+Usage: clientdbinfo cldbid={clientDBID}
+
+       clientdbinfo cldbid={clientDBID}|cldbid={clientDBID}
+
+
+Permissions:
+
+  b_virtualserver_client_dbinfo
+
+
+Description:
+
+  Displays detailed database information about a client including unique ID,
+
+  creation date, etc.
+
+
+Parameters:
+
+  cldbid : integer : id of client in database
+
+  
+
+Example:
+
+  clientdbinfo cldbid=4
+
+  client_unique_identifier=FPMPSC6MXqXq751dX7BKV0JniSo= client_nickname=teamspeak_user client_created=1265411019 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientdblist
+Usage: clientdblist [start={offset}] [duration={limit}] [-count] [-homebaseonly]
+
+
+Permissions:
+
+  b_virtualserver_client_dblist
+
+  b_virtualserver_homebase_list for homebase field and -homebaseonly
+
+  b_serverquery_login_list for client login name field
+
+  b_client_remoteaddress_view for client_lastip field
+
+
+Description:
+
+  Displays a list of client identities known by the server including their
+
+  database ID, last nickname, etc.
+
+
+Parameters:
+
+  start : integer : skip the first `n` entries
+
+  duration : integer : only return `n` entries
+
+  -count : also return the total number of entries
+
+  -homebaseonly : only return clients that have set this server as chat/matrix homebase
+
+
+Example:
+
+  clientdblist
+
+  cldbid=7 client_unique_identifier=DZhdQU58qyooEK4Fr8Ly738hEmc= client_nickname=MuhChy client_created=1259147468 client_lastconnected=1259421233 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientdelperm
+Usage: clientdelperm cldbid={clientDBID} [permid={permID}...]
+
+       [permsid={permName}...]
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Removes a set of specified permissions from a client. Multiple permissions
+
+  can be removed at once. A permission can be specified by permid or permsid.
+
+
+Parameters:
+
+  cldbid : integer : id of client in database
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+
+Example:
+
+  clientdelperm cldbid=16 permid=17276|permid=21415
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientedit
+Usage: clientedit clid={clientID} [client_properties...]
+
+
+Permissions:
+
+  b_client_modify_description
+
+  b_client_set_talk_power
+
+
+Description:
+
+  Changes a clients settings using given properties.
+
+  For detailed information, see Client Properties.
+
+
+Parameters:
+
+  clid : integer : id of client
+
+  client_nickname : Nickname of the client
+
+  client_is_talker : Indicates whether the client is able to talk or not
+
+  client_description : Brief description of the client (max 200 chars)
+
+  client_icon_id : CRC32 checksum of the client icon
+
+
+Example:
+
+  clientedit clid=10 client_description=Best\sguy\sever!
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientfind
+Usage: clientfind pattern={clientName}
+
+
+Permissions:
+
+  b_virtualserver_client_search
+
+
+Description:
+
+  Displays a list of clients matching a given name pattern.
+
+
+Parameters:
+
+  -cid : Report channel id of the channel the client is in
+
+  -chuid : Report channel_unique_identifier of the channel the client is in
+
+  pattern : Regex pattern to use
+
+  property : Channel variable to search on. Default is "client_nickname"
+
+
+Example:
+
+  clientfind pattern=sven
+
+  clid=7 client_nickname=Sven
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientgetdbidfromuid
+Usage: clientgetdbidfromuid cluid={clientUID}
+
+       clientgetdbidfromuid cluid={clientUID}|cluid={clientUID}
+
+
+Permissions:
+
+
+Description:
+
+  Displays the database ID matching the unique identifier specified by `cluid`.
+
+
+Parameters:
+
+  cluid : the client unique id
+
+  
+
+Example:
+
+  clientgetdbidfromuid cluid=dyjxkshZP6bz0n3bnwFQ1CkwZOM=
+
+  cluid=dyjxkshZP6bz0n3bnwFQ1CkwZOM= cldbid=32
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientgetids
+Usage: clientgetids cluid={clientUID}
+
+       clientgetids cluid={clientUID}|cluid={clientUID}
+
+
+Permissions:
+
+
+Description:
+
+  Displays all client IDs matching the unique identifier specified by `cluid`.
+
+
+Parameters:
+
+  cluid : the client unique id
+
+
+Example:
+
+  clientgetids cluid=dyjxkshZP6bz0n3bnwFQ1CkwZOM=
+
+  cluid=dyjxkshZP6bz0n3bnwFQ1CkwZOM= clid=1 name=Janko
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientgetnamefromdbid
+Usage: clientgetnamefromdbid cldbid={clientDBID}
+
+       clientgetnamefromdbid cldbid={clientDBID}|cldbid={clientDBID}
+
+
+Permissions:
+
+
+Description:
+
+  Displays the unique identifier and nickname matching the database ID
+
+  specified by `cldbid`.
+
+
+Parameters:
+
+  cldbid : integer : id of client in database
+
+  
+
+Example:
+
+  clientgetnamefromdbid cldbid=32
+
+  cluid=dyjxkshZP6bz0n3bnwFQ1CkwZOM= cldbid=32 name=Janko
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientgetnamefromuid
+Usage: clientgetnamefromuid cluid={clientUID}
+
+       clientgetnamefromuid cluid={clientUID}|cluid={clientUID}
+
+
+Permissions:
+
+
+Description:
+
+  Displays the database ID and nickname matching the unique identifier
+
+  specified by `cluid`.
+
+
+Parameters:
+
+  cluid : unique id of client
+
+
+Example:
+
+  clientgetnamefromuid cluid=dyjxkshZP6bz0n3bnwFQ1CkwZOM=
+
+  cluid=dyjxkshZP6bz0n3bnwFQ1CkwZOM= cldbid=32 name=Janko
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientgetuidfromclid
+Usage: clientgetuidfromclid clid={clientID}
+
+       clientgetuidfromclid clid={clientID}|clid={clientID}
+
+
+Permissions:
+
+
+Description:
+
+  Displays the unique identifier matching the clientID specified by `clid`.
+
+
+Parameters:
+
+  clid : integer : A client id
+
+  
+
+Example:
+
+  clientgetuidfromclid clid=8
+
+  clid=8 cluid=yXM6PUfbCcPU+joxIFek1xOQwwQ= nickname=MuhChy1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientinfo
+Usage: clientinfo clid={clientID}
+
+       clientinfo clid={clientID}|clid={clientID}
+
+
+Permissions:
+
+  b_client_info_view
+
+
+Description:
+
+  Displays detailed configuration information about a client including unique
+
+  ID, nickname, client version, etc.
+
+
+Parameters:
+
+  clid : integer : The client id to use
+
+  
+
+Example:
+
+  clientinfo clid=6
+
+  client_unique_identifier=P5H2hrN6+gpQI4n\/dXp3p17vtY0= client_nickname=Rabe85 client_version=3.0.0-alpha24\s[Build:\s8785]\s(UI:\s8785) ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientkick
+Usage: clientkick [-continueonerror] reasonid={4|5} [reasonmsg={text}] clid={clientID}...
+
+
+Permissions:
+
+  i_client_kick_from_server_power
+
+  i_client_kick_from_channel_power
+
+  i_client_needed_kick_from_server_power
+
+  i_client_needed_kick_from_channel_power
+
+
+Description:
+
+  Kicks one or more clients specified with clid from their currently joined channel (`reasonid`=`4`) or from the server (`reasonid`=`5`), depending on reasonid. The reasonmsg parameter
+
+  specifies a text message sent to the kicked clients. This parameter is optional and may only have a maximum of 40 characters.
+
+  For detailed information, see Definitions.
+
+
+  Processing stops on the first failed kick, unless you specify -continueonerror.
+
+
+Parameters: 
+
+  -continueonerror : ignores certain errors and continues processing
+
+  clid : integer : id of client
+
+  reasonid : integer : `4` (kick from channel) or `5` (kick from server)
+
+  reasonmsg : message displayed to kicked client
+
+
+Example:
+
+  clientkick reasonid=4 reasonmsg=Go\saway! clid=5|clid=6
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientlist
+Usage: clientlist [-uid] [-away] [-voice] [-times] [-groups] [-info] [-icon]
+
+       [-country] [-ip] [-badges]
+
+
+Permissions:
+
+  b_virtualserver_client_list
+
+  i_channel_subscribe_power
+
+  i_channel_needed_subscribe_power
+
+
+Description:
+
+  Displays a list of clients online on a virtual server including their ID,
+
+  nickname, status flags, etc. The output can be modified using several command
+
+  options.
+
+  Please note that the output will only contain clients which are currently in
+
+  channels you're able to subscribe to.
+
+
+Parameters:
+
+  -uid : Reports the client unique identifier
+
+  -away : Adds client away status and message
+
+  -voice : Adds information on whether the user is talking, their mute/hardware status and if they are recording/priority speaker
+
+  -times : Add idle, created and last connected time.
+
+  -groups : Includes info on server and channel groups.
+
+  -info : Adds client version and platform
+
+  -icon : Adds the client icon id
+
+  -country : Reports the client country code
+
+  -ip : Adds the client IP, depending on the callers **PERMISSION_b_client_remoteaddress_view** permission
+
+  -badges : Reports on the clients badges
+
+
+Example:
+
+  clientlist -away
+
+  clid=5 cid=7 client_database_id=40 client_nickname=teamspeak_user client_type=0 client_away=1 client_away_message=not\shere|clid=6 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientmove
+Usage: clientmove [-continueonerror] clid={clientID}... cid={channelID} [cpw={channelPassword}]
+
+
+Permissions:
+
+  i_client_move_power
+
+  i_client_needed_move_power
+
+
+Description:
+
+  Moves one or more clients specified with ``[ clid ]`` to the channel with ID `cid`. If
+
+  the target channel has a password, it needs to be specified with `cpw`. If the
+
+  channel has no password, the parameter can be omitted.
+
+
+  The `-continueonerror` parameter will cause some errors to be ignored (for example, clients
+
+  that could not be moved).
+
+  
+
+Parameters:
+
+  -continueonerror : continue processing on some errors
+
+  clid : integer_list : list containing comma seperated id(s) of client(s) i.e. `[ 0, 3, 4 ]`
+
+  cid : integer : id of channel
+
+  cpw : password of channel
+
+
+Example:
+
+  clientmove clid=5|clid=6 cid=3
+
+  error id=0 msg=ok
+
+
+Example:
+
+  curl -X POST http://localhost:10080/1/clientmove?api-key=BADARw_rpsOVBG-WAaJaoKD9piKPAK8wK2-0k3A -d '{ \"cid\": 1, \"clid\": [1,4] }'
+
+  {"status":{"code":0,"message":"ok"}}
+
+  curl -X POST http://localhost:10080/1/clientmove?api-key=BADARw_rpsOVBG-WAaJaoKD9piKPAK8wK2-0k3A -d '{ \"cid\": 3, \"clid\": [1,4] }'
+
+  {"status":{"code":0,"message":"ok"}}
+
+
+error id=0 msg=ok
+
+## clientpermlist
+Usage: clientpermlist cldbid={clientDBID} [-permsid]
+
+
+Permissions:
+
+  b_virtualserver_client_permission_list
+
+
+Description:
+
+  Displays a list of permissions defined for a client.
+
+
+Parameters:
+
+  cldbid : integer : id of client in database
+
+  -permsid : include `permsid`
+
+
+Example:
+
+  clientpermlist cldbid=2
+
+  cldbid=2 permid=4353 permvalue=1 permnegated=0 permskip=0|permid=17276 permvalue=50 permnegated=0 permskip=0|permid=21415 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientpoke
+Usage: clientpoke clid={clientID} msg={text}
+
+
+Permissions:
+
+  i_client_poke_power
+
+  i_client_needed_poke_power
+
+
+Description:
+
+  Sends a poke message to the client specified with clid.
+
+
+Parameters:
+
+  clid : integer : id of client
+
+  msg : message to send as a poke
+
+
+Example:
+
+  clientpoke clid=5 msg=Wake\sup!
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientsetserverquerylogin
+Usage: clientsetserverquerylogin client_login_name={username}
+
+
+Permissions:
+
+  b_client_create_modify_serverquery_login
+
+
+Description:
+
+  Updates your own ServerQuery login credentials using a specified username.
+
+  The password will be auto-generated.
+
+
+Parameters:
+
+  client_login_name : requested login name
+
+
+Example:
+
+  clientsetserverquerylogin client_login_name=admin
+
+  client_login_password=+r\/TQqvR
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## clientupdate
+Usage: clientupdate [client_properties...]
+
+
+Permissions:
+
+
+Description:
+
+  Change your ServerQuery clients settings using given properties.
+
+  For detailed information, see Client Properties.
+
+
+Example:
+
+  clientupdate client_nickname=teamspeak_user\s(query)
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## complainadd
+Usage: complainadd tcldbid={targetClientDBID} message={text}
+
+
+Permissions:
+
+  i_client_complain_power
+
+  i_client_needed_complain_power
+
+
+Description:
+
+  Submits a complaint about a connected client with database ID `tcldbid` to the
+
+  server.
+
+
+Parameters:
+
+  tcldbid : integer : id of client in database
+
+  message : complain text
+
+
+Example:
+
+  complainadd tcldbid=3 message=Bad\sguy!
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## complaindel
+Usage: complaindel tcldbid={targetClientDBID} fcldbid={fromClientDBID}
+
+
+Permissions:
+
+  b_client_complain_delete
+
+  b_client_complain_delete_own
+
+
+Description:
+
+  Deletes the complaint about the client with ID `tcldbid` submitted by the
+
+  client with ID `fcldbid` from the server.
+
+
+Parameters:
+
+  tcldbid : integer : target id of client in database (one you wish to complain about)
+
+  fcldbid : integer : source id of client in database (one complaint comes from)
+
+
+Example:
+
+  complaindel tcldbid=3 fcldbid=4
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## complaindelall
+Usage: complaindelall tcldbid={targetClientDBID}
+
+
+Permissions:
+
+  b_client_complain_delete
+
+
+Description:
+
+  Deletes all complaints about the client with database ID `tcldbid` from the
+
+  server.
+
+
+Parameters:
+
+  tcldbid : The client to delete complaints about
+
+  
+
+Example:
+
+  complaindelall tcldbid=3
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## complainlist
+Usage: complainlist [tcldbid={targetClientDBID}]
+
+
+Permissions:
+
+  b_client_complain_list
+
+
+Description:
+
+  Displays a list of complaints on the selected virtual server. If `tcldbid` is
+
+  specified, only complaints about the targeted client will be shown.
+
+
+Parameters:
+
+  tcldbid : dbid of client who was complained about
+
+  
+
+Example:
+
+  complainlist tcldbid=3
+
+  tcldbid=3 tname=Julian fcldbid=56 fname=Sven message=Bad\sguy! timestamp=1259440948 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## customdelete
+Usage: customdelete cldbid={clientDBID} ident={ident}
+
+
+Permissions:
+
+  b_client_delete_dbproperties
+
+
+Description:
+
+  Removes a custom property from a client specified by the cldbid.
+
+
+Parameters:
+
+  cldbid : id of client in database
+
+  ident : identifier
+
+
+Example:
+
+  customdelete cldbid=4 ident=forum_nickname
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## custominfo
+Usage: custominfo cldbid={clientDBID}
+
+
+Permissions:
+
+
+Description:
+
+  Displays a list of custom properties for the client specified with cldbid.
+
+
+Parameters:
+
+  cldbid : a database id for a client
+
+  
+
+Example:
+
+  custominfo cldbid=3
+
+  cldbid=3 ident=forum_account value=teamspeak_user|ident=forum_id value=123
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## customsearch
+Usage: customsearch ident={ident} pattern={pattern}
+
+
+Permissions:
+
+
+Description:
+
+  Searches for custom client properties specified by ident and value. The value
+
+  parameter can include regular characters and SQL wildcard characters (e.g. %).
+
+
+Parameters:
+
+  ident : identifier
+
+  pattern : matches the value, allowing for sql style pattern matching
+
+
+
+Example:
+
+  customsearch ident=forum_account pattern=%teamspeak_user%
+
+  cldbid=2 ident=forum_account value=teamspeak_user
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## customset
+Usage: customset cldbid={clientDBID} ident={ident} value={value}
+
+
+Permissions:
+
+  b_client_modify_dbproperties
+
+
+Description:
+
+  Creates or updates a custom property for client specified by the cldbid. 
+
+  Ident and value can be any value, and are the key value pair of the custom property.
+
+  
+
+Parameters:
+
+  cldbid : id of client in database
+
+  ident : identifier
+
+  value : value
+
+
+Example:
+
+  customset cldbid=4 ident=forum_nickname value=John\sDoe
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftcreatedir
+Usage: ftcreatedir cid={channelID} cpw={channelPassword} dirname={dirPath}
+
+
+Permissions:
+
+  i_ft_directory_create_power
+
+  i_ft_needed_file_directory_create_power
+
+
+Description:
+
+  Creates new directory in a channels file repository.
+
+
+Example:
+
+  ftcreatedir cid=2 cpw= dirname=\/My\sDirectory
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftdeletefile
+Usage: ftdeletefile cid={channelID} cpw={channelPassword} name={filePath}...
+
+
+Permissions:
+
+  i_ft_file_delete_power
+
+  i_ft_needed_file_delete_power
+
+
+Description:
+
+  Deletes one or more files stored in a channels file repository.
+
+
+Example:
+
+  ftdeletefile cid=2 cpw= name=\/Pic1.PNG|name=\/Pic2.PNG
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftgetchannelfilehttptoken
+Usage: ftgetchannelfilehttptoken cid={channelID}|scid={special channelID}
+
+
+Permissions:
+
+
+Description:
+
+  When the TeamSpeak server is configured for HTTP file transfer, this command
+
+  returns a JSON Web Token to use for authentication to a HTTP TeamSpeak
+
+  filetransfer server.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  scid: special channel name. Either "avatars", "icons", "chat" or "listuserfiles"
+
+
+Example:
+
+  ftgetchannelfilehttptoken cid=1
+
+  cid=1 expires_in=60 jwt=...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftgetfileinfo
+Usage: ftgetfileinfo cid={channelID} cpw={channelPassword} name={filePath}...
+
+
+Permissions:
+
+  i_ft_file_browse_power
+
+  i_ft_needed_file_browse_power
+
+
+Description:
+
+  Displays detailed information about one or more specified files stored in a
+
+  channels file repository.
+
+
+Example:
+
+  ftgetfileinfo cid=2 cpw= name=\/Pic1.PNG|cid=2 cpw= name=\/Pic2.PNG
+
+  cid=2 path=\/ name=Stuff size=0 datetime=1259415210 type=0|name=Pic1.PNG size=563783 datetime=1259425462 type=1|name=Pic2.PNG ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftgetfilelist
+Usage: ftgetfilelist cid={channelID} cpw={channelPassword} path={filePath}
+
+
+Permissions:
+
+  i_ft_file_browse_power
+
+  i_ft_needed_file_browse_power
+
+
+Description:
+
+  Displays a list of files and directories stored in the specified channels
+
+  file repository.
+
+
+Example:
+
+  ftgetfilelist cid=2 cpw= path=\/
+
+  cid=2 path=\/ name=Stuff size=0 datetime=1259415210 type=0|name=Pic1.PNG size=563783 datetime=1259425462 type=1|name=Pic2.PNG ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftinitdownload
+Usage: ftinitdownload clientftfid={clientFileTransferID} name={filePath}
+
+       cid={channelID} cpw={channelPassword} seekpos={seekPosition} [proto=0-1]
+
+
+Permissions:
+
+  i_ft_file_download_power
+
+  i_ft_needed_file_ download _power
+
+  i_ft_quota_mb_ download _per_client
+
+
+Description:
+
+  Initializes a file transfer download. clientftfid is an arbitrary ID to
+
+  identify the file transfer on client-side. On success, the server generates a
+
+  new ftkey which is required to start downloading the file through TeamSpeak
+
+  6's file transfer interface. Since version 3.0.13 there is an optional proto
+
+  parameter. The client can request a protocol version with it. Currently only
+
+  0 and 1 are supported which only differ in the way they handle some timings.
+
+  The server will reply which protocol version it will support. The server will
+
+  reply with an ip parameter if it determines the filetransfer subsystem is not
+
+  reachable by the ip that is currently being used for the query connection.
+
+
+Example:
+
+  ftinitdownload clientftfid=1 name=\/image.iso cid=5 cpw= seekpos=0
+
+  clientftfid=1 serverftfid=7 ftkey=NrOga\/4d2GpYC5oKgxuclTO37X83ca\/1 port=30033 size=673460224 proto=0
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftinitupload
+Usage: ftinitupload clientftfid={clientFileTransferID} name={filePath}
+
+       cid={channelID} cpw={channelPassword} size={fileSize} overwrite={1|0}
+
+       resume={1|0} [proto=0-1]
+
+
+Permissions:
+
+  i_ft_file_upload_power
+
+  i_ft_needed_file_ upload _power
+
+  i_ft_quota_mb_upload_per_client
+
+
+Description:
+
+  Initializes a file transfer upload. clientftfid is an arbitrary ID to
+
+  identify the file transfer on client-side. On success, the server generates a
+
+  new ftkey which is required to start uploading the file through TeamSpeak 3's
+
+  file transfer interface. Since version 3.0.13 there is an optional proto
+
+  parameter. The client can request a protocol version with it. Currently only
+
+  0 and 1 are supported which only differ in the way they handle some timings.
+
+  The server will reply which protocol version it will support. The server will
+
+  reply with an ip parameter if it determines the filetransfer subsystem is not
+
+  reachable by the ip that is currently being used for the query connection.
+
+
+Example:
+
+  ftinitupload clientftfid=1 name=\/image.iso cid=5 cpw= size=673460224 overwrite=1 resume=0
+
+  clientftfid=1 serverftfid=6 ftkey=itRNdsIOvcBiBg\/Xj4Ge51ZSrsShHuid port=30033 seekpos=0 proto=0
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftlist
+Usage: ftlist
+
+
+Permissions:
+
+  b_ft_transfer_list
+
+
+Description:
+
+  Displays a list of running file transfers on the selected virtual server. The
+
+  output contains the path to which a file is uploaded to, the current transfer
+
+  rate in bytes per second, etc.
+
+
+Example:
+
+  ftlist
+
+  clid=2 path=files\/virtualserver_1\/channel_5 name=image.iso size=673460224 sizedone=450756 clientftfid=2 serverftfid=6 sender=0 status=1 current_speed=60872.8 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftrenamefile
+Usage: ftrenamefile cid={channelID} cpw={channelPassword}
+
+       [tcid={targetChannelID}] [tcpw={targetChannelPassword}]
+
+       oldname={oldFilePath} newname={newFilePath}
+
+
+Permissions:
+
+  i_ft_file_rename_power
+
+  i_ft_needed_file_rename_power
+
+
+Description:
+
+  Renames a file in a channels file repository. If the two parameters tcid and
+
+  tcpw are specified, the file will be moved into another channels file
+
+  repository.
+
+
+Example:
+
+  ftrenamefile cid=2 cpw= tcid=3 tcpw=secret oldname=\/Pic3.PNG newname=\/Pic3.PNG
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## ftstop
+Usage: ftstop serverftfid={serverFileTransferID} delete={1|0}
+
+
+Permissions:
+
+
+Description:
+
+  Stops the running file transfer with server-side ID serverftfid.
+
+
+Example:
+
+  ftstop serverftfid=2 delete=1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## gm
+Usage: gm msg={text}
+
+
+Permissions:
+
+  b_serverinstance_textmessage_send
+
+
+Description:
+
+  Sends a text message to all clients on all virtual servers in the TeamSpeak 6
+
+  Server instance.
+
+
+Example:
+
+  gm msg=Hello\sWorld!
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## hostinfo
+Usage: hostinfo
+
+
+Permissions:
+
+  b_serverinstance_info_view
+
+
+Description:
+
+  Displays detailed connection information about the server instance including
+
+  uptime, number of virtual servers online, traffic information, etc.
+
+  
+
+  For detailed information, see Server Instance Properties.
+
+
+Example:
+
+  hostinfo
+
+  instance_uptime=1903203 host_timestamp_utc=1259337246 virtualservers_running_total=1 connection_filetransfer_bandwidth_sent=0 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## instanceedit
+Usage: instanceedit [instance_properties...]
+
+
+Permissions:
+
+  b_serverinstance_modify_settings
+
+
+Description:
+
+  Changes the server instance configuration using given properties.
+
+  For detailed information, see Server Instance Properties.
+
+
+Example:
+
+  instanceedit serverinstance_filetransfer_port=1337
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## instanceinfo
+Usage: instanceinfo
+
+
+Permissions:
+
+  b_serverinstance_info_view
+
+
+Description:
+
+  Displays the server instance configuration including database revision
+
+  number, the file transfer port, default group IDs, etc.
+
+  For detailed information, see Server Instance Properties.
+
+
+Example:
+
+  instanceinfo
+
+  serverinstance_database_version=11 serverinstance_filetransfer_port=30033 serverinstance_template_guest_serverquery_group=1 serverinstance_template_serveradmin_group=3 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## licensesignmessage
+Usage: licensesignmessage message={message}
+
+
+Permissions:
+
+  b_serverinstance_licensesign_message
+
+
+Description:
+
+  Signs the message with the private key of your license. This can prove that
+
+  you own this license. Does not work for servers that have no license or use
+
+  the default license.
+
+
+Parameters:
+
+  message : Arbitrary data
+
+
+Example:
+
+  licensesignmessage message=hello
+
+  certificate_chain=AQBM0LZCVmZ7CX\/miewqdjOyuKa6kI78Fk43... signature=5vsig...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## logadd
+Usage: logadd loglevel={1-4} logmsg={text}
+
+
+Permissions:
+
+  b_serverinstance_log_add
+
+  b_virtualserver_log_add
+
+
+Description:
+
+  Writes a custom entry into the servers log. Depending on your permissions,
+
+  you'll be able to add entries into the server instance log and/or your
+
+  virtual servers log. The loglevel parameter specifies the type of the entry.
+
+  
+
+  For detailed information, see Definitions.
+
+
+Parameters:
+
+  loglevel : integer : `1` (error), `2` (warning), `3` (debug), `4` (info)
+
+  logmsg : message to be logged
+
+
+Example:
+
+  logadd loglevel=4 logmsg=Informational\smessage!
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## login
+Usage: login client_login_name={username} client_login_password={password}
+
+       login {username} {password}
+
+
+Permissions:
+
+  b_serverquery_login
+
+
+Description:
+
+  Authenticates with the TeamSpeak 6 Server instance using given ServerQuery
+
+  login credentials.
+
+  
+
+Example:
+
+  login client_login_name=xyz client_login_password=xyz
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## logout
+Usage: logout
+
+
+Permissions:
+
+  b_serverquery_login
+
+
+Description:
+
+  Deselects the active virtual server and logs out from the server instance.
+
+
+Example:
+
+  logout
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## logview
+Usage: logview [lines={1-100}] [reverse={1|0}] [instance={1|0}] [begin_pos={n}]
+
+
+Permissions:
+
+  b_serverinstance_log_view
+
+  b_virtualserver_log_view
+
+
+Description:
+
+  Displays a specified number of entries from the servers log. If instance is
+
+  set to 1, the server will return lines from the master logfile
+
+  (ts3server_0.log) instead of the selected virtual server logfile.
+
+
+Parameters:
+
+  lines : integer : reduce the number of lines in response; Default `100`
+
+  reverse : integer : when `1`, reverse the order of lines in response
+
+  instance : integer : when `1`, return log from instance; otherwise from virtual server
+
+  begin_pos : integer : skip `n` number of lines
+
+
+Example:
+
+  logview lines=30
+
+  last_pos=403788 file_size=411980 l=\p\slistening\son\s0.0.0.0:9987 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## messageadd
+Usage: messageadd cluid={clientUID} subject={subject} message={text}
+
+
+Permissions:
+
+
+Description:
+
+  Sends an offline message to the client specified by `cluid`.
+
+
+Parameters:
+
+  cluid : integer : id of client
+
+  subject : subject line
+
+  message : message text
+
+
+Example:
+
+  messageadd cluid=oHhi9WzXLNEFQOwAu4JYKGU+C+c= subject=Hi! message=Where\sare\syou?!?
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## messagedel
+Usage: messagedel msgid={messageID}
+
+
+Permissions:
+
+
+Description:
+
+  Deletes an existing offline message with ID `msgid` from your inbox.
+
+
+Parameters:
+
+  msgid : integer : id of message
+
+  
+
+Example:
+
+  messagedel msgid=4
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## messageget
+Usage: messageget msgid={messageID}
+
+
+Permissions:
+
+
+Description:
+
+  Displays an existing offline message with ID `msgid` from your inbox. Please
+
+  note that this does not automatically set the flag_read property of the
+
+  message.
+
+
+Parameters:
+
+  msgid : integer : id of message
+
+
+Example:
+
+  messageget msgid=4
+
+  msgid=4 cluid=xwEzb5ENOaglVHu9oelK++reUyE= subject=Hi! message=Where\sare\syou?!?
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## messagelist
+Usage: messagelist
+
+
+Permissions:
+
+
+Description:
+
+  Displays a list of offline messages you've received. The output contains the
+
+  senders unique identifier, the messages subject, etc.
+
+
+Example:
+
+  messagelist
+
+  msgid=4 cluid=xwEzb5ENOaglVHu9oelK++reUyE= subject=Test timestamp=1259439465 flag_read=0 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## messageupdateflag
+Usage: messageupdateflag msgid={messageID} flag={1|0}
+
+
+Permissions:
+
+
+Description:
+
+  Updates the flag_read property of the offline message specified with `msgid`.
+
+  If flag is set to `1`, the message will be marked as read.
+
+
+Parameters:
+
+  msgid : integer : id of message
+
+  flag : integer : when `1`, mark as read; otherwise unread
+
+
+Example:
+
+  messageupdateflag msgid=4 flag=1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## permfind
+Usage: permfind [permid={permID}...] [permsid={permName}...]
+
+
+Permissions:
+
+  b_virtualserver_permission_find
+
+  b_serverinstance_permission_find 
+
+
+Description:
+
+  Displays detailed information about all assignments of the permission
+
+  specified with `permid`. The output is similar to `permoverview` which includes
+
+  the type and the ID of the client, channel or group associated with the
+
+  permission. A permission can be specified by `permid` or `permsid`.
+
+
+Parameters:
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+
+Example:
+
+  permfind permid=4353
+
+  t=0 id1=1 id2=0 p=4353|t=0 id1=2 id2=0 p=4353
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## permget
+Usage: permget permid={permID}|permid={permID}
+
+       permget permsid={permName}|permsid={permName}
+
+       permget [forauthenticationtoken={token}] [cid={channelID}] permsid={permName}|permsid={permName}
+
+
+Permissions:
+
+  b_client_permissionoverview_own
+
+
+Description:
+
+  Displays the current value of the permission specified with `permid` or
+
+  `permsid` for your own connection. This can be useful when you need to check
+
+  your own privileges. When the forauthenticationtoken parameter is used, the
+
+  priviliges of the user identified by the token are displayed. This token
+
+  is generated by the authenticationtoken command (by the other user).
+
+
+Parameters:
+
+  permid : integer : id of permission
+
+  permsid : server id of permission
+
+  forauthenticationtoken : token generated by 'authenticationtoken' containing other identity
+
+  cid : integer : id of channel to check permission in. Only valid when forauthenticationtoken is given
+
+
+Example:
+
+  permget permid=21174
+
+  permsid=i_client_move_power permid=21174 permvalue=100
+
+  error id=0 msg=ok
+
+
+  permget permsid=i_client_move_power
+
+  permsid=i_client_move_power permid=21174 permvalue=100
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## permidgetbyname
+Usage: permidgetbyname permsid={permName}...
+
+
+Permissions:
+
+  b_serverinstance_permission_list
+
+
+Description:
+
+  Displays the database ID of one or more permissions specified by `permsid`.
+
+
+Parameters:
+
+  permsid : server id of permission
+
+  
+
+Example:
+
+  permidgetbyname permsid=b_serverinstance_help_view|permsid=b_serverinstance_info_view
+
+  permsid=b_serverinstance_help_view permid=4353|permsid=b_serverinstance_info_view permid=4355
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## permissionlist
+Usage: permissionlist
+
+
+Permissions:
+
+  b_serverinstance_permission_list
+
+
+Description:
+
+  Displays a list of permissions available on the server instance including ID,
+
+  name and description.
+
+
+Example:
+
+  permissionlist
+
+  permid=21413 permname=b_client_channel_textmessage_send permdesc=Send\stext\smessages\sto\schannel|permid=21414 permname=i_client_talk_power ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## permoverview
+Usage: permoverview cid={channelID} cldbid={clientDBID} [permid={permID}...]
+
+       [permsid={permName}...]
+
+
+Permissions:
+
+  b_client_permissionoverview_view
+
+
+Description:
+
+  Displays all permissions assigned to a client for the channel specified with
+
+  `cid`. If `permid` is set to `0`, all permissions will be displayed. A permission
+
+  can be specified by `permid` or `permsid`.
+
+
+Parameters:
+
+  cid : integer : id of channel
+
+  cldbid : integer : id of client in database
+
+  permid : integer : id of permission; when `0` all m permissions are returned
+
+  permsid : server id of permission
+
+
+Example:
+
+  permoverview cldbid=57 cid=74 permid=0
+
+  t=0 id1=5 id2=0 p=37 v=1 n=0 s=0|t=0 id1=5 id2=0 p=38 v=1 n=0 s=0 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## permreset
+Usage: permreset
+
+
+Permissions:
+
+  b_virtualserver_permission_reset
+
+
+Description:
+
+  Restores the default permission settings on the selected virtual server and
+
+  creates a new initial administrator token. Please note that in case of an
+
+  error during the permreset call - e.g. when the database has been modified or
+
+  corrupted - the virtual server will be deleted from the database.
+
+
+Example:
+
+  permreset
+
+  token=eKnFZQ9EK7G7MhtuQB6+N2B1PNZZ6OZL3ycDp2OW
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## privilegekeyadd
+Usage: privilegekeyadd tokentype={1|0} tokenid1={groupID} tokenid2={channelID}
+
+       [tokendescription={description}] [tokencustomset={customFieldSet}]
+
+
+Permissions:
+
+  b_virtualserver_token_add
+
+  i_group_needed_member_add_power
+
+  i_group_member_add_power
+
+
+Description:
+
+  Create a new token. If `tokentype` is set to 0, the ID specified with `tokenid1`
+
+  will be a server group ID. Otherwise, `tokenid1` is used as a channel group ID
+
+  and you need to provide a valid channel ID using `tokenid2`.
+
+  The `tokencustomset` parameter allows you to specify a set of custom client
+
+  properties. This feature can be used when generating tokens to combine a
+
+  website account database with a TeamSpeak user. The syntax of the value needs
+
+  to be escaped using the ServerQuery escape patterns and has to follow the
+
+  general syntax of:
+
+  ident=ident1 value=value1|ident=ident2 value=value2|ident=ident3 value=value3
+
+
+Parameters:
+
+  tokentype : integer : `0` or `1`
+
+  tokenid1 : integer : see description
+
+  tokenid2 : integer : see description
+
+  tokencustomset : see description
+
+  tokendescription : free text describing the token
+
+
+Example:
+
+  privilegekeyadd tokentype=0 tokenid1=6 tokenid2=0 tokendescription=Test\stoken\swith\scustom\sset tokencustomset=ident=forum_user\svalue=Sven\sPaulsen\pident=forum_id\svalue=123
+
+  token=eKnFZQ9EK7G7MhtuQB6+N2B1PNZZ6OZL3ycDp2OW
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## privilegekeydelete
+Usage: privilegekeydelete token={tokenKey}
+
+
+Permissions:
+
+  b_virtualserver_token_delete
+
+
+Description:
+
+  Deletes an existing token matching the token key specified with `token`.
+
+
+Parameters:
+
+  token : token to be deleted
+
+  
+
+Example:
+
+  privilegekeydelete token=eKnFZQ9EK7G7MhtuQB6+N2B1PNZZ6OZL3ycDp2OW
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## privilegekeylist
+Usage: privilegekeylist
+
+
+Permissions:
+
+  b_virtualserver_token_list
+
+
+Description:
+
+  Displays a list of privilege keys available including their type and group
+
+  IDs. Tokens can be used to gain access to specified server or channel groups.
+
+  A privilege key is similar to a client with administrator privileges that
+
+  adds you to a certain permission group, but without the necessity of a such a
+
+  client with administrator privileges to actually exist. It is a long (random
+
+  looking) string that can be used as a ticket into a specific server group.
+
+
+Example:
+
+  privilegekeylist
+
+  token=88CVUg\/zkujt+y+WfHdko79UcM4R6uyCL6nEfy3B token_type=0 token_id1=9 token_id2=0 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## privilegekeyuse
+Usage: privilegekeyuse token={tokenKey}
+
+
+Permissions:
+
+  b_virtualserver_token_use
+
+
+Description:
+
+  Use a token key to gain access to a server or channel group. Please note that
+
+  the server will automatically delete the token after it has been used.
+
+
+Parameters:
+
+  token : token to be used
+
+
+Example:
+
+  privilegekeyuse token=eKnFZQ9EK7G7MhtuQB6+N2B1PNZZ6OZL3ycDp2OW
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## queryloginadd
+Usage: queryloginadd client_login_name={loginName}
+
+       queryloginadd client_login_name={loginName} cldbid={clientDBID}
+
+
+Permissions:
+
+  b_serverquery_login_create
+
+
+Description:
+
+  Adds a new query client login, or enables query login for existing clients.
+
+  When no virtual server has been selected, the command will create global query logins. 
+
+  Otherwise the command enables query login for existing client, and cldbid must be specified.
+
+  
+
+Parameters:
+
+  client_login_name : requested login name
+
+  cldbid : integer : id of client in the database, defaults to invoker
+
+
+Example:
+
+  use 0
+
+  queryloginadd client_login_name=test
+
+  cldbid=7 sid=0 client_login_name=test client_login_password=WVcOEYtW
+
+  error id=0 msg=ok
+
+
+  use 1
+
+  queryloginadd client_login_name=test2 cldbid=5
+
+  cldbid=5 sid=1 client_login_name=test2 client_login_password=CMSJ5qXk
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## querylogindel
+Usage: querylogindel cldbid={clientDBID}
+
+
+Permissions:
+
+  b_serverquery_login_delete
+
+
+Description:
+
+  Deletes an existing server query login on selected server.
+
+  When no virtual server has been selected, deletes global query logins instead.
+
+
+Parameters:
+
+  cldbid : integer : id of client in the database
+
+
+Example:
+
+    
+
+  Use 0
+
+  querylogindel cldbid=4
+
+  error id=0 msg=ok
+
+  
+
+  Use 2
+
+  querylogindel cldbid=223
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## queryloginlist
+Usage: queryloginlist [pattern={clientLoginName}] [start={offset}] [duration={limit}] [-count]
+
+
+Permissions:
+
+  b_serverquery_login_list
+
+
+Description:
+
+  List existing query client logins. 
+
+  The pattern parameter can include regular characters and SQL wildcard characters (e.g. %).
+
+  Only displays query logins of the selected virtual server, or all query logins when no virtual server have been  selected.
+
+
+Parameters:
+
+  pattern : matches the value, allowing for sql style pattern matching
+
+  start : integer : skip the first `n` entries
+
+  duration : integer : only return `n` entries
+
+  -count : also return the total number of entries
+
+
+Example:
+
+  use 0
+
+  queryloginlist
+
+  cldbid=1 sid=0 client_login_name=serveradmin|cldbid=25 sid=1 client_login_name=max|cldbid=26 sid=2 client_login_name=maaaaax
+
+  error id=0 msg=ok
+
+
+  use 0
+
+  queryloginlist pattern=m%x
+
+  cldbid=25 sid=1 client_login_name=max|cldbid=26 sid=2 client_login_name=maaaaax
+
+  error id=0 msg=ok
+
+
+  use 2
+
+  queryloginlist
+
+  cldbid=26 sid=2 client_login_name=maaaaax
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## sendtextmessage
+Usage: sendtextmessage targetmode={1-3} target={clientID} msg={text}
+
+
+Permissions:
+
+  i_client_private_textmessage_power
+
+  i_client_needed_private_textmessage_power
+
+  b_client_server_textmessage_send
+
+  b_client_channel_textmessage_send
+
+
+Description:
+
+  Sends a text message to a specified target. If `targetmode` is set to `1`, a
+
+  message is sent to the client with the ID specified by `target`. If `targetmode`
+
+  is set to `2` or `3`, the target parameter will be ignored and a message is sent
+
+  to the current channel or server respectively.
+
+
+Parameters:
+
+  targetmode : integer : `1` (Client), `2` (Channel), `3` (Server)
+
+  target : integer : id of client to receive the message
+
+  msg : message to be sent
+
+
+Example:
+
+  sendtextmessage targetmode=2 target=1 msg=Hello\sWorld!
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servercreate
+Usage: servercreate virtualserver_name={serverName}
+
+       [virtualserver_properties...]
+
+
+Permissions:
+
+  b_virtualserver_create
+
+
+Description:
+
+  Creates a new virtual server using the given properties and displays its ID,
+
+  port and initial administrator privilege key. If `virtualserver_port` is not
+
+  specified, the server will test for the first unused UDP port.
+
+  The first virtual server will be running on UDP port 9987 by default.
+
+  Subsequently started virtual servers will be running on increasing UDP port
+
+  numbers.
+
+  For detailed information, see Virtual Server Properties.
+
+
+Parameters:
+
+  virtualserver_name : name of the new virtual server
+
+  virtualserver_welcomemessage : 
+
+  virtualserver_password : The connection password to use
+
+  virtualserver_codec_encryption_mode : 
+
+  virtualserver_encryption_ciphers : 
+
+  virtualserver_hostmessage : 
+
+  virtualserver_hostmessage_mode : 
+
+  virtualserver_default_server_group : The default server group to use
+
+  virtualserver_default_channel_group : The default channel group to use
+
+  virtualserver_hostbanner_url : 
+
+  virtualserver_hostbanner_gfx_url : 
+
+  virtualserver_hostbanner_gfx_interval : 
+
+  virtualserver_weblist_enabled : integer : 1 to report to the weblist
+
+  virtualserver_maxclients : integer : number of max clients to accept
+
+  virtualserver_port : The port to run the server on
+
+  virtualserver_machine_id : 
+
+  virtualserver_autostart : integer : 1 to autostart the server, 0 otherwise
+
+  
+
+Example:
+
+  servercreate virtualserver_name=TeamSpeak\s]\p[\sServer virtualserver_port=9988 virtualserver_maxclients=32
+
+  sid=2 virtualserver_port=9988 token=eKnFZQ9EK7G7MhtuQB6+N2B1PNZZ6OZL3ycDp2OW
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serverdelete
+Usage: serverdelete sid={serverID}
+
+
+Permissions:
+
+  b_virtualserver_delete
+
+
+Description:
+
+  Deletes the virtual server specified with `sid`. Please note that only virtual
+
+  servers in a stopped state can be deleted.
+
+
+Parameters:
+
+  sid : The virtual server to delete
+
+  -noevent : Do not send the VirtualServerDestroyed event
+
+  
+
+Example:
+
+  serverdelete sid=1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serveredit
+Usage: serveredit [virtualserver_properties...]
+
+
+Permissions:
+
+  b_virtualserver_modify_name
+
+  b_virtualserver_modify_welcomemessage
+
+  b_virtualserver_modify_maxclients
+
+  b_virtualserver_modify_reserved_slots
+
+  b_virtualserver_modify_password
+
+  b_virtualserver_modify_default_servergroup
+
+  b_virtualserver_modify_default_channelgroup
+
+  b_virtualserver_modify_default_channeladmingroup
+
+  b_virtualserver_modify_ft_settings
+
+  b_virtualserver_modify_ft_quotas
+
+  b_virtualserver_modify_channel_forced_silence
+
+  b_virtualserver_modify_complain
+
+  b_virtualserver_modify_antiflood
+
+  b_virtualserver_modify_hostmessage
+
+  b_virtualserver_modify_hostbanner
+
+  b_virtualserver_modify_hostbutton
+
+  b_virtualserver_modify_port
+
+  b_virtualserver_modify_autostart
+
+  b_virtualserver_modify_needed_identity_security_level
+
+  b_virtualserver_modify_priority_speaker_dimm_modificator
+
+  b_virtualserver_modify_log_settings
+
+  b_virtualserver_modify_icon_id
+
+  b_virtualserver_modify_weblist
+
+  b_virtualserver_modify_min_client_version
+
+  b_virtualserver_modify_codec_encryption_mode
+
+
+Description:
+
+  Changes the selected virtual servers configuration using given properties. 
+
+  Note that this command accepts multiple properties which means that you're
+
+  able to change all settings of the selected virtual server at once.
+
+  For detailed information, see Virtual Server Properties.
+
+
+Parameters:
+
+  virtualserver_name : The name of the virtual server
+
+  virtualserver_port : UDP port the virtual server is listening on
+
+  virtualserver_autostart : `1` if started automatically with the instance, or `0` otherwise
+
+  virtualserver_status : Status of the virtual server (online | virtual online | offline | booting up | shutting down)
+
+  virtualserver_log_client : Indicates whether the server logs events related to clients or not
+
+  virtualserver_log_query : Indicates whether the server logs events related to ServerQuery clients or not
+
+  virtualserver_log_channel : Indicates whether the server logs events related to channels or not
+
+  virtualserver_log_permissions : Indicates whether the server logs events related to permissions or not
+
+  virtualserver_log_server : Indicates whether the server logs events related to server changes or not
+
+  virtualserver_log_filetransfer : Indicates whether the server logs events related to file transfers or not
+
+  virtualserver_min_client_version : Minimal desktop client version required to connect
+
+  virtualserver_min_android_version : Minimal Android client version required to connect
+
+  virtualserver_min_ios_version : Minimal iOS client version required to connect
+
+  virtualserver_needed_identity_security_level : Minimum client identity security level required to connect to the virtual server
+
+  virtualserver_name_phonetic : Phonetic name of the virtual server
+
+  virtualserver_icon_id : CRC32 checksum of the virtual server icon
+
+  virtualserver_reserved_slots : Number of reserved slots available on the virtual server
+
+  virtualserver_weblist_enabled : Indicates whether the server appears in the global web server list or not
+
+  virtualserver_codec_encryption_mode : The global codec encryption mode of the virtual server
+
+  virtualserver_maxclients : integer : The maximum number of clients to allow
+
+  virtualserver_welcomemessage : The welcome message of the server
+
+  virtualserver_password : The password required to enter
+
+  virtualserver_hostmessage : The host message of the server
+
+  virtualserver_hostmessage_mode : The host message mode of the server (`0` for None, `1` for message in chatlog, `2` for message as a modal, `3` for modal dialog and then quit)
+
+  virtualserver_default_server_group : The default server group to use 
+
+  virtualserver_default_channel_group : The default channel group to use
+
+  virtualserver_default_channel_admin_group : The default channel administrator group to use
+
+  virtualserver_max_download_total_bandwidth : The max bandwidth for outgoing file transfers on the virtual server (Bytes/s)
+
+  virtualserver_max_upload_total_bandwidth : The max bandwidth for incoming file transfers on the virtual server (Bytes/s)
+
+  virtualserver_download_quota : Download quota for the virtual server (MByte)
+
+  virtualserver_upload_quota : Upload quota for the virtual server (MByte)
+
+  virtualserver_hostbanner_mode : The display mode for the virtual servers hostbanner 
+
+  virtualserver_hostbanner_url : URL for the host banner
+
+  virtualserver_hostbanner_gfx_url : URL for the host banner image
+
+  virtualserver_hostbanner_gfx_interval : Refresh time for the host banner image on the client side
+
+  virtualserver_complain_autoban_count : The number of complaints about a client we will tolerate before a ban
+
+  virtualserver_complain_autoban_time : The amount of time (in seconds) an autobanned client will be banned for
+
+  virtualserver_complain_remove_time : The amount of time (in seconds) before a complaint is deleted automatically
+
+  virtualserver_min_clients_in_channel_before_forced_silence : Number of clients in the same channel needed to force silence
+
+  virtualserver_priority_speaker_dimm_modificator : Client volume lowered automatically while a priority speaker is talking
+
+  virtualserver_antiflood_points_tick_reduce : Anti-flood points removed from a client for being good
+
+  virtualserver_antiflood_points_needed_command_block : Anti-flood points needed to block commands being executed by the client
+
+  virtualserver_antiflood_points_needed_plugin_block : Anti-flood points needed to block plugin commands from the client; if set to 0, the same as virtualserver_antiflood_points_needed_command_block is used
+
+  virtualserver_antiflood_points_needed_ip_block : Anti-flood points needed to block incoming connections from the client
+
+  virtualserver_hostbutton_tooltip : Text used for the tooltip of the host button on client-side
+
+  virtualserver_hostbutton_gfx_url : URL for the host button on client-side
+
+  virtualserver_hostbutton_url : URL opened on click on the host button
+
+
+Example:
+
+  serveredit virtualserver_name=TeamSpeak\s]\p[\sServer virtualserver_maxclients=32
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupadd
+Usage: servergroupadd name={groupName} [type={groupDbType}]
+
+
+Permissions:
+
+  b_virtualserver_servergroup_create
+
+
+Description:
+
+  Creates a new server group using the name specified with name and displays
+
+  its ID. The optional type parameter can be used to create ServerQuery groups
+
+  and template groups. For detailed information, see Definitions.
+
+
+Parameters:
+
+  name : Name of the new server group
+
+  type : integer : `0` (template), `1` (regular), `2` (query); Default :  `1`
+
+
+Example:
+
+  servergroupadd name=Server\sAdmin
+
+  sgid=13
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupaddclient
+Usage: servergroupaddclient sgid={groupID} cldbid={clientDBID}
+
+       servergroupaddclient [-continueonerror] sgid={groupID} cldbid={clientDBID}|cldbid={clientDBID}
+
+
+Permissions:
+
+  i_group_member_add_power
+
+  i_group_needed_member_add_power
+
+
+Description:
+
+  Adds one or more clients to the server group specified with `sgid`. Please note that a
+
+  client cannot be added to default groups or template groups.
+
+
+Parameters:
+
+  -continueonerror : continue processing on errors
+
+  sgid : integer : id of server group
+
+  cldbid : integer : id of client in database
+
+
+Example:
+
+  servergroupaddclient sgid=16 cldbid=3
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupaddperm
+Usage: servergroupaddperm [-continueonerror] sgid={groupID} [permid={permID}...]
+
+       [permsid={permName}...] permvalue={permValue}... permnegated={1|0}...
+
+       permskip={1|0}...
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Adds a set of specified permissions to the server group specified with `sgid`.
+
+  Multiple permissions can be added by providing the four parameters of each
+
+  permission. A permission can be specified by `permid` or `permsid`.
+
+
+Parameters:
+
+  -continueonerror:keep processing if errors occur
+
+  sgid:integer:id of server group
+
+  permid:integer:id of permission
+
+  permsid:server id of permission
+
+  permvalue:value of the permission
+
+  permnegated:integer:
+
+  permskip:integer:
+
+
+Example:
+
+  servergroupaddperm sgid=13 permid=17276 permvalue=50 permnegated=0 permskip=0|permid=21415 permvalue=20 permnegated=0
+
+  error id=0 msg=ok
+
+
+  servergroupaddperm sgid=3 permsid=b_virtualserver_modify_maxclients permvalue=1 permnegated=0 permskip=0
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupautoaddperm
+Usage: servergroupautoaddperm sgtype={groupID} [permid={permID}...]
+
+       [permsid={permName}...] permvalue={permValue}... permnegated={1|0}...
+
+       permskip={1|0}...
+
+
+Permissions:
+
+  b_permission_modify_power_ignore
+
+
+Description:
+
+  Adds a set of specified permissions to *ALL* regular server groups on all
+
+  virtual servers. The target groups will be identified by the value of their
+
+  `i_group_auto_update_type` permission specified with `sgtype`. Multiple
+
+  permissions can be added at once. A permission can be specified by `permid` or
+
+  `permsid`.
+
+  
+
+  The known values for sgtype are:
+
+  
+
+  10: Channel Guest
+
+  15: Server Guest
+
+  20: Query Guest
+
+  25: Channel Voice
+
+  30: Server Normal
+
+  35: Channel Operator
+
+  40: Channel Admin
+
+  45: Server Admin
+
+  50: Query Admin
+
+
+Parameters:
+
+  sgtype : integer : `10` (Channel Guest), `15` (Server Guest), `20` (Query Guest), `25` (Channel Voice),`30` (Server Normal), `35` (Channel Operator), `40` (Channel admin), `45` (Server Admin), `50` (Query Admin)
+
+  permid : id of permission
+
+  permsid : server id of permission
+
+  permvalue : value of the permission
+
+  permnegated : integer : 
+
+  permskip : integer : 
+
+
+Example:
+
+  servergroupautoaddperm sgtype=45 permsid=b_virtualserver_start permvalue=1 permskip=0 permnegated=0
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupautodelperm
+Usage: servergroupautodelperm sgtype={groupID} [permid={permID}...]
+
+       [permsid={permName}...]
+
+
+Permissions:
+
+  b_permission_modify_power_ignore
+
+
+Description:
+
+  Removes a set of specified permissions from *ALL* regular server groups on
+
+  all virtual servers. The target groups will be identified by the value of
+
+  their i_group_auto_update_type permission specified with sgtype. Multiple
+
+  permissions can be removed at once. A permission can be specified by permid
+
+  or permsid.
+
+  
+
+  The known values for sgtype are:
+
+  
+
+  10: Channel Guest
+
+  15: Server Guest
+
+  20: Query Guest
+
+  25: Channel Voice
+
+  30: Server Normal
+
+  35: Channel Operator
+
+  40: Channel Admin
+
+  45: Server Admin
+
+  50: Query Admin
+
+
+Example:
+
+  servergroupautodelperm sgtype=45 permsid=b_virtualserver_start
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupclientlist
+Usage: servergroupclientlist sgid={groupID} [-names]
+
+
+Permissions:
+
+  b_virtualserver_servergroup_client_list
+
+
+Description:
+
+  Displays the IDs of all clients currently residing in the server group
+
+  specified with `sgid`. If you're using the optional `-names` option, the output
+
+  will also contain the last known nickname and the unique identifier of the
+
+  clients.
+
+
+Parameters:
+
+  sgid : integer : The id of the server group
+
+  -names : Add the last nickname and unique id of the clients
+
+
+Example:
+
+  servergroupclientlist sgid=16
+
+  cldbid=7|cldbid=8|cldbid=9|cldbid=11|cldbid=13|cldbid=16|cldbid=18|cldbid=29|cldbid=32|cldbid=34|cldbid=37|cldbid=40|cldbid=47|cldbid=53
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupcopy
+Usage: servergroupcopy ssgid={sourceGroupID} tsgid={targetGroupID}
+
+       name={groupName} type={groupDbType}
+
+
+Permissions:
+
+  b_virtualserver_servergroup_create
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+
+Description:
+
+  Creates a copy of the server group specified with `ssgid`. If `tsgid` is set to
+
+  0, the server will create a new group. To overwrite an existing group, simply
+
+  set `tsgid` to the ID of a designated target group. If a target group is set,
+
+  the name parameter will be ignored.
+
+  The `type` parameter can be used to create ServerQuery groups and template
+
+  groups. For detailed information, see Definitions.
+
+
+Parameters:
+
+  ssgid : integer : id of source server group
+
+  tsgid : integer : id of target server group
+
+  name : name of the group
+
+  type : integer : group type
+
+  
+
+Example:
+
+  servergroupcopy ssgid=6 tsgid=0 name=My\sGroup\s(Copy) type=1
+
+  sgid=21
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupdel
+Usage: servergroupdel sgid={groupID} force={1|0}
+
+
+Permissions:
+
+  b_virtualserver_servergroup_delete
+
+
+Description:
+
+  Deletes the server group specified with sgid. If force is set to 1, the
+
+  server group will be deleted even if there are clients within.
+
+
+Example:
+
+  servergroupdel sgid=13
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupdelclient
+Usage: servergroupdelclient sgid={groupID} cldbid={clientDBID}
+
+       servergroupdelclient [-continueonerror] sgid={groupID} cldbid={clientDBID}|cldbid={clientDBID}
+
+
+Permissions:
+
+  i_group_member_remove_power
+
+  i_group_needed_member_remove_power
+
+
+Description:
+
+  Removes one or more clients specified with cldbid from the server group specified with
+
+  sgid.
+
+
+Example:
+
+  servergroupdelclient sgid=16 cldbid=3
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupdelperm
+Usage: servergroupdelperm [-continueonerror] sgid={groupID}
+
+       [permid={permID}...] [permsid={permName}...]
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+  i_permission_modify_power
+
+
+Description:
+
+  Removes a set of specified permissions from the server group specified with
+
+  sgid. Multiple permissions can be removed at once. A permission can be
+
+  specified by permid or permsid.
+
+
+Example:
+
+  servergroupdelperm sgid=16 permid=17276|permid=21415
+
+  error id=0 msg=ok
+
+
+  servergroupdelperm sgid=3 permsid=b_virtualserver_modify_maxclients
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergrouplist
+Usage: servergrouplist
+
+
+Permissions:
+
+  b_serverinstance_modify_querygroup
+
+  b_serverinstance_modify_templates
+
+  b_virtualserver_servergroup_list
+
+
+Description:
+
+  Displays a list of server groups available. Depending on your permissions,
+
+  the output may also contain global ServerQuery groups and template groups.
+
+
+Example:
+
+  servergrouplist
+
+  sgid=9 name=Server\sAdmin type=1 iconid=300 savedb=1|sgid=10 name=Normal type=1 iconid=0 savedb=1|sgid=11 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergrouppermlist
+Usage: servergrouppermlist sgid={groupID} [-permsid]
+
+
+Permissions:
+
+  b_virtualserver_servergroup_permission_list
+
+
+Description:
+
+  Displays a list of permissions assigned to the server group specified with
+
+  `sgid`. If the `-permsid` option is specified, the output will contain the
+
+  permission names instead of the internal IDs.
+
+
+Parameters:
+
+  sgid : integer : The id of the server group
+
+
+Example:
+
+  servergrouppermlist sgid=13
+
+  permid=8470 permvalue=1 permnegated=0 permskip=0|permid=8475 permvalue=1 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergrouprename
+Usage: servergrouprename sgid={groupID} name={groupName}
+
+
+Permissions:
+
+  i_group_modify_power
+
+  i_group_needed_modify_power
+
+
+Description:
+
+  Changes the name of the server group specified with sgid.
+
+
+Parameters:
+
+  sgid : integer : The id of the server group
+
+  name : Desired name of the server group
+
+
+Example:
+
+  servergrouprename sgid=13 name=New\sName
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servergroupsbyclientid
+Usage: servergroupsbyclientid cldbid={clientDBID}
+
+
+Permissions:
+
+
+Description:
+
+  Displays all server groups the client specified with cldbid is currently
+
+  residing in.
+
+
+Example:
+
+  servergroupsbyclientid cldbid=18
+
+  name=Server\sAdmin sgid=6 cldbid=18
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serveridgetbyport
+Usage: serveridgetbyport virtualserver_port={serverPort}
+
+
+Permissions:
+
+  b_serverinstance_virtualserver_list
+
+
+Description:
+
+  Displays the database ID of the virtual server running on the UDP port
+
+  specified by virtualserver_port.
+
+
+Example:
+
+  serveridgetbyport virtualserver_port=9987
+
+  server_id=1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serverinfo
+Usage: serverinfo
+
+
+Permissions:
+
+  b_virtualserver_info_view
+
+
+Description:
+
+  Displays detailed configuration information about the selected virtual server
+
+  including unique ID, number of clients online, configuration, etc.
+
+  For detailed information, see Virtual Server Properties.
+
+
+Example:
+
+  serverinfo
+
+  virtualserver_port=9987 virtualserver_unique_identifier=zrPkjznB1tMnRwj01xx7RxXjqeY= virtualserver_name=TeamSpeak\s]I[\sServer ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serverlist
+Usage: serverlist [-uid] [-short] [-all] [-onlyoffline]
+
+
+Permissions:
+
+  b_serverinstance_virtualserver_list
+
+
+Description:
+
+  Displays a list of virtual servers including their ID, status, number of
+
+  clients online, etc. If you're using the -all option, the server will list
+
+  all virtual servers stored in the database. This can be useful when multiple
+
+  server instances with different machine IDs are using the same database. The
+
+  machine ID is used to identify the server instance a virtual server is
+
+  associated with.
+
+  The status of a virtual server can be either online, offline, booting up,
+
+  shutting down or virtual online. While most of them are self-explanatory,
+
+  virtual online is a bit more complicated.
+
+  Whenever you select a virtual server which is currently stopped with the
+
+  -virtual parameter, it will be started in virtual mode which means you are
+
+  able to change its configuration, create channels or change permissions, but
+
+  no regular TeamSpeak 6 Client can connect. As soon as the last ServerQuery
+
+  client deselects the virtual server, its status will be changed back to
+
+  offline.
+
+
+Parameters:
+
+-uid : include `virtualserver_unique_identifier`
+
+-short : exclude `VIRTUALSERVER_CLIENTS_ONLINE`, `VIRTUALSERVER_QUERYCLIENTS_ONLINE`, `VIRTUALSERVER_MAXCLIENTS`, `VIRTUALSERVER_UPTIME`, `VIRTUALSERVER_NAME`, `VIRTUALSERVER_AUTOSTART`, `VIRTUALSERVER_MACHINE_ID`
+
+-all : list all servers regardless of `VIRTUALSERVER_MACHINE_ID`
+
+-onlyoffline : list only servers with status offline
+
+
+Example:
+
+  serverlist
+
+  virtualserver_id=1 virtualserver_port=9987 virtualserver_status=online virtualserver_clientsonline=6 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servernotifyregister
+Usage: servernotifyregister
+
+       event={server|channel|textserver|textchannel|textprivate|bans}
+
+       [id={channelID}]
+
+
+Permissions:
+
+  b_client_ban_list for bans events
+
+  b_virtualserver_notify_register for the rest
+
+
+Description:
+
+  Registers for a specified category of events on a virtual server to receive
+
+  notification messages. Depending on the notifications you've registered for,
+
+  the server will send you a message on every event in the view of your
+
+  ServerQuery client (e.g. clients joining your channel, incoming text
+
+  messages, server configuration changes, etc). The event source is declared by
+
+  the event parameter while id can be used to limit the notifications to a
+
+  specific channel.
+
+
+Example:
+
+  servernotifyregister event=server
+
+  error id=0 msg=ok
+
+
+  servernotifyregister event=channel id=123
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servernotifyunregister
+Usage: servernotifyunregister
+
+       [event={server|channel|textserver|textchannel|textprivate|bans}]
+
+       [id={channelID}]
+
+
+Permissions:
+
+  b_client_ban_list for bans events
+
+  b_virtualserver_notify_unregister for the rest
+
+
+Description:
+
+  If no event parameter is given, unregisters all events previously registered
+
+  with servernotifyregister. If event parameter is given, only that event will
+
+  be unregistered. After this the server will not sent notification messages
+
+  for the event(s).
+
+
+Example:
+
+  servernotifyunregister
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serverprocessstop
+Usage: serverprocessstop [reasonmsg={text}]
+
+
+Permissions:
+
+  b_serverinstance_stop
+
+
+Description:
+
+  Stops the entire TeamSpeak 6 Server instance by shutting down the process.
+
+  The reasonmsg parameter specifies a text message that is sent to the clients
+
+  before the client disconnects.
+
+
+Example:
+
+  serverprocessstop reasonmsg=5\sminute\smaintenance
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serverrequestconnectioninfo
+Usage: serverrequestconnectioninfo
+
+
+Permissions:
+
+  b_virtualserver_connectioninfo_view
+
+
+Description:
+
+  Displays detailed connection information about the selected virtual server
+
+  including uptime, traffic information, etc.
+
+
+Example:
+
+  serverrequestconnectioninfo
+
+  connection_filetransfer_bandwidth_sent=0 connection_filetransfer_bandwidth_received=0 connection_packets_sent_total=241454 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serversnapshotcreate
+Usage: serversnapshotcreate [password=secret]
+
+
+Permissions:
+
+  b_virtualserver_snapshot_create
+
+
+Description:
+
+  Displays a snapshot of the selected virtual server containing all settings,
+
+  groups and known client identities. The data from a server snapshot can be
+
+  used to restore a virtual servers configuration, channels and permissions
+
+  using the serversnapshotdeploy command.
+
+
+Example:
+
+  serversnapshotcreate
+
+  version=3 data=KLUv/WC5xVV9AKpopBIq4I6IHliw+idbGVkQpP/DlWRtdyr6...
+
+  error id=0 msg=ok
+
+
+  serversnapshotcreate password=test
+
+  version=3 salt=531tJRs\/OPvBmjhqBfzewuPYa4a+bt5xH8oYWbUuyGM= data=TKHXDjY9OuK7DFtZg7...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serversnapshotdeploy
+Usage: serversnapshotdeploy [-mapping] [-keepfiles] [password=secret] virtualserver_snapshot
+
+
+Permissions:
+
+  b_virtualserver_snapshot_deploy
+
+
+Description:
+
+  Restores the selected virtual servers configuration using the data from a
+
+  previously created server snapshot. Please note that the TeamSpeak 6 Server
+
+  does NOT check for necessary permissions while deploying a snapshot so the
+
+  command could be abused to gain additional privileges. With -keepfiles set,
+
+  the channels that exist on the virtualserver and the backup keep will have
+
+  there files preserved.
+
+
+Example:
+
+  serversnapshotdeploy -keepfiles version=3 data=KLUv/WC5xVV9AKpopBIq4I6IHliw+idbGVkQpP/D....
+
+  error id=0 msg=ok
+
+
+  serversnapshotdeploy -mapping version=3 data=KLUv/WC5xVV9AKpopBIq4I6IHliw+idbGVkQpP/D....
+
+  ocid=36 ncid=40|ocid=37 ncid=41|ocid=38 ncid=42|ocid=39 ncid=43
+
+  error id=0 msg=ok
+
+
+  serversnapshotdeploy password=test version=3 salt=531tJRs\/OPvBmjhqBfzewuPYa4a+bt5xH8oYWbUuyGM= data=TKHXDjY9OuK7DFtZg7...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serverstart
+Usage: serverstart sid={serverID}
+
+
+Permissions:
+
+  b_virtualserver_start_any
+
+  b_virtualserver_start
+
+
+Description:
+
+  Starts the virtual server specified with sid. Depending on your permissions,
+
+  you're able to start either your own virtual server only or all virtual
+
+  servers in the server instance.
+
+
+Parameters:
+
+  sid : integer : ID of the virtual server to start
+
+  
+
+Example:
+
+  serverstart sid=1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## serverstop
+Usage: serverstop sid={serverID} [reasonmsg={text}]
+
+
+Permissions:
+
+  b_virtualserver_stop_any
+
+  b_virtualserver_stop
+
+
+Description:
+
+  Stops the virtual server specified with sid. Depending on your permissions,
+
+  you're able to stop either your own virtual server only or all virtual
+
+  servers in the server instance. The reasonmsg parameter specifies a 
+
+  text message that is sent to the clients before the client disconnects.
+
+
+Parameters:
+
+  sid : integer : ID of the virtual server to stop
+
+  reasonmsg : The reason you wish to send to the clients
+
+  
+
+Example:
+
+  serverstop sid=1 reasonmsg=subscription\sexpired
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servertemppasswordadd
+Usage: servertemppasswordadd pw={password} desc={description}
+
+       duration={seconds} tcid={channelID} tcpw={channelPW}
+
+
+Permissions:
+
+  b_virtualserver_modify_password
+
+
+Description:
+
+  Sets a new temporary server password specified with pw. The temporary
+
+  password will be valid for the number of seconds specified with duration. The
+
+  client connecting with this password will automatically join the channel
+
+  specified with tcid. If tcid is set to 0, the client will join the default
+
+  channel.
+
+
+Parameters:
+
+  pw : password to add
+
+  desc : descriptive text
+
+  duration : integer : number of seconds the password will be valid
+
+  tcid : integer : id of channel, where client to join when using the password
+
+  tcpw : password of the channel, specified by `tcid`
+
+
+Example:
+
+  servertemppasswordadd pw=secret desc=none duration=3600 tcid=117535 tcpw=secret
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servertemppassworddel
+Usage: servertemppassworddel pw={password}
+
+
+Permissions:
+
+  b_virtualserver_modify_password
+
+
+Description:
+
+  Deletes the temporary server password specified with pw.
+
+
+Parameters:
+
+  pw : The temporary server password to use
+
+  
+
+Example:
+
+  servertemppassworddel pw=secret
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## servertemppasswordlist
+Usage: servertemppasswordlist
+
+
+Permissions:
+
+  b_virtualserver_modify_password
+
+
+Description:
+
+  Returns a list of active temporary server passwords. The output contains the
+
+  clear-text password, the nickname and unique identifier of the creating
+
+  client.
+
+
+Example:
+
+  servertemppasswordlist
+
+  nickname=serveradmin uid=serveradmin desc=none pw_clear=secret start=1331496494 end=1331500094 tcid=117535
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## setclientchannelgroup
+Usage: setclientchannelgroup cgid={groupID} cid={channelID} cldbid={clientDBID}
+
+
+Permissions:
+
+  i_group_member_add_power
+
+  i_group_needed_member_add_power
+
+  i_group_member_remove_power
+
+  i_group_needed_member_remove_power
+
+
+Description:
+
+  Sets the channel group of a client to the ID specified with cgid.
+
+
+Example:
+
+  setclientchannelgroup cgid=13 cid=15 cldbid=20
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## tokenadd
+Usage: tokenadd tokentype={1|0} tokenid1={groupID} tokenid2={channelID}
+
+       [tokendescription={description}] [tokencustomset={customFieldSet}]
+
+
+Permissions:
+
+
+Description:
+
+  Alias for privilegekeyadd.
+
+
+Parameters:
+
+  tokentype : integer : `0` or `1`
+
+  tokenid1 : integer : see description
+
+  tokenid2 : integer : see description
+
+  tokencustomset : see description
+
+  tokendescription : free text describing the token
+
+
+Example:
+
+  tokenadd tokentype=0 tokenid1=6 tokenid2=0 tokendescription=Test\stoken\swith\scustom\sset tokencustomset=ident=forum_user\svalue=Sven\sPaulsen\pident=forum_id\svalue=123
+
+  token=eKnFZQ9EK7G7MhtuQB6+N2B1PNZZ6OZL3ycDp2OW
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## tokendelete
+Usage: tokendelete token={tokenKey}
+
+
+Permissions:
+
+
+Description:
+
+  Alias for privilegekeydelete
+
+
+Parameters:
+
+  token : token to be deleted
+
+
+Example:
+
+  tokendelete token=eKnFZQ9EK7G7MhtuQB6+N2B1PNZZ6OZL3ycDp2OW
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## tokenlist
+Usage: tokenlist
+
+
+Permissions:
+
+
+Description:
+
+  Alias for privilegekeylist.
+
+
+Example:
+
+  tokenlist
+
+  token=88CVUg\/zkujt+y+WfHdko79UcM4R6uyCL6nEfy3B token_type=0 token_id1=9...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## tokenuse
+Usage: tokenuse token={tokenKey}
+
+
+Permissions:
+
+
+Description:
+
+  Alias for privilegekeyuse.
+
+
+Example:
+
+  tokenuse token=eKnFZQ9EK7G7MhtuQB6+N2B1PNZZ6OZL3ycDp2OW
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## use
+Usage: use [sid={serverID}] [port={serverPort}] [-virtual] [client_nickname={nickname}]
+
+       use {serverID} [-virtual] [client_nickname={nickname}]
+
+
+Permissions:
+
+  b_virtualserver_select
+
+
+Description:
+
+  Selects the virtual server specified with sid or port to allow further
+
+  interaction. The ServerQuery client will appear on the virtual server and
+
+  acts like a real TeamSpeak 6 Client, except it's unable to send or receive
+
+  voice data.
+
+  If your database contains multiple virtual servers using the same UDP port,
+
+  use will select a random virtual server using the specified port.
+
+
+Example:
+
+  use sid=1
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## version
+Usage: version
+
+
+Description:
+
+  Displays the servers version information including platform and build number.
+
+
+Example:
+
+  version
+
+  version=3.0.0-alpha4 build=9155 platform=Linux
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+
+## whoami
+Usage: whoami
+
+
+Permissions:
+
+
+Description:
+
+  Displays information about your current ServerQuery connection including your
+
+  loginname, etc.
+
+
+Example:
+
+  whoami
+
+  virtualserver_status=online virtualserver_id=1 virtualserver_unique_identifier=zrPkjznB1tMnRwj01xx7RxXjqeY= client_channel_id=2 ...
+
+  error id=0 msg=ok
+
+
+
+error id=0 msg=ok
+

@@ -1,0 +1,4 @@
+clid=4 cid=1 client_database_id=1 client_nickname=serveradmin1 client_type=1|clid=3 cid=1 client_database_id=1 client_nickname=serveradmin client_type=1|clid=1 cid=1 client_database_id=3 client_nickname=Alice client_type=0
+
+error id=0 msg=ok
+

@@ -1,0 +1,4 @@
+cgid=1 name=Channel\sAdmin type=0 iconid=100 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=50 n_member_removep=50|cgid=2 name=Operator type=0 iconid=200 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=30 n_member_removep=30|cgid=3 name=Voice type=0 iconid=600 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=25 n_member_removep=25|cgid=4 name=Guest type=0 iconid=0 savedb=0 sortid=0 namemode=0 n_modifyp=75 n_member_addp=0 n_member_removep=0|cgid=5 name=Channel\sAdmin type=1 iconid=100 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=50 n_member_removep=50|cgid=6 name=Operator type=1 iconid=200 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=30 n_member_removep=30|cgid=7 name=Voice type=1 iconid=600 savedb=1 sortid=0 namemode=0 n_modifyp=75 n_member_addp=25 n_member_removep=25|cgid=8 name=Guest type=1 iconid=0 savedb=0 sortid=0 namemode=0 n_modifyp=75 n_member_addp=0 n_member_removep=0
+
+error id=0 msg=ok
+
