@@ -81,14 +81,26 @@ public sealed class HttpQueryTransport : IQueryTransport
     /// </remarks>
     public bool SupportsEvents => false;
 
-    /// <summary>
-    /// Gets or sets the virtual server that scoped commands are addressed to.
-    /// </summary>
+    /// <inheritdoc />
     /// <remarks>
-    /// The WebQuery has no <c>use</c> command; the virtual server is part of the URL, so it is
-    /// tracked here instead of on the server.
+    /// The WebQuery has no <c>use</c> command and holds no state; the virtual server goes into the
+    /// URL, so it is tracked here instead of on the server.
     /// </remarks>
     public int VirtualServerId { get; set; }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Nothing is sent: with no server-side session there is nothing to tell the server. The
+    /// selection simply changes the URL subsequent commands are addressed to, and the success
+    /// response keeps the shape callers get from the SSH transport.
+    /// </remarks>
+    public Task<QueryResponse> SelectVirtualServerAsync(
+        int virtualServerId,
+        CancellationToken cancellationToken = default)
+    {
+        VirtualServerId = virtualServerId;
+        return Task.FromResult(new QueryResponse([], new QueryError(QueryErrorCode.Ok, "ok")));
+    }
 
     /// <inheritdoc />
     public async Task<QueryResponse> SendAsync(

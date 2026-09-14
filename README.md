@@ -32,16 +32,19 @@ Both speak the same command set, so this project models them as two implementati
 Three things about them are worth knowing before you set this up, none of which are in TeamSpeak's
 documentation — all were measured against a live 6.0.0-beta12.1 server:
 
-- **Events are SSH-only.** `servernotifyregister` needs a persistent session, which the WebQuery
-  does not offer.
+- **Events are SSH-only.** Over the WebQuery, `servernotifyregister` comes back as
+  `5120 out of scope — command not in api key scope`. It could hardly work anyway: the WebQuery
+  closes every connection, so there is nowhere to deliver a notification.
 - **The WebQuery authenticates with `x-api-key` and nothing else.** HTTP Basic Auth with correct
   `serveradmin` credentials is refused. Keys come from `apikeyadd scope=manage lifetime=0`, which
   you can only run over SSH — so SSH is also the bootstrap path for using the WebQuery at all.
-- **The server throttles hard.** Commands sent faster than roughly one every 150 ms are rejected
-  with `524 client is flooding`, and *continuing to send through that rejection* escalates to an IP
-  block that takes both interfaces down for minutes. Opening connections in quick succession is
-  punished far more harshly than issuing commands over one. This server keeps a single long-lived
-  connection per profile and paces both; see [reference/README.md](reference/README.md).
+- **The server throttles hard, and connections cost far more than commands.** 160 commands over one
+  SSH session at 150 ms spacing were never throttled; bursts with no delay were refused from about
+  the fifth command, and five or six connections in quick succession earned an IP-level block that
+  took both interfaces down for minutes. A refusal is `524 client is flooding` and states the wait
+  it wants; *sending on through it* is what escalates to the block. This server keeps a single
+  long-lived connection per profile and paces both commands and connections; see
+  [reference/README.md](reference/README.md).
 
 ### Check which client address your server actually sees
 
@@ -65,8 +68,34 @@ matches. Flood accounting is per IP too, so every external client shares one cou
 impatient script can throttle everybody.
 
 Read the log line above before trusting an allow list. If the address is wrong, either run the
-server with `--network host`, or allow-list the bridge network (`172.x.0.0/16`) and accept that the
-exemption then covers all outside traffic.
+server with `--network host`, or allow-list the bridge network and accept that the exemption then
+covers all outside traffic.
+
+### Exempting this server from flood protection
+
+Not required — the client paces itself and works against a stock server — but it makes life easier
+where the MCP server and the TeamSpeak server are both yours.
+
+`TSSERVER_QUERY_ALLOW_LIST` names a **file of CIDRs**, not an address. Pointing the variable at an
+IP stops the query interfaces from starting at all. Its default is `query_ip_allowlist.txt` in the
+server's data directory, shipping with only `127.0.0.1/32` and `::1/128`, so the usual job is to
+add a line to that file rather than to set the variable:
+
+```bash
+docker exec <container> sh -c \
+  "printf '127.0.0.1/32\n::1/128\n172.20.0.0/16\n' > /var/tsserver/query_ip_allowlist.txt"
+docker restart <container>
+```
+
+Use the address the server actually sees, per the section above — the bridge network where
+addresses are rewritten, the real client address where they are not. Confirm it took by looking for
+the startup line the server writes:
+
+```
+CIDRManager | updated query_ip_allowlist ips: 127.0.0.1/32, ::1/128, 172.20.0.0/16,
+```
+
+If that line does not list your address, the allow list is not doing anything.
 
 ## Safety
 

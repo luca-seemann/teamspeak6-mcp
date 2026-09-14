@@ -17,6 +17,20 @@ public sealed class FakeQueryTransport : IQueryTransport
     /// <inheritdoc />
     public bool SupportsEvents => true;
 
+    /// <inheritdoc />
+    public int VirtualServerId { get; private set; }
+
+    /// <inheritdoc />
+    public Task<QueryResponse> SelectVirtualServerAsync(
+        int virtualServerId,
+        CancellationToken cancellationToken = default)
+    {
+        VirtualServerId = virtualServerId;
+        return SendAsync(
+            new QueryCommand("use", new Dictionary<string, string> { ["sid"] = virtualServerId.ToString() }),
+            cancellationToken);
+    }
+
     /// <summary>Gets the commands this transport has been asked to send, in order.</summary>
     public IReadOnlyList<QueryCommand> SentCommands => _sent;
 

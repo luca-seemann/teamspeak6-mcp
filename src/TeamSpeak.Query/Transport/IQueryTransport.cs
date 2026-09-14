@@ -18,6 +18,24 @@ public interface IQueryTransport : IAsyncDisposable
     /// </summary>
     bool SupportsEvents { get; }
 
+    /// <summary>Gets the virtual server that scoped commands are currently addressed to.</summary>
+    int VirtualServerId { get; }
+
+    /// <summary>
+    /// Directs subsequent scoped commands at a virtual server.
+    /// </summary>
+    /// <param name="virtualServerId">The virtual server to select.</param>
+    /// <param name="cancellationToken">Abandons the request.</param>
+    /// <returns>The server's response to the selection.</returns>
+    /// <remarks>
+    /// The two interfaces express this completely differently — SSH has a stateful <c>use</c>
+    /// command, while the WebQuery puts the id in the URL and holds no state at all. Hiding that
+    /// behind one method is what lets a tool be written once and work over either.
+    /// </remarks>
+    Task<QueryResponse> SelectVirtualServerAsync(
+        int virtualServerId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Sends a command and waits for its complete response.</summary>
     /// <param name="command">The command to send.</param>
     /// <param name="cancellationToken">Cancels the pending request.</param>

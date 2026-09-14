@@ -35,6 +35,15 @@ public static class QueryErrorCode
     /// </summary>
     public const int EmptyResultSet = 1281;
 
+    /// <summary>
+    /// The command is outside what the presented API key is allowed to do.
+    /// </summary>
+    /// <remarks>
+    /// Sent as <c>out of scope</c> with <c>command not in api key scope</c>. Notably this is what
+    /// <c>servernotifyregister</c> returns over the WebQuery even with a <c>manage</c> key.
+    /// </remarks>
+    public const int OutOfScope = 5120;
+
     /// <summary>The WebQuery request carried no <c>x-api-key</c> header.</summary>
     public const int ApiKeyMissing = 5124;
 

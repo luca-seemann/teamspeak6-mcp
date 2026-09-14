@@ -100,6 +100,40 @@ public sealed class TransportIntegrationTests(LiveServerFixture server) : IClass
         Assert.StartsWith("6.", Assert.Single(response.Records).GetRequired("version"), StringComparison.Ordinal);
     }
 
+    [RequiresTeamSpeakServerFact]
+    public async Task Selecting_a_virtual_server_is_remembered_by_the_transport()
+    {
+        await server.Ssh.SelectVirtualServerAsync(1, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, server.Ssh.VirtualServerId);
+
+        // The selection has to actually take effect, not merely be recorded.
+        var info = await server.Ssh.SendAsync(
+            new QueryCommand("serverinfo"),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(info.Error.IsSuccess);
+        Assert.Equal("1", Assert.Single(info.Records).GetRequired("virtualserver_id"));
+    }
+
+    [RequiresWebQueryFact]
+    public async Task Both_transports_select_a_virtual_server_through_the_same_method()
+    {
+        // The two do something completely different underneath: SSH sends "use", the WebQuery just
+        // changes the URL it addresses. Callers must not have to know which.
+        await using var http = new HttpQueryTransport(LiveServerFixture.Profile());
+
+        await server.Ssh.SelectVirtualServerAsync(1, TestContext.Current.CancellationToken);
+        await http.SelectVirtualServerAsync(1, TestContext.Current.CancellationToken);
+
+        var viaSsh = await server.Ssh.SendAsync(new QueryCommand("channellist"), TestContext.Current.CancellationToken);
+        var viaHttp = await http.SendAsync(new QueryCommand("channellist"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            viaSsh.Records.Select(r => r.GetRequired("cid")),
+            viaHttp.Records.Select(r => r.GetRequired("cid")));
+    }
+
     [RequiresWebQueryFact]
     public async Task Both_transports_return_the_same_channel_list()
     {
