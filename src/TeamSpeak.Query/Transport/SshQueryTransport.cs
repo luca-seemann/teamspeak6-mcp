@@ -81,6 +81,9 @@ public sealed class SshQueryTransport : IQueryTransport
             Timeout = TimeSpan.FromSeconds(30),
         };
 
+        // Connections, not commands, are what earn an IP-level block from this server.
+        await ConnectionThrottle.Shared.WaitForTurnAsync(profile.Host, cancellationToken).ConfigureAwait(false);
+
         var client = new SshClient(connectionInfo);
         await client.ConnectAsync(cancellationToken).ConfigureAwait(false);
 
