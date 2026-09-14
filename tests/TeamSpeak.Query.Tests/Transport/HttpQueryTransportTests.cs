@@ -160,28 +160,58 @@ public class HttpQueryTransportTests
         Assert.Equal(1, mostInside);
     }
 
+    [Fact]
+    public async Task Lets_a_command_with_its_own_timeout_wait_longer_than_the_profile_allows()
+    {
+        var profile = Profile();
+        profile.CommandTimeout = TimeSpan.FromMilliseconds(50);
+        await using var transport = new HttpQueryTransport(profile, new HttpClient(new StubHandler(Ok, TimeSpan.FromMilliseconds(300))));
+
+        var response = await transport.SendAsync(
+            new QueryCommand("serversnapshotdeploy", Timeout: TimeSpan.FromSeconds(10)),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(response.Error.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Reports_a_missed_deadline_as_a_timeout_rather_than_a_cancellation()
+    {
+        var profile = Profile();
+        profile.CommandTimeout = TimeSpan.FromMilliseconds(50);
+        await using var transport = new HttpQueryTransport(profile, new HttpClient(new StubHandler(Ok, TimeSpan.FromSeconds(10))));
+
+        await Assert.ThrowsAsync<TimeoutException>(
+            () => transport.SendAsync(new QueryCommand("version"), TestContext.Current.CancellationToken));
+    }
+
     private const string Ok =
         """{"body":[{"version":"6.0.0-beta12.1"}],"status":{"code":0,"message":"ok"}}""";
 
-    private sealed class StubHandler(Func<string> body) : HttpMessageHandler
+    private sealed class StubHandler(Func<string> body, TimeSpan delay = default) : HttpMessageHandler
     {
-        public StubHandler(string constantBody)
-            : this(() => constantBody)
+        public StubHandler(string constantBody, TimeSpan delay = default)
+            : this(() => constantBody, delay)
         {
         }
 
         public List<HttpRequestMessage> Requests { get; } = [];
 
-        protected override Task<HttpResponseMessage> SendAsync(
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             Requests.Add(request);
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay, cancellationToken);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(body()),
-            });
+            };
         }
     }
 }

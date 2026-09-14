@@ -139,14 +139,25 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
         return ActionResult.From("Created a snapshot.", records);
     }
 
+    /// <summary>
+    /// How long a deploy may take. The default command timeout gave up after 30 seconds, and the
+    /// abandoned deploy left the test server stuck; whether the abandonment caused that is unknown.
+    /// </summary>
+    internal static readonly TimeSpan SnapshotDeployTimeout = TimeSpan.FromMinutes(10);
+
     /// <summary>Deploys a snapshot over a virtual server.</summary>
     [McpServerTool(Name = "ts_vserver_snapshot_deploy", Title = "Deploy a snapshot over a virtual server",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Replaces a virtual server's configuration, channels, groups and permissions with a " +
                  "snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. " +
                  "TeamSpeak does not check permissions while deploying, so a snapshot can grant any " +
-                 "privilege: deploy only snapshots whose origin you trust. As a safeguard, confirmName must " +
-                 "repeat the target virtual server's exact name. Needs Destructive.")]
+                 "privilege: deploy only snapshots whose origin you trust. The virtual server shuts down " +
+                 "for the deploy, disconnecting everyone on it, and stays unusable until it finishes; this " +
+                 "tool waits up to 10 minutes. On TeamSpeak 6.0.0-beta12.1 a deploy was seen to hang in " +
+                 "'deploy running' and leave the virtual server impossible to start, select or delete, " +
+                 "with a server reset as the only way back; the cause is not known. Deploy over a server " +
+                 "you can afford to lose, and take ts_vserver_snapshot_create of it first. As a safeguard, " +
+                 "confirmName must repeat the target virtual server's exact name. Needs Destructive.")]
     public async Task<ActionResult> SnapshotDeployAsync(
         [Description("The snapshot's version field.")] string version,
         [Description("The snapshot's data field.")] string data,
@@ -183,7 +194,7 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
         var options = keepFiles ? new[] { "-mapping", "-keepfiles" } : ["-mapping"];
 
         var records = await executor.RunCommandAsync(
-            "ts_vserver_snapshot_deploy", profile, new QueryCommand("serversnapshotdeploy", parameters, options, virtualServerId), cancellationToken)
+            "ts_vserver_snapshot_deploy", profile, new QueryCommand("serversnapshotdeploy", parameters, options, virtualServerId, SnapshotDeployTimeout), cancellationToken)
             .ConfigureAwait(false);
 
         return new ActionResult(

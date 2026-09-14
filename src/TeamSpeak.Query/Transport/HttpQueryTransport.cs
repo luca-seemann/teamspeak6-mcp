@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 
 using TeamSpeak.Query.Client;
@@ -27,6 +28,7 @@ public sealed class HttpQueryTransport : IQueryTransport
     private readonly FloodGuard _guard;
     private readonly SemaphoreSlim _sequenceGate = new(1, 1);
     private readonly int _defaultVirtualServerId;
+    private readonly TimeSpan _commandTimeout;
 
     /// <summary>Creates a transport for a profile.</summary>
     /// <param name="profile">The server to talk to. Must have a WebQuery URL and an API key.</param>
@@ -55,10 +57,12 @@ public sealed class HttpQueryTransport : IQueryTransport
             PooledConnectionLifetime = TimeSpan.Zero,
         })
         {
-            // The 100 second default is far too long for an administrative tool call; a stalled
-            // request should surface quickly rather than block the caller for minutes.
-            Timeout = profile.CommandTimeout,
+            // Each request carries its own timeout instead, so a command known to run long can wait
+            // longer than the rest. A borrowed client keeps whatever limit its owner gave it.
+            Timeout = Timeout.InfiniteTimeSpan,
         };
+
+        _commandTimeout = profile.CommandTimeout;
 
         _http.BaseAddress ??= EnsureTrailingSlash(profile.WebQueryUrl!);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -171,15 +175,30 @@ public sealed class HttpQueryTransport : IQueryTransport
         // truncated response rather than as a connection error.
         request.Headers.ConnectionClose = true;
 
-        using var message = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        var body = await message.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var timeout = command.Timeout ?? _commandTimeout;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(timeout);
+
+        string body;
+        HttpStatusCode status;
+        try
+        {
+            using var message = await _http.SendAsync(request, deadline.Token).ConfigureAwait(false);
+            status = message.StatusCode;
+            body = await message.Content.ReadAsStringAsync(deadline.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            // The caller did not cancel, so the deadline did.
+            throw new TimeoutException($"No response to '{command.Name}' within {timeout.TotalSeconds:0} seconds.", ex);
+        }
 
         // Errors arrive as a normal JSON envelope with a non-2xx status, so the body is what
         // matters. Only an empty body means something went wrong below the application layer.
         if (string.IsNullOrWhiteSpace(body))
         {
             throw new QueryProtocolException(
-                $"The WebQuery returned {(int)message.StatusCode} with an empty body. " +
+                $"The WebQuery returned {(int)status} with an empty body. " +
                 "An empty reply usually means the server is refusing traffic after a flood rejection.");
         }
 

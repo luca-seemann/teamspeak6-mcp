@@ -523,7 +523,7 @@ public sealed class SshQueryTransport : IQueryTransport
             // A response that never arrives must surface as an error rather than hang the caller;
             // an MCP tool call has a person waiting at the other end of it.
             var response = await completion.Task
-                .WaitAsync(_commandTimeout, cancellationToken)
+                .WaitAsync(command.Timeout ?? _commandTimeout, cancellationToken)
                 .ConfigureAwait(false);
 
             _lastActivity = DateTimeOffset.UtcNow;

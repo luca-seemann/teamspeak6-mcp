@@ -128,6 +128,7 @@ public class WriteToolsTests
 
         var deploy = harness.Transport.SentCommands.Single(command => command.Name == "serversnapshotdeploy");
         Assert.Equal(["-mapping", "-keepfiles"], deploy.Options);
+        Assert.Equal(TimeSpan.FromMinutes(10), deploy.Timeout);
         Assert.Equal(("3", "KLUv", "s"), (deploy.Parameters!["version"], deploy.Parameters["data"], deploy.Parameters["salt"]));
         Assert.Equal(2, result.Records.Count);
     }

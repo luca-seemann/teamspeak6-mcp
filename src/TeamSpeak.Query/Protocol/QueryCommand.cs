@@ -21,8 +21,14 @@ namespace TeamSpeak.Query.Protocol;
 /// The virtual server the command addresses, or <see langword="null"/> for the profile's default.
 /// Ignored for instance-wide commands; see <see cref="QueryCommandScope"/>.
 /// </param>
+/// <param name="Timeout">
+/// How long to wait for the response, or <see langword="null"/> for the profile's command timeout.
+/// Only for commands known to run long: a snapshot deploy abandoned after the default timeout left
+/// a live server stuck in <c>deploy running</c>.
+/// </param>
 public sealed record QueryCommand(
     string Name,
     IReadOnlyDictionary<string, string>? Parameters = null,
     IReadOnlyList<string>? Options = null,
-    int? VirtualServerId = null);
+    int? VirtualServerId = null,
+    TimeSpan? Timeout = null);
