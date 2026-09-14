@@ -36,6 +36,11 @@ All notable changes to this project are documented here. The format follows
 - A command catalog giving `ts_query_raw` the safety level of each of the 143 reference commands,
   and a snapshot test that pins the tool schemas.
 
+### Fixed
+
+- `docker/docker-compose.yml` configured the MCP container with setting names that do not bind, so
+  the container started without a profile.
+
 ### Changed
 
 - The virtual server now travels with each `QueryCommand` instead of being selected on the

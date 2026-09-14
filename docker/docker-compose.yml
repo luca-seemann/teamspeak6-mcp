@@ -36,11 +36,17 @@ services:
     depends_on:
       - teamspeak
     environment:
-      TSMCP_PROFILES__DEFAULT__HOST: teamspeak
-      TSMCP_PROFILES__DEFAULT__SSH_PORT: "10022"
-      TSMCP_PROFILES__DEFAULT__HTTP_PORT: "10080"
-      TSMCP_PROFILES__DEFAULT__USERNAME: serveradmin
-      TSMCP_PROFILES__DEFAULT__PASSWORD: ${TSSERVER_QUERY_ADMIN_PASSWORD:-devpassword}
+      # Settings bind from TeamSpeak:Profiles:<name>:<setting>; see the Configuration section of
+      # the README. A password enables the SSH interface, which is preferred when present.
+      TSMCP_TeamSpeak__Profiles__default__Host: teamspeak
+      TSMCP_TeamSpeak__Profiles__default__SshPort: "10022"
+      TSMCP_TeamSpeak__Profiles__default__Username: serveradmin
+      TSMCP_TeamSpeak__Profiles__default__Password: ${TSSERVER_QUERY_ADMIN_PASSWORD:-devpassword}
+      # The WebQuery needs an API key minted over SSH with apikeyadd, so it cannot be preset here:
+      # TSMCP_TeamSpeak__Profiles__default__WebQueryUrl: http://teamspeak:10080
+      # TSMCP_TeamSpeak__Profiles__default__ApiKey: <key>
+      # Tools stay read-only unless this is raised to Write or Destructive.
+      TSMCP_TeamSpeak__Safety: ReadOnly
     ports:
       - "7801:7801"
     restart: unless-stopped

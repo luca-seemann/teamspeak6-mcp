@@ -133,6 +133,8 @@ public sealed class QueryExecutor
                 " The server does not recognise the command or one of its parameters.",
             QueryErrorCode.ParameterNotFound =>
                 " A required parameter is missing.",
+            QueryErrorCode.MissingRequiredParameter =>
+                " A required parameter is missing or empty; TeamSpeak treats an empty value as absent.",
             QueryErrorCode.Flooding =>
                 " The server is still throttling this client after the requested wait. Wait before " +
                 "trying again; sending on escalates to an IP-level block.",

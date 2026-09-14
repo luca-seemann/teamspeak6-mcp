@@ -12,7 +12,8 @@ namespace TeamSpeak.Mcp.IntegrationTests;
 /// and <c>TSMCP_TEST_APIKEY</c> for the WebQuery tests; each group skips itself without its
 /// credential. Every test shares one SSH session via <see cref="LiveServerFixture"/>.
 /// </remarks>
-public sealed class TransportIntegrationTests(LiveServerFixture server) : IClassFixture<LiveServerFixture>
+[Collection(LiveServerDefinition.Name)]
+public sealed class TransportIntegrationTests(LiveServerFixture server)
 {
     [RequiresTeamSpeakServerFact]
     public async Task Ssh_transport_completes_a_command_round_trip()

@@ -30,6 +30,15 @@ public static class QueryErrorCode
     public const int ParameterNotFound = 1539;
 
     /// <summary>
+    /// A required parameter was missing or empty. Sent as <c>missing required parameter</c>.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="ParameterNotFound"/>: <c>channelfind pattern=</c> with an empty value
+    /// returns this, so an empty string is not a valid "match anything" pattern.
+    /// </remarks>
+    public const int MissingRequiredParameter = 1542;
+
+    /// <summary>
     /// The query succeeded but matched nothing. Routine for list commands on a fresh server, and
     /// should surface as an empty result rather than as a failure.
     /// </summary>

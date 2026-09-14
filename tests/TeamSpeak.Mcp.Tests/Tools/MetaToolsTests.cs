@@ -109,6 +109,18 @@ public class MetaToolsTests
     }
 
     [Fact]
+    public void Explains_that_an_empty_value_counts_as_a_missing_parameter()
+    {
+        var message = QueryExecutor.DescribeRefusal(
+            "test",
+            "channelfind",
+            new QueryError(QueryErrorCode.MissingRequiredParameter, "missing required parameter"));
+
+        Assert.Contains("1542", message, StringComparison.Ordinal);
+        Assert.Contains("empty", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Reports_a_connection_failure_as_a_tool_error_naming_the_profile()
     {
         await using var connections = new QueryConnectionManager(
