@@ -18,28 +18,17 @@ public interface IQueryTransport : IAsyncDisposable
     /// </summary>
     bool SupportsEvents { get; }
 
-    /// <summary>Gets the virtual server that scoped commands are currently addressed to.</summary>
-    int VirtualServerId { get; }
-
-    /// <summary>
-    /// Directs subsequent scoped commands at a virtual server.
-    /// </summary>
-    /// <param name="virtualServerId">The virtual server to select.</param>
-    /// <param name="cancellationToken">Abandons the request.</param>
-    /// <returns>The server's response to the selection.</returns>
-    /// <remarks>
-    /// The two interfaces express this completely differently — SSH has a stateful <c>use</c>
-    /// command, while the WebQuery puts the id in the URL and holds no state at all. Hiding that
-    /// behind one method is what lets a tool be written once and work over either.
-    /// </remarks>
-    Task<QueryResponse> SelectVirtualServerAsync(
-        int virtualServerId,
-        CancellationToken cancellationToken = default);
-
     /// <summary>Sends a command and waits for its complete response.</summary>
     /// <param name="command">The command to send.</param>
     /// <param name="cancellationToken">Cancels the pending request.</param>
     /// <returns>The decoded response, including a non-zero status for server-side failures.</returns>
+    /// <remarks>
+    /// The command is addressed to <see cref="QueryCommand.VirtualServerId"/>, or to the profile's
+    /// default virtual server when that is unset. The two interfaces express this completely
+    /// differently — SSH has a stateful <c>use</c> command, the WebQuery puts the id in the URL — and
+    /// an implementation must make selection and command one indivisible step, because a transport is
+    /// shared by concurrent callers.
+    /// </remarks>
     Task<QueryResponse> SendAsync(QueryCommand command, CancellationToken cancellationToken = default);
 
     /// <summary>Streams server-pushed events for the subscriptions registered on this connection.</summary>

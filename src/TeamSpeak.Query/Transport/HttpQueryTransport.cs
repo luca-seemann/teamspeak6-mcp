@@ -83,26 +83,9 @@ public sealed class HttpQueryTransport : IQueryTransport
 
     /// <inheritdoc />
     /// <remarks>
-    /// The WebQuery has no <c>use</c> command and holds no state; the virtual server goes into the
-    /// URL, so it is tracked here instead of on the server.
+    /// The WebQuery has no <c>use</c> command and holds no state; the virtual server goes into each
+    /// request's URL, so concurrent callers cannot interfere with one another.
     /// </remarks>
-    public int VirtualServerId { get; set; }
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Nothing is sent: with no server-side session there is nothing to tell the server. The
-    /// selection simply changes the URL subsequent commands are addressed to, and the success
-    /// response keeps the shape callers get from the SSH transport.
-    /// </remarks>
-    public Task<QueryResponse> SelectVirtualServerAsync(
-        int virtualServerId,
-        CancellationToken cancellationToken = default)
-    {
-        VirtualServerId = virtualServerId;
-        return Task.FromResult(new QueryResponse([], new QueryError(QueryErrorCode.Ok, "ok")));
-    }
-
-    /// <inheritdoc />
     public async Task<QueryResponse> SendAsync(
         QueryCommand command,
         CancellationToken cancellationToken = default)
@@ -143,10 +126,11 @@ public sealed class HttpQueryTransport : IQueryTransport
     {
         using var lease = await _guard.AcquireAsync(cancellationToken).ConfigureAwait(false);
 
-        var sid = VirtualServerId == 0 ? _defaultVirtualServerId : VirtualServerId;
         var path = QueryCommandSerializer.ToWebQueryPath(
             command,
-            InstanceWideCommands.Contains(command.Name) ? null : sid);
+            QueryCommandScope.IsInstanceWide(command.Name)
+                ? null
+                : command.VirtualServerId ?? _defaultVirtualServerId);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
 
@@ -169,29 +153,6 @@ public sealed class HttpQueryTransport : IQueryTransport
 
         return WebQueryResponseParser.Parse(body);
     }
-
-    /// <summary>
-    /// Commands addressed to the instance rather than to a virtual server.
-    /// </summary>
-    /// <remarks>
-    /// These are requested as <c>/version</c>; everything else is <c>/{sid}/{command}</c>.
-    /// </remarks>
-    private static readonly HashSet<string> InstanceWideCommands = new(StringComparer.Ordinal)
-    {
-        "version",
-        "hostinfo",
-        "instanceinfo",
-        "instanceedit",
-        "bindinglist",
-        "serverlist",
-        "servercreate",
-        "serveridgetbyport",
-        "whoami",
-        "logout",
-        "apikeylist",
-        "apikeyadd",
-        "apikeydel",
-    };
 
     private static Uri EnsureTrailingSlash(Uri uri) =>
         uri.AbsoluteUri.EndsWith('/') ? uri : new Uri(uri.AbsoluteUri + "/");

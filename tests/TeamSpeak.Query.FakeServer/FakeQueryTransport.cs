@@ -14,22 +14,15 @@ public sealed class FakeQueryTransport : IQueryTransport
     private readonly Dictionary<string, QueryResponse> _responses = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<QueryCommand> _sent = [];
 
-    /// <inheritdoc />
-    public bool SupportsEvents => true;
+    /// <summary>Initialises a fake that reports the given event support.</summary>
+    /// <param name="supportsEvents">What <see cref="SupportsEvents"/> reports.</param>
+    public FakeQueryTransport(bool supportsEvents = true) => SupportsEvents = supportsEvents;
 
     /// <inheritdoc />
-    public int VirtualServerId { get; private set; }
+    public bool SupportsEvents { get; }
 
-    /// <inheritdoc />
-    public Task<QueryResponse> SelectVirtualServerAsync(
-        int virtualServerId,
-        CancellationToken cancellationToken = default)
-    {
-        VirtualServerId = virtualServerId;
-        return SendAsync(
-            new QueryCommand("use", new Dictionary<string, string> { ["sid"] = virtualServerId.ToString() }),
-            cancellationToken);
-    }
+    /// <summary>Gets a value indicating whether <see cref="DisposeAsync"/> has been called.</summary>
+    public bool IsDisposed { get; private set; }
 
     /// <summary>Gets the commands this transport has been asked to send, in order.</summary>
     public IReadOnlyList<QueryCommand> SentCommands => _sent;
@@ -64,5 +57,9 @@ public sealed class FakeQueryTransport : IQueryTransport
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    public ValueTask DisposeAsync()
+    {
+        IsDisposed = true;
+        return ValueTask.CompletedTask;
+    }
 }

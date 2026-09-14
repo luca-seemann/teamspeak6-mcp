@@ -34,6 +34,7 @@ public sealed class SshQueryTransport : IQueryTransport
     private readonly ReconnectPolicy _reconnect;
     private readonly TimeSpan _commandTimeout;
     private readonly TimeSpan _keepAliveInterval;
+    private readonly int _defaultVirtualServerId;
 
     private readonly Channel<QueryEvent> _events = Channel.CreateBounded<QueryEvent>(
         new BoundedChannelOptions(1024) { FullMode = BoundedChannelFullMode.DropOldest });
@@ -50,6 +51,10 @@ public sealed class SshQueryTransport : IQueryTransport
     private StringBuilder _pendingText = new();
     private DateTimeOffset _lastActivity = DateTimeOffset.UtcNow;
 
+    // What the server session currently has selected, zero for nothing. Only read or written while
+    // holding _pendingSlot, so it always describes the session the next command will run on.
+    private int _selectedVirtualServerId;
+
     private SshQueryTransport(QueryProfile profile, SshClient client, ShellStream shell)
     {
         _profile = profile;
@@ -58,6 +63,7 @@ public sealed class SshQueryTransport : IQueryTransport
         _guard = new FloodGuard(profile.CommandInterval);
         _reconnect = new ReconnectPolicy();
         _commandTimeout = profile.CommandTimeout;
+        _defaultVirtualServerId = profile.DefaultVirtualServerId;
 
         // Comfortably inside the server's 300 second query timeout, and rare enough that the
         // keepalive traffic is irrelevant next to the flood budget.
@@ -69,13 +75,6 @@ public sealed class SshQueryTransport : IQueryTransport
     /// <inheritdoc />
     /// <remarks>Always <see langword="true"/>: SSH is the only interface that delivers events.</remarks>
     public bool SupportsEvents => true;
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// Remembered so that a reconnect can restore the selection; a fresh session would otherwise
-    /// silently address virtual server one again.
-    /// </remarks>
-    public int VirtualServerId { get; private set; }
 
     /// <summary>Opens a session against a profile.</summary>
     /// <param name="profile">The server to connect to. Must have a password.</param>
@@ -101,26 +100,11 @@ public sealed class SshQueryTransport : IQueryTransport
     }
 
     /// <inheritdoc />
-    public async Task<QueryResponse> SelectVirtualServerAsync(
-        int virtualServerId,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await SendAsync(
-            new QueryCommand("use", new Dictionary<string, string>
-            {
-                ["sid"] = virtualServerId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            }),
-            cancellationToken).ConfigureAwait(false);
-
-        if (response.Error.IsSuccess)
-        {
-            VirtualServerId = virtualServerId;
-        }
-
-        return response;
-    }
-
-    /// <inheritdoc />
+    /// <remarks>
+    /// A <c>use</c> is sent first only when the session has a different virtual server selected,
+    /// and it is sent under the same hold of the session as the command itself, so no other
+    /// caller's command can land in between.
+    /// </remarks>
     public async Task<QueryResponse> SendAsync(
         QueryCommand command,
         CancellationToken cancellationToken = default)
@@ -129,17 +113,7 @@ public sealed class SshQueryTransport : IQueryTransport
 
         await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
 
-        var response = await SendOnceAsync(command, cancellationToken).ConfigureAwait(false);
-
-        // The server states how long to wait; honouring it is what keeps a rejection from
-        // escalating into an IP-level block.
-        if (response.Error.IsFlooding)
-        {
-            _guard.PenaliseFor(response.Error.RetryAfter);
-            response = await SendOnceAsync(command, cancellationToken).ConfigureAwait(false);
-        }
-
-        return response;
+        return await SendOnceAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -256,8 +230,8 @@ public sealed class SshQueryTransport : IQueryTransport
     /// </summary>
     /// <remarks>
     /// A reconnect loop without backoff is itself what the flood protection punishes, so attempts
-    /// are spaced and capped. The previously selected virtual server is restored, because a fresh
-    /// session would otherwise quietly address a different one.
+    /// are spaced and capped. A fresh session has nothing selected, so the selection is forgotten
+    /// and the next scoped command selects its virtual server again.
     /// </remarks>
     private async Task EnsureConnectedAsync(CancellationToken cancellationToken)
     {
@@ -293,6 +267,7 @@ public sealed class SshQueryTransport : IQueryTransport
                     var (client, shell) = await OpenAsync(_profile, cancellationToken).ConfigureAwait(false);
                     _client = client;
                     _shell = shell;
+                    _selectedVirtualServerId = 0;
                     _readerLoop = Task.Run(() => ReadLoopAsync(_shutdown.Token), CancellationToken.None);
                     break;
                 }
@@ -306,26 +281,111 @@ public sealed class SshQueryTransport : IQueryTransport
         {
             _pendingSlot.Release();
         }
-
-        if (VirtualServerId > 0)
-        {
-            await SelectVirtualServerAsync(VirtualServerId, cancellationToken).ConfigureAwait(false);
-        }
     }
 
     private async Task<QueryResponse> SendOnceAsync(QueryCommand command, CancellationToken cancellationToken)
     {
-        using var lease = await _guard.AcquireAsync(cancellationToken).ConfigureAwait(false);
-
+        // The slot is taken before any flood guard lease, everywhere, so the two can never be
+        // acquired in opposite orders by different callers.
         await _pendingSlot.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var completion = new TaskCompletionSource<QueryResponse>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!QueryCommandScope.IsInstanceWide(command.Name))
+            {
+                var target = command.VirtualServerId ?? _defaultVirtualServerId;
 
-            _pendingText = new StringBuilder();
-            _pending = completion;
+                if (target != _selectedVirtualServerId)
+                {
+                    var use = await ExchangeAsync(UseCommand(target), cancellationToken).ConfigureAwait(false);
 
+                    if (!use.Error.IsSuccess)
+                    {
+                        // The failed selection is the answer: running the command anyway would
+                        // address whatever happened to be selected before.
+                        _selectedVirtualServerId = 0;
+                        return use;
+                    }
+
+                    _selectedVirtualServerId = target;
+                }
+            }
+
+            var response = await ExchangeAsync(command, cancellationToken).ConfigureAwait(false);
+            TrackSelection(command, response);
+            return response;
+        }
+        catch
+        {
+            // After a timeout or a broken write it is unknown what the session has selected, so
+            // the next scoped command must select again rather than trust stale state.
+            _selectedVirtualServerId = 0;
+            throw;
+        }
+        finally
+        {
+            _pendingSlot.Release();
+        }
+    }
+
+    /// <summary>
+    /// Keeps the recorded selection true when a caller changes it with a command of its own.
+    /// </summary>
+    private void TrackSelection(QueryCommand command, QueryResponse response)
+    {
+        if (!response.Error.IsSuccess)
+        {
+            return;
+        }
+
+        if (string.Equals(command.Name, "use", StringComparison.OrdinalIgnoreCase))
+        {
+            _selectedVirtualServerId =
+                command.Parameters is not null
+                && command.Parameters.TryGetValue("sid", out var sid)
+                && int.TryParse(sid, System.Globalization.CultureInfo.InvariantCulture, out var id)
+                    ? id
+                    : 0;
+        }
+        else if (string.Equals(command.Name, "logout", StringComparison.OrdinalIgnoreCase))
+        {
+            _selectedVirtualServerId = 0;
+        }
+    }
+
+    private static QueryCommand UseCommand(int virtualServerId) =>
+        new("use", new Dictionary<string, string>
+        {
+            ["sid"] = virtualServerId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        });
+
+    /// <summary>Sends one command and waits for its response. The caller holds the slot.</summary>
+    private async Task<QueryResponse> ExchangeAsync(QueryCommand command, CancellationToken cancellationToken)
+    {
+        var response = await ExchangeOnceAsync(command, cancellationToken).ConfigureAwait(false);
+
+        // The server states how long to wait; honouring it is what keeps a rejection from
+        // escalating into an IP-level block.
+        if (response.Error.IsFlooding)
+        {
+            _guard.PenaliseFor(response.Error.RetryAfter);
+            response = await ExchangeOnceAsync(command, cancellationToken).ConfigureAwait(false);
+        }
+
+        return response;
+    }
+
+    private async Task<QueryResponse> ExchangeOnceAsync(QueryCommand command, CancellationToken cancellationToken)
+    {
+        using var lease = await _guard.AcquireAsync(cancellationToken).ConfigureAwait(false);
+
+        var completion = new TaskCompletionSource<QueryResponse>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _pendingText = new StringBuilder();
+        _pending = completion;
+
+        try
+        {
             var line = Encoding.UTF8.GetBytes(QueryCommandSerializer.ToWireLine(command) + '\n');
             await _shell.WriteAsync(line, cancellationToken).ConfigureAwait(false);
             await _shell.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -345,7 +405,6 @@ public sealed class SshQueryTransport : IQueryTransport
         finally
         {
             _pending = null;
-            _pendingSlot.Release();
         }
     }
 

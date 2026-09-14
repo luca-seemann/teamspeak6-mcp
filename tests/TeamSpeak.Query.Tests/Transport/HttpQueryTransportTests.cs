@@ -43,21 +43,44 @@ public class HttpQueryTransportTests
     }
 
     [Fact]
-    public async Task Scopes_other_commands_to_the_virtual_server()
+    public async Task Scopes_other_commands_to_the_virtual_server_they_name()
     {
         var handler = new StubHandler(Ok);
-        await using var transport = new HttpQueryTransport(Profile(), new HttpClient(handler))
-        {
-            VirtualServerId = 4,
-        };
+        await using var transport = new HttpQueryTransport(Profile(), new HttpClient(handler));
 
         await transport.SendAsync(
-            new QueryCommand("clientinfo", new Dictionary<string, string> { ["clid"] = "3" }),
+            new QueryCommand("clientinfo", new Dictionary<string, string> { ["clid"] = "3" }, VirtualServerId: 4),
             TestContext.Current.CancellationToken);
 
         var uri = Assert.Single(handler.Requests).RequestUri!;
         Assert.Equal("/4/clientinfo", uri.AbsolutePath);
         Assert.Equal("?clid=3", uri.Query);
+    }
+
+    [Fact]
+    public async Task Falls_back_to_the_profile_default_virtual_server()
+    {
+        var handler = new StubHandler(Ok);
+        var profile = Profile();
+        profile.DefaultVirtualServerId = 7;
+        await using var transport = new HttpQueryTransport(profile, new HttpClient(handler));
+
+        await transport.SendAsync(new QueryCommand("channellist"), TestContext.Current.CancellationToken);
+
+        Assert.Equal("/7/channellist", Assert.Single(handler.Requests).RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task Ignores_a_virtual_server_on_an_instance_wide_command()
+    {
+        var handler = new StubHandler(Ok);
+        await using var transport = new HttpQueryTransport(Profile(), new HttpClient(handler));
+
+        await transport.SendAsync(
+            new QueryCommand("serverlist", VirtualServerId: 4),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("/serverlist", Assert.Single(handler.Requests).RequestUri!.AbsolutePath);
     }
 
     [Fact]

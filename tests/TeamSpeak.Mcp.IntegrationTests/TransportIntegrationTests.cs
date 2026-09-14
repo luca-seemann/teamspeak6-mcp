@@ -45,13 +45,8 @@ public sealed class TransportIntegrationTests(LiveServerFixture server) : IClass
     [RequiresTeamSpeakServerFact]
     public async Task Ssh_transport_selects_a_virtual_server_and_reads_its_channels()
     {
-        var use = await server.Ssh.SendAsync(
-            new QueryCommand("use", new Dictionary<string, string> { ["sid"] = "1" }),
-            TestContext.Current.CancellationToken);
-        Assert.True(use.Error.IsSuccess);
-
         var channels = await server.Ssh.SendAsync(
-            new QueryCommand("channellist"),
+            new QueryCommand("channellist", VirtualServerId: 1),
             TestContext.Current.CancellationToken);
 
         Assert.True(channels.Error.IsSuccess);
@@ -74,12 +69,8 @@ public sealed class TransportIntegrationTests(LiveServerFixture server) : IClass
     [RequiresTeamSpeakServerFact]
     public async Task Ssh_transport_unescapes_a_value_the_server_escaped()
     {
-        await server.Ssh.SendAsync(
-            new QueryCommand("use", new Dictionary<string, string> { ["sid"] = "1" }),
-            TestContext.Current.CancellationToken);
-
         var info = await server.Ssh.SendAsync(
-            new QueryCommand("serverinfo"),
+            new QueryCommand("serverinfo", VirtualServerId: 1),
             TestContext.Current.CancellationToken);
 
         // The server sends this as TeamSpeak\s6\sServer; a caller must never see the escapes.
@@ -101,54 +92,45 @@ public sealed class TransportIntegrationTests(LiveServerFixture server) : IClass
     }
 
     [RequiresTeamSpeakServerFact]
-    public async Task Selecting_a_virtual_server_is_remembered_by_the_transport()
+    public async Task A_scoped_command_reaches_the_virtual_server_it_names()
     {
-        await server.Ssh.SelectVirtualServerAsync(1, TestContext.Current.CancellationToken);
-
-        Assert.Equal(1, server.Ssh.VirtualServerId);
-
-        // The selection has to actually take effect, not merely be recorded.
         var info = await server.Ssh.SendAsync(
-            new QueryCommand("serverinfo"),
+            new QueryCommand("serverinfo", VirtualServerId: 1),
             TestContext.Current.CancellationToken);
 
         Assert.True(info.Error.IsSuccess);
         Assert.Equal("1", Assert.Single(info.Records).GetRequired("virtualserver_id"));
     }
 
-    [RequiresWebQueryFact]
-    public async Task Both_transports_select_a_virtual_server_through_the_same_method()
+    [RequiresTeamSpeakServerFact]
+    public async Task Concurrent_scoped_and_instance_wide_commands_all_succeed_over_one_session()
     {
-        // The two do something completely different underneath: SSH sends "use", the WebQuery just
-        // changes the URL it addresses. Callers must not have to know which.
-        await using var http = new HttpQueryTransport(LiveServerFixture.Profile());
+        // Tool calls share the session. Selection and command have to stay paired even when
+        // callers interleave, and the slot and the flood guard must not deadlock each other.
+        var ct = TestContext.Current.CancellationToken;
 
-        await server.Ssh.SelectVirtualServerAsync(1, TestContext.Current.CancellationToken);
-        await http.SelectVirtualServerAsync(1, TestContext.Current.CancellationToken);
+        var responses = await Task.WhenAll(
+            server.Ssh.SendAsync(new QueryCommand("serverinfo", VirtualServerId: 1), ct),
+            server.Ssh.SendAsync(new QueryCommand("serverlist"), ct),
+            server.Ssh.SendAsync(new QueryCommand("channellist", VirtualServerId: 1), ct),
+            server.Ssh.SendAsync(new QueryCommand("version"), ct));
 
-        var viaSsh = await server.Ssh.SendAsync(new QueryCommand("channellist"), TestContext.Current.CancellationToken);
-        var viaHttp = await http.SendAsync(new QueryCommand("channellist"), TestContext.Current.CancellationToken);
-
-        Assert.Equal(
-            viaSsh.Records.Select(r => r.GetRequired("cid")),
-            viaHttp.Records.Select(r => r.GetRequired("cid")));
+        Assert.All(responses, response => Assert.True(response.Error.IsSuccess, response.Error.Message));
+        Assert.Equal("1", Assert.Single(responses[0].Records).GetRequired("virtualserver_id"));
     }
 
     [RequiresWebQueryFact]
     public async Task Both_transports_return_the_same_channel_list()
     {
         // The parity the whole design rests on, checked against a live server rather than fixtures.
-        await using var http = new HttpQueryTransport(LiveServerFixture.Profile()) { VirtualServerId = 1 };
-
-        await server.Ssh.SendAsync(
-            new QueryCommand("use", new Dictionary<string, string> { ["sid"] = "1" }),
-            TestContext.Current.CancellationToken);
+        // SSH sends "use" underneath while the WebQuery puts the id in the URL; callers never know.
+        await using var http = new HttpQueryTransport(LiveServerFixture.Profile());
 
         var viaSsh = await server.Ssh.SendAsync(
-            new QueryCommand("channellist"),
+            new QueryCommand("channellist", VirtualServerId: 1),
             TestContext.Current.CancellationToken);
         var viaHttp = await http.SendAsync(
-            new QueryCommand("channellist"),
+            new QueryCommand("channellist", VirtualServerId: 1),
             TestContext.Current.CancellationToken);
 
         Assert.Equal(
