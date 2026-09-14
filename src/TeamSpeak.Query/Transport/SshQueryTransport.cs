@@ -204,7 +204,23 @@ public sealed class SshQueryTransport : IQueryTransport
             int read;
             try
             {
-                read = await _shell.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                // ShellStream returns zero simply because nothing has arrived yet, so a read count
+                // of zero is not end-of-stream and must not end the loop. DataAvailable is the
+                // only reliable way to tell the two apart.
+                if (!_shell.DataAvailable)
+                {
+                    if (!_client.IsConnected)
+                    {
+                        FailPending(new QueryProtocolException(
+                            "The SSH session closed while awaiting a response."));
+                        break;
+                    }
+
+                    await Task.Delay(TimeSpan.FromMilliseconds(20), cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                read = _shell.Read(buffer, 0, buffer.Length);
             }
             catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
             {
@@ -213,8 +229,7 @@ public sealed class SshQueryTransport : IQueryTransport
 
             if (read <= 0)
             {
-                FailPending(new QueryProtocolException("The SSH session closed while awaiting a response."));
-                break;
+                continue;
             }
 
             carry.Append(Encoding.UTF8.GetString(buffer, 0, read));

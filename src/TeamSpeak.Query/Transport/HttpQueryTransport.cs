@@ -46,7 +46,19 @@ public sealed class HttpQueryTransport : IQueryTransport
         }
 
         _ownsClient = httpClient is null;
-        _http = httpClient ?? new HttpClient();
+
+        // The server closes every connection, so pooling one and reusing it fails with a truncated
+        // response. A zero pooled lifetime keeps HttpClient from trying.
+        _http = httpClient ?? new HttpClient(new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.Zero,
+        })
+        {
+            // The 100 second default is far too long for an administrative tool call; a stalled
+            // request should surface quickly rather than block the caller for minutes.
+            Timeout = profile.CommandTimeout,
+        };
+
         _http.BaseAddress ??= EnsureTrailingSlash(profile.WebQueryUrl!);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
@@ -124,7 +136,14 @@ public sealed class HttpQueryTransport : IQueryTransport
             command,
             InstanceWideCommands.Contains(command.Name) ? null : sid);
 
-        using var message = await _http.GetAsync(path, cancellationToken).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+
+        // Say out loud what the server is going to do anyway. Without this HttpClient may hand the
+        // request to a pooled connection the server has already closed, which surfaces as a
+        // truncated response rather than as a connection error.
+        request.Headers.ConnectionClose = true;
+
+        using var message = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         var body = await message.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
         // Errors arrive as a normal JSON envelope with a non-2xx status, so the body is what

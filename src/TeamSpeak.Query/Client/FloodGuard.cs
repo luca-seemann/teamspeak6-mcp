@@ -88,7 +88,7 @@ public sealed class FloodGuard : IDisposable
     public void PenaliseFor(TimeSpan? retryAfter)
     {
         var penalty = (retryAfter ?? TimeSpan.FromSeconds(1)) + TimeSpan.FromMilliseconds(250);
-        var until = _time.GetTimestamp() + (long)(penalty.TotalSeconds * TimeProvider.System.TimestampFrequency);
+        var until = _time.GetTimestamp() + (long)(penalty.TotalSeconds * _time.TimestampFrequency);
 
         if (until > Interlocked.Read(ref _nextAllowedTicks))
         {
@@ -106,13 +106,13 @@ public sealed class FloodGuard : IDisposable
 
         return next <= now
             ? TimeSpan.Zero
-            : TimeSpan.FromSeconds((next - now) / (double)TimeProvider.System.TimestampFrequency);
+            : TimeSpan.FromSeconds((next - now) / (double)_time.TimestampFrequency);
     }
 
     private void ReleaseTurn()
     {
         var next = _time.GetTimestamp()
-                   + (long)(_interval.TotalSeconds * TimeProvider.System.TimestampFrequency);
+                   + (long)(_interval.TotalSeconds * _time.TimestampFrequency);
 
         if (next > Interlocked.Read(ref _nextAllowedTicks))
         {
