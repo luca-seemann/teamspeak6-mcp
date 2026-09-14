@@ -155,7 +155,8 @@ public sealed class QueryEventHub : IAsyncDisposable
     /// <param name="channelId">For <see cref="EventCategory.Channel"/>, one channel; 0 for every channel.</param>
     /// <param name="textChannelId">
     /// For <see cref="EventCategory.TextChannel"/>, the channel whose chat to receive: the event
-    /// session is moved into it. 0 leaves it in the default channel.
+    /// session is moved into it, and back into it after a reconnect. 0 leaves the text channel
+    /// unchanged, which on a fresh session is the default channel.
     /// </param>
     /// <param name="cancellationToken">Abandons the attempt.</param>
     /// <returns>The subscription as it now stands.</returns>
@@ -231,21 +232,27 @@ public sealed class QueryEventHub : IAsyncDisposable
                 session.Add(category, channelId);
             }
 
-            // Moving the event session to a different text channel on an already-open session.
-            if (textChannelId > 0 && textChannelId != session.TextChannelId && session.ClientId is { } self)
+            // Moving the event session to a different text channel on an already-open session. The
+            // target is stored even when the client id is not known yet, so the next reconnect (which
+            // learns the id) still applies it. Passing 0 leaves the current text channel unchanged.
+            if (textChannelId > 0 && textChannelId != session.TextChannelId)
             {
-                await SendAsync(
-                    transport,
-                    new QueryCommand(
-                        "clientmove",
-                        new Dictionary<string, string>
-                        {
-                            ["clid"] = self.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                            ["cid"] = textChannelId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        },
-                        VirtualServerId: virtualServerId),
-                    cancellationToken).ConfigureAwait(false);
                 session.TextChannelId = textChannelId;
+
+                if (session.ClientId is { } self)
+                {
+                    await SendAsync(
+                        transport,
+                        new QueryCommand(
+                            "clientmove",
+                            new Dictionary<string, string>
+                            {
+                                ["clid"] = self.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                ["cid"] = textChannelId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            },
+                            VirtualServerId: virtualServerId),
+                        cancellationToken).ConfigureAwait(false);
+                }
             }
 
             return session.Snapshot();
@@ -296,8 +303,10 @@ public sealed class QueryEventHub : IAsyncDisposable
 
             foreach (var category in ending)
             {
-                await SendAsync(transport, Unregister(category, virtualServerId, session.ChannelId), cancellationToken).ConfigureAwait(false);
+                // Remove from the set before the wire unregister, so a reconnect that re-registers
+                // from the set in between cannot bring the category back after we asked to drop it.
                 session.Remove(category);
+                await SendAsync(transport, Unregister(category, virtualServerId, session.ChannelId), cancellationToken).ConfigureAwait(false);
             }
 
             return session.Snapshot();
@@ -347,14 +356,23 @@ public sealed class QueryEventHub : IAsyncDisposable
 
     private static async Task RegisterAllAsync(EventSession session, QuerySender send, CancellationToken cancellationToken)
     {
-        await SendRegistrationsAsync(session, send, cancellationToken).ConfigureAwait(false);
+        // A fresh session seeds the name cache; the reader loop then keeps it current from events.
+        await SendRegistrationsAsync(session, send, seedNames: true, cancellationToken).ConfigureAwait(false);
 
         // Counted only once registered, so a failed reconnect attempt does not look like a replacement.
         session.CountOpened();
     }
 
     /// <summary>Registers every category and learns the session's client id, recording the outcome.</summary>
-    private static async Task SendRegistrationsAsync(EventSession session, QuerySender send, CancellationToken cancellationToken)
+    /// <param name="session"></param>
+    /// <param name="send"></param>
+    /// <param name="seedNames">
+    /// Whether to reload the whole name cache from <c>clientlist</c>. Done once when a session opens;
+    /// the watchdog's periodic re-registration skips it, since the reader loop keeps the cache current
+    /// and a reload every pass would be steady query load that clears learned names for no gain.
+    /// </param>
+    /// <param name="cancellationToken"></param>
+    private static async Task SendRegistrationsAsync(EventSession session, QuerySender send, bool seedNames, CancellationToken cancellationToken)
     {
         try
         {
@@ -374,10 +392,13 @@ public sealed class QueryEventHub : IAsyncDisposable
 
             // Seed the client-name cache so events that carry only a client id can still be given a
             // nickname. Best effort: a failure here must not fail the subscription.
-            var clients = await send(new QueryCommand("clientlist", VirtualServerId: session.VirtualServerId), cancellationToken).ConfigureAwait(false);
-            if (clients.Error.IsSuccess)
+            if (seedNames)
             {
-                session.SeedNames(clients.Records);
+                var clients = await send(new QueryCommand("clientlist", VirtualServerId: session.VirtualServerId), cancellationToken).ConfigureAwait(false);
+                if (clients.Error.IsSuccess)
+                {
+                    session.SeedNames(clients.Records);
+                }
             }
 
             // For text-channel messages of a chosen channel, the event session's own client has to sit
@@ -395,8 +416,8 @@ public sealed class QueryEventHub : IAsyncDisposable
                         VirtualServerId: session.VirtualServerId),
                     cancellationToken).ConfigureAwait(false);
 
-                // 770 "already member of channel" is success for our purpose.
-                if (!move.Error.IsSuccess && move.Error.Id != 770)
+                // Already being in the channel is success for our purpose.
+                if (!move.Error.IsSuccess && move.Error.Id != QueryErrorCode.AlreadyMemberOfChannel)
                 {
                     session.RecordError($"Could not move the event session into channel {session.TextChannelId}: {move.Error.Message}");
                     return;
@@ -453,7 +474,7 @@ public sealed class QueryEventHub : IAsyncDisposable
                 return;
             }
 
-            await SendRegistrationsAsync(session, (command, token) => transport.SendAsync(command, token), cancellationToken).ConfigureAwait(false);
+            await SendRegistrationsAsync(session, (command, token) => transport.SendAsync(command, token), seedNames: false, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -568,6 +589,10 @@ public sealed class QueryEventHub : IAsyncDisposable
         private int _sessionsOpened;
         private string? _lastError;
         private DateTimeOffset? _lastEventAt;
+        // Written by the reconnect/registration thread, read by Snapshot; volatile for a safe hand-off.
+        // Zero means "not known": client and channel ids are always positive.
+        private volatile int _clientId;
+        private volatile int _textChannelId;
 
         public string Profile { get; } = profile;
 
@@ -587,11 +612,20 @@ public sealed class QueryEventHub : IAsyncDisposable
         public int ChannelId { get; private set; }
 
         /// <summary>The channel the event session's own client is moved into, for text-channel events; 0 for none.</summary>
-        public int TextChannelId { get; set; }
+        public int TextChannelId
+        {
+            get => _textChannelId;
+            set => _textChannelId = value;
+        }
 
         public DateTimeOffset Since { get; set; }
 
-        public int? ClientId { get; set; }
+        /// <summary>The event session's own client id, or <see langword="null"/> when not known.</summary>
+        public int? ClientId
+        {
+            get => _clientId == 0 ? null : _clientId;
+            set => _clientId = value ?? 0;
+        }
 
         // Copies taken under the lock: a reconnect reads the categories on the transport's own thread.
         public HashSet<EventCategory> Categories()

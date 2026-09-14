@@ -46,7 +46,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
     public async Task<EventSubscribeResult> SubscribeAsync(
         [Description("Categories to add: " + CategoryList + ". Omit for all.")] string[]? categories = null,
         [Description("Limit the channel category to one channel id; omit for every channel.")] int? channelId = null,
-        [Description("For the textchannel category, the channel whose chat to receive: the event session is moved into it and appears there as a query client. Omit to stay in the default channel.")]
+        [Description("For the textchannel category, the channel whose chat to receive: the event session is moved into it and appears there as a query client, and is moved back there after any reconnect. It stays in that channel until you subscribe again with a different one; omitting this leaves the current channel unchanged (the default channel until one is set).")]
         int? textChannelId = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,

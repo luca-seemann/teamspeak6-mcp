@@ -35,6 +35,12 @@ public static class QueryErrorCode
     /// </remarks>
     public const int InvalidServerId = 1024;
 
+    /// <summary>
+    /// A client was told to move into the channel it is already in. Sent as
+    /// <c>already member of channel</c>; harmless, so callers treat it as success.
+    /// </summary>
+    public const int AlreadyMemberOfChannel = 770;
+
     /// <summary>The command name is not known to the server. Sent as <c>invalid parameter</c>.</summary>
     public const int UnknownCommand = 1538;
 

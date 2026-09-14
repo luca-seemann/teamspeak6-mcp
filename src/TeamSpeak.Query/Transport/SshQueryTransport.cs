@@ -435,9 +435,20 @@ public sealed class SshQueryTransport : IQueryTransport
                     _readerLoop = Task.Run(() => ReadLoopAsync(_shutdown.Token), CancellationToken.None);
 
                     // Still holding the slot, so the session is prepared before any caller's command.
+                    // SendHoldingSlotAsync refuses while desynchronized, so the flag is cleared above
+                    // first; if preparation fails, mark it desynchronized again so the next command
+                    // reconnects and re-prepares rather than trusting a session with no registrations.
                     if (_onSessionOpened is not null)
                     {
-                        await _onSessionOpened(SendHoldingSlotAsync, cancellationToken).ConfigureAwait(false);
+                        try
+                        {
+                            await _onSessionOpened(SendHoldingSlotAsync, cancellationToken).ConfigureAwait(false);
+                        }
+                        catch
+                        {
+                            _desynchronized = true;
+                            throw;
+                        }
                     }
 
                     break;
