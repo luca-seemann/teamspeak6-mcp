@@ -14,9 +14,14 @@ dotnet build
 dotnet test
 ```
 
-`dotnet test` runs in Microsoft.Testing.Platform mode (opted into via `global.json`). Note that
-any unrecognised flag you pass is forwarded to the test application, so `dotnet test --nologo`
-fails with exit code 5 — pass MSBuild-level options only.
+`dotnet test` runs in Microsoft.Testing.Platform mode (opted into via `global.json`). Two quirks
+are worth knowing before you lose an hour to either:
+
+- Any unrecognised flag is forwarded to the test application, so `dotnet test --nologo` fails with
+  exit code 5. Pass MSBuild-level options only.
+- Set `TESTINGPLATFORM_TELEMETRY_OPTOUT=1`. Without it the test host finishes the tests and then
+  sits for another minute or two flushing telemetry, which looks exactly like a hung test. CI sets
+  it already.
 
 ## Testing against a real server
 

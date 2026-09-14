@@ -39,8 +39,34 @@ documentation — all were measured against a live 6.0.0-beta12.1 server:
   you can only run over SSH — so SSH is also the bootstrap path for using the WebQuery at all.
 - **The server throttles hard.** Commands sent faster than roughly one every 150 ms are rejected
   with `524 client is flooding`, and *continuing to send through that rejection* escalates to an IP
-  block that takes both interfaces down for minutes. This server keeps one long-lived connection
-  per profile and paces itself; see [reference/README.md](reference/README.md) for the details.
+  block that takes both interfaces down for minutes. Opening connections in quick succession is
+  punished far more harshly than issuing commands over one. This server keeps a single long-lived
+  connection per profile and paces both; see [reference/README.md](reference/README.md).
+
+### Check which client address your server actually sees
+
+On some Docker setups the TeamSpeak server sees the **bridge gateway address** for every external
+client rather than their real addresses. Its own log gives it away:
+
+```
+query from 4 172.20.0.1:49196 issued: login with account "serveradmin"
+```
+
+That entry was a connection from `192.0.2.80` on the LAN.
+
+It depends on how ports are published. Native Docker on Linux forwards them with iptables DNAT,
+which rewrites the destination and leaves the source intact, so real client addresses usually
+arrive. Docker Desktop on Windows and macOS routes through a proxy chain into its VM, which
+rewrites the source; the same happens on Linux for traffic that goes through the userland proxy.
+
+Where the addresses are rewritten, per-IP allow and deny lists cannot tell anyone apart, so
+allow-listing your client's real address silently does nothing — the entry loads and never
+matches. Flood accounting is per IP too, so every external client shares one counter and one
+impatient script can throttle everybody.
+
+Read the log line above before trusting an allow list. If the address is wrong, either run the
+server with `--network host`, or allow-list the bridge network (`172.x.0.0/16`) and accept that the
+exemption then covers all outside traffic.
 
 ## Safety
 
