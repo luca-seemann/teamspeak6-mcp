@@ -1,6 +1,7 @@
 using ModelContextProtocol;
 
 using TeamSpeak.Mcp.Configuration;
+using TeamSpeak.Mcp.Resources;
 using TeamSpeak.Mcp.Safety;
 using TeamSpeak.Mcp.Tools;
 using TeamSpeak.Query.Client;
@@ -114,6 +115,131 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
             cancellationToken: ct));
     }
 
+    [RequiresTeamSpeakServerFact]
+    public async Task Identity_group_and_permission_tools_answer_over_ssh()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var connections = SharedSshConnections();
+        var executor = new QueryExecutor(connections, new SafetyPolicy());
+
+        // This session's own login is the one identity every test server is sure to have.
+        await new ChannelTools(executor).ListChannelsAsync(virtualServerId: 1, cancellationToken: ct);
+        var whoami = await new MetaTools(executor).WhoAmIAsync(cancellationToken: ct);
+        var databaseId = int.Parse(whoami.Fields["client_database_id"], System.Globalization.CultureInfo.InvariantCulture);
+
+        var identity = await new ClientDatabaseTools(executor).ResolveClientAsync(databaseId: databaseId, virtualServerId: 1, cancellationToken: ct);
+        Assert.Equal("serveradmin", identity.UniqueId);
+        Assert.NotEmpty(identity.OnlineClientIds);
+
+        var groups = await new ClientGroupsFor(executor).ReadAsync(databaseId, ct);
+        Assert.NotEmpty(groups.ServerGroups);
+
+        var serverGroups = await new GroupTools(executor).ListServerGroupsAsync(1, cancellationToken: ct);
+        Assert.Contains(serverGroups.Groups, group => group.Type == "regular");
+
+        var permissions = new PermissionTools(executor, new PermissionNameCache());
+
+        var effective = await permissions.EffectivePermissionsAsync(
+            databaseId, permission: "b_virtualserver_info_view", channelId: 1, virtualServerId: 1, cancellationToken: ct);
+        var infoView = Assert.Single(effective.Permissions);
+        Assert.Equal(1, infoView.Value);
+        Assert.StartsWith("server group", infoView.DecidedBy, StringComparison.Ordinal);
+
+        var holders = await permissions.FindPermissionAsync("i_client_talk_power", 1, cancellationToken: ct);
+        Assert.Contains(holders.Holders, holder => holder.Kind == "server group" && holder.GroupName is not null);
+
+        var assigned = await permissions.AssignedPermissionsAsync(serverGroupId: groups.ServerGroups[0].Id, virtualServerId: 1, cancellationToken: ct);
+        Assert.All(assigned.Permissions, permission => Assert.DoesNotContain("#", permission.Name, StringComparison.Ordinal));
+    }
+
+    [RequiresTeamSpeakServerFact]
+    public async Task Moderation_access_log_and_health_tools_answer_over_ssh()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var connections = SharedSshConnections();
+        var executor = new QueryExecutor(connections, new SafetyPolicy(Configuration.SafetyLevel.Write));
+
+        var health = await new VirtualServerTools(executor).HealthReportAsync(1, cancellationToken: ct);
+        Assert.Equal("online", health.Status);
+        Assert.True(health.QueryClientsOnline >= 1);
+
+        var log = await new LogTools(executor).ViewLogAsync(lines: 5, virtualServerId: 1, cancellationToken: ct);
+        Assert.NotEmpty(log.Entries);
+        Assert.All(log.Entries, entry => Assert.NotEmpty(entry.Level));
+
+        // Empty on a fresh server, which is exactly the case that has to come back as a list, not an error.
+        await new ModerationTools(executor).ListBansAsync(virtualServerId: 1, cancellationToken: ct);
+        await new ModerationTools(executor).ListComplaintsAsync(virtualServerId: 1, cancellationToken: ct);
+        await new ModerationTools(executor).ListPrivilegeKeysAsync(1, cancellationToken: ct);
+        await new AccessTools(executor).ListApiKeysAsync(cancellationToken: ct);
+        await new AccessTools(executor).ListQueryLoginsAsync(1, cancellationToken: ct);
+        await new AccessTools(executor).ListMessagesAsync(1, cancellationToken: ct);
+    }
+
+    [RequiresTeamSpeakServerFact]
+    public async Task Search_membership_and_custom_property_tools_answer_over_ssh()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var connections = SharedSshConnections();
+        var executor = new QueryExecutor(connections, new SafetyPolicy());
+
+        var channels = await new ChannelTools(executor).FindChannelsAsync("Default", 1, cancellationToken: ct);
+        Assert.Contains(channels.Channels, channel => channel.Name.Contains("Default", StringComparison.OrdinalIgnoreCase));
+
+        var whoami = await new MetaTools(executor).WhoAmIAsync(cancellationToken: ct);
+        var ownClientId = int.Parse(whoami.Fields["client_id"], System.Globalization.CultureInfo.InvariantCulture);
+        var ownDatabaseId = int.Parse(whoami.Fields["client_database_id"], System.Globalization.CultureInfo.InvariantCulture);
+
+        var online = await new ClientTools(executor).FindClientsAsync("serveradmin", 1, cancellationToken: ct);
+        Assert.Contains(online.Clients, client => client.ClientId == ownClientId);
+
+        // Any identity the server knows will do; the test server's list is not fixed.
+        var page = await new ClientDatabaseTools(executor).ListKnownClientsAsync(limit: 5, virtualServerId: 1, cancellationToken: ct);
+        Assert.True(page.Total >= page.Clients.Count);
+        Assert.NotEmpty(page.Clients);
+        var known = page.Clients[0];
+
+        var byUid = await new ClientDatabaseTools(executor).FindKnownClientsAsync(known.UniqueId, byUniqueId: true, virtualServerId: 1, cancellationToken: ct);
+        Assert.Contains(byUid.Clients, client => client.DatabaseId == known.DatabaseId);
+
+        var info = await new ClientDatabaseTools(executor).KnownClientInfoAsync(known.DatabaseId, 1, cancellationToken: ct);
+        Assert.Equal(known.UniqueId, info.Fields["client_unique_identifier"]);
+
+        await new ClientDatabaseTools(executor).CustomInfoAsync(known.DatabaseId, 1, cancellationToken: ct);
+
+        var ownGroups = await new GroupTools(executor).ClientGroupsAsync(ownDatabaseId, 1, cancellationToken: ct);
+        var members = await new GroupTools(executor).ServerGroupMembersAsync(ownGroups.ServerGroups[0].Id, 1, cancellationToken: ct);
+        Assert.Contains(members.Members, member => member.DatabaseId == ownDatabaseId);
+
+        await new GroupTools(executor).ChannelGroupMembersAsync(channelId: 1, virtualServerId: 1, cancellationToken: ct);
+
+        var catalog = await new PermissionTools(executor, new PermissionNameCache()).ListPermissionsAsync("talk_power", cancellationToken: ct);
+        Assert.Contains(catalog.Permissions, permission => permission.Name == "i_client_talk_power");
+    }
+
+    [RequiresTeamSpeakServerFact]
+    public async Task Every_resource_reads_as_json_over_ssh()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var connections = SharedSshConnections();
+        var resources = new ServerResources(new QueryExecutor(connections, new SafetyPolicy()), new PermissionNameCache());
+        var profile = LiveServerFixture.Profile().Name;
+
+        using var profiles = System.Text.Json.JsonDocument.Parse(resources.Profiles());
+        using var channels = System.Text.Json.JsonDocument.Parse(await resources.ChannelsAsync(profile, 1, ct));
+        using var clients = System.Text.Json.JsonDocument.Parse(await resources.ClientsAsync(profile, 1, ct));
+        using var groups = System.Text.Json.JsonDocument.Parse(await resources.GroupsAsync(profile, 1, ct));
+        using var info = System.Text.Json.JsonDocument.Parse(await resources.InfoAsync(profile, 1, ct));
+        using var permissions = System.Text.Json.JsonDocument.Parse(await resources.PermissionsAsync(profile, ct));
+
+        Assert.Equal(profile, profiles.RootElement.GetProperty("profiles")[0].GetProperty("name").GetString());
+        Assert.True(channels.RootElement.GetProperty("channels").GetArrayLength() > 0);
+        Assert.Equal(System.Text.Json.JsonValueKind.Array, clients.RootElement.GetProperty("clients").ValueKind);
+        Assert.True(groups.RootElement.GetProperty("serverGroups").GetArrayLength() > 0);
+        Assert.Equal("1", info.RootElement.GetProperty("fields").GetProperty("virtualserver_id").GetString());
+        Assert.True(permissions.RootElement.GetArrayLength() > 100);
+    }
+
     [RequiresWebQueryFact]
     public async Task The_same_tools_answer_over_the_web_query()
     {
@@ -130,6 +256,13 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
 
         var channels = await new ChannelTools(executor).ListChannelsAsync(virtualServerId: 1, cancellationToken: ct);
         Assert.NotEmpty(channels.Channels);
+    }
+
+    /// <summary>Reads a client's groups on virtual server 1.</summary>
+    private sealed class ClientGroupsFor(QueryExecutor executor)
+    {
+        public Task<ClientGroupMemberships> ReadAsync(int databaseId, CancellationToken cancellationToken) =>
+            new GroupTools(executor).ClientGroupsAsync(databaseId, 1, cancellationToken: cancellationToken);
     }
 
     /// <summary>Lends the fixture's session to a connection manager without letting it close it.</summary>

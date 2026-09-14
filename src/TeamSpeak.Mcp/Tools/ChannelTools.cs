@@ -77,7 +77,47 @@ public sealed class ChannelTools(QueryExecutor executor)
         fields.TryAdd("cid", channelId.ToString(CultureInfo.InvariantCulture));
         return new RecordResult(fields);
     }
+
+    /// <summary>Finds channels by name.</summary>
+    /// <param name="pattern">Text to find in channel names.</param>
+    /// <param name="virtualServerId">The virtual server.</param>
+    /// <param name="profile">The profile.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The matching channels.</returns>
+    [McpServerTool(Name = "ts_channel_find", Title = "Find channels by name",
+        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Finds the channels whose name contains some text, ignoring case, and returns their " +
+                 "ids and full names.")]
+    public async Task<ChannelMatches> FindChannelsAsync(
+        [Description("Text to find in channel names, for example 'afk'.")] string pattern,
+        [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
+        [Description(ToolDescriptions.Profile)] string? profile = null,
+        CancellationToken cancellationToken = default)
+    {
+        var records = await executor.RunAsync(
+            "ts_channel_find",
+            SafetyLevel.ReadOnly,
+            profile,
+            new QueryCommand(
+                "channelfind",
+                new Dictionary<string, string> { ["pattern"] = ToolArguments.RequireText(pattern, nameof(pattern)) },
+                VirtualServerId: virtualServerId),
+            cancellationToken).ConfigureAwait(false);
+
+        return new ChannelMatches(records
+            .Select(record => new ChannelMatch(record.GetInt32("cid"), record.GetString("channel_name")))
+            .ToList());
+    }
 }
+
+/// <summary>Channels found by name.</summary>
+/// <param name="Channels">The matches.</param>
+public sealed record ChannelMatches(IReadOnlyList<ChannelMatch> Channels);
+
+/// <summary>A channel found by name.</summary>
+/// <param name="Id">The channel id.</param>
+/// <param name="Name">The full channel name.</param>
+public sealed record ChannelMatch(int Id, string Name);
 
 /// <summary>The channels of a virtual server.</summary>
 /// <param name="Channels">The channels in display order, nested when a tree was requested.</param>

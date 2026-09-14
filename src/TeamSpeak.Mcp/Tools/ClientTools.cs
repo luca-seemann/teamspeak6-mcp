@@ -83,6 +83,37 @@ public sealed class ClientTools(QueryExecutor executor)
         return new RecordResult(fields);
     }
 
+    /// <summary>Finds connected clients by nickname.</summary>
+    /// <param name="pattern">Text to find in nicknames.</param>
+    /// <param name="virtualServerId">The virtual server.</param>
+    /// <param name="profile">The profile.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The matching clients.</returns>
+    [McpServerTool(Name = "ts_client_find", Title = "Find online clients by nickname",
+        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Finds the currently connected clients whose nickname contains some text and returns " +
+                 "their session ids and nicknames. To find someone who is offline, use ts_clientdb_find.")]
+    public async Task<OnlineClientMatches> FindClientsAsync(
+        [Description("Text to find in nicknames, for example 'alice'.")] string pattern,
+        [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
+        [Description(ToolDescriptions.Profile)] string? profile = null,
+        CancellationToken cancellationToken = default)
+    {
+        var records = await executor.RunAsync(
+            "ts_client_find",
+            SafetyLevel.ReadOnly,
+            profile,
+            new QueryCommand(
+                "clientfind",
+                new Dictionary<string, string> { ["pattern"] = ToolArguments.RequireText(pattern, nameof(pattern)) },
+                VirtualServerId: virtualServerId),
+            cancellationToken).ConfigureAwait(false);
+
+        return new OnlineClientMatches(records
+            .Select(record => new OnlineClientMatch(record.GetInt32("clid"), record.GetString("client_nickname")))
+            .ToList());
+    }
+
     private static OnlineClient ToClient(QueryRecord record) =>
         new(
             record.GetInt32("clid"),
@@ -100,6 +131,15 @@ public sealed class ClientTools(QueryExecutor executor)
                 .ToList(),
             record.GetInt32("client_channel_group_id"));
 }
+
+/// <summary>Connected clients found by nickname.</summary>
+/// <param name="Clients">The matches.</param>
+public sealed record OnlineClientMatches(IReadOnlyList<OnlineClientMatch> Clients);
+
+/// <summary>A connected client found by nickname.</summary>
+/// <param name="ClientId">The session id.</param>
+/// <param name="Nickname">The nickname.</param>
+public sealed record OnlineClientMatch(int ClientId, string Nickname);
 
 /// <summary>The clients online on a virtual server.</summary>
 /// <param name="Clients">One entry per connected client.</param>

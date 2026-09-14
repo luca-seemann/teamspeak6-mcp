@@ -66,12 +66,18 @@ public class ToolSchemaSnapshotTests
     }
 
     [Fact]
-    public void Serves_the_ten_phase_four_tools()
+    public void Serves_the_complete_read_surface()
     {
         Assert.Equal(
             [
-                "ts_channel_info", "ts_channel_list", "ts_client_info", "ts_client_list", "ts_instance_info",
-                "ts_profiles_list", "ts_query_raw", "ts_vserver_info", "ts_vserver_list", "ts_whoami",
+                "ts_apikey_list", "ts_ban_list", "ts_channel_find", "ts_channel_info", "ts_channel_list",
+                "ts_channelgroup_list", "ts_channelgroup_members", "ts_client_find", "ts_client_groups",
+                "ts_client_info", "ts_client_list", "ts_client_resolve", "ts_clientdb_find", "ts_clientdb_info",
+                "ts_clientdb_list", "ts_complaint_list", "ts_custom_info", "ts_custom_search", "ts_health_report",
+                "ts_instance_info", "ts_log_view", "ts_message_get", "ts_message_list", "ts_perm_assigned",
+                "ts_perm_effective", "ts_perm_find", "ts_perm_list", "ts_profiles_list", "ts_query_raw",
+                "ts_querylogin_list", "ts_servergroup_list", "ts_servergroup_members", "ts_token_list",
+                "ts_vserver_info", "ts_vserver_list", "ts_whoami",
             ],
             Tools().Select(tool => tool.Name));
     }

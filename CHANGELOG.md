@@ -35,6 +35,13 @@ All notable changes to this project are documented here. The format follows
   `ts_query_raw`, with structured output and MCP annotations.
 - A command catalog giving `ts_query_raw` the safety level of each of the 143 reference commands,
   and a snapshot test that pins the tool schemas.
+- The full read surface, 26 further tools. `ts_perm_effective` explains a client's effective
+  permissions in a channel layer by layer. `ts_client_resolve` connects session id, database id and
+  unique identity. `ts_health_report` turns slot usage, packet loss and ping into findings. Tools for
+  known identities, groups, assigned permissions, bans, complaints, privilege keys, API keys, query
+  logins, offline messages, custom properties and the server log complete the set.
+- MCP resources for profiles, the permission catalog, and each virtual server's info, channels,
+  clients and groups.
 
 ### Fixed
 

@@ -147,18 +147,34 @@ Each profile keeps one long-lived connection, opened on the first tool call that
 
 ## Tools
 
-| Tool | What it does |
-|---|---|
-| `ts_profiles_list` | The configured servers, their interface and safety level. Contacts nothing. |
-| `ts_whoami` | Which query login this server uses, and its session. |
-| `ts_instance_info` | Version, uptime and totals, instance settings and bound addresses in one call. |
-| `ts_vserver_list` / `ts_vserver_info` | Virtual servers at a glance, or one in full. |
-| `ts_channel_list` / `ts_channel_info` | Channels in display order, flat or as a tree, or one in full. |
-| `ts_client_list` / `ts_client_info` | Who is online, with groups and away state, or one client in full. |
-| `ts_query_raw` | Any other ServerQuery command, at the safety level of that command. |
+All tools so far only read. The one exception to `ReadOnly` is `ts_token_list`, which needs `Write`
+because privilege keys are live credentials.
+
+| Area | Tools | What they answer |
+|---|---|---|
+| Setup | `ts_profiles_list`, `ts_whoami` | Which servers are configured, and which login this server uses. |
+| Instance | `ts_instance_info`, `ts_vserver_list`, `ts_vserver_info`, `ts_health_report` | Version and totals; virtual servers; slots, packet loss and ping, with findings in plain words. |
+| Channels | `ts_channel_list`, `ts_channel_info`, `ts_channel_find` | The channel tree in display order, one channel in full, a channel by name. |
+| People online | `ts_client_list`, `ts_client_info`, `ts_client_find` | Who is connected, with groups and away state. |
+| Known identities | `ts_clientdb_list`, `ts_clientdb_info`, `ts_clientdb_find`, `ts_client_resolve` | Everyone the server has seen; turn a session id, database id or unique identity into all three. |
+| Groups | `ts_servergroup_list`, `ts_servergroup_members`, `ts_channelgroup_list`, `ts_channelgroup_members`, `ts_client_groups` | Groups, their members, and every group one person is in. |
+| Permissions | `ts_perm_effective`, `ts_perm_find`, `ts_perm_assigned`, `ts_perm_list` | **Why can or can't someone do something**; who holds a permission; what one group, channel or client has. |
+| Moderation | `ts_ban_list`, `ts_complaint_list`, `ts_token_list` | Bans with expiry, complaints, unused privilege keys. |
+| Access and logs | `ts_apikey_list`, `ts_querylogin_list`, `ts_message_list`, `ts_message_get`, `ts_log_view`, `ts_custom_info`, `ts_custom_search` | API keys and query logins, the query inbox, the server log, custom client properties. |
+| Anything else | `ts_query_raw` | Any other ServerQuery command, at the safety level of that command. |
 
 Every tool except `ts_profiles_list` takes an optional `profile`, and every tool below the instance
 level an optional `virtualServerId`.
+
+`ts_perm_effective` shows, for one client in one channel, the value the client ends up with and
+every assignment behind it, marking the one that decided and any skip flag that kept the channel
+layers out.
+
+### Resources
+
+The same data is available as resources, for clients that attach context instead of calling tools:
+`ts://profiles`, `ts://{profile}/permissions`, and `ts://{profile}/{virtualServerId}/` followed by
+`info`, `channels`, `clients` or `groups`.
 
 ## Requirements
 

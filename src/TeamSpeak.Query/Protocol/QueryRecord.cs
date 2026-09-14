@@ -82,6 +82,17 @@ public sealed class QueryRecord : IReadOnlyDictionary<string, string>
             ? value
             : fallback;
 
+    /// <summary>Gets a decimal field, such as a packet loss ratio or a ping.</summary>
+    /// <param name="key">The field name.</param>
+    /// <param name="fallback">The value to use when the field is absent, empty or not a number.</param>
+    /// <returns>The parsed value.</returns>
+    /// <remarks>The server always writes a dot as the decimal separator, as in <c>0.0000</c>.</remarks>
+    public double GetDouble(string key, double fallback = 0) =>
+        TryGetValue(key, out var raw)
+        && double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : fallback;
+
     /// <summary>Gets a boolean field, which the server writes as <c>1</c> or <c>0</c>.</summary>
     /// <param name="key">The field name.</param>
     /// <param name="fallback">The value to use when the field is absent or empty.</param>
