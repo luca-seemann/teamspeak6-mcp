@@ -72,6 +72,35 @@ public static class QueryErrorCode
     public const int EmptyResultSet = 1281;
 
     /// <summary>
+    /// A file command named something that is not a file. Sent as <c>invalid file name</c>.
+    /// </summary>
+    /// <remarks>Observed for <c>ftgetfileinfo</c> on a directory.</remarks>
+    public const int InvalidFileName = 2048;
+
+    /// <summary>
+    /// A file or directory by that name already exists. Sent as <c>file already exists</c>.
+    /// </summary>
+    /// <remarks>
+    /// Observed for <c>ftcreatedir</c> on an existing directory, and for <c>ftinitupload
+    /// overwrite=0</c>, which reports it inside the record with <c>error id=0</c>.
+    /// </remarks>
+    public const int FileAlreadyExists = 2050;
+
+    /// <summary>No file by that name. Sent as <c>file not found</c>.</summary>
+    /// <remarks><c>ftinitdownload</c> reports it inside the record with <c>error id=0</c>.</remarks>
+    public const int FileNotFound = 2051;
+
+    /// <summary>
+    /// The path does not exist, or a directory on the way to it is missing. Sent as
+    /// <c>invalid file path</c>.
+    /// </summary>
+    /// <remarks>
+    /// Observed for <c>ftdeletefile</c> on a missing name, and for <c>ftinitupload</c> into a missing
+    /// directory, which reports it inside the record.
+    /// </remarks>
+    public const int InvalidFilePath = 2054;
+
+    /// <summary>
     /// The command is outside what the presented API key is allowed to do.
     /// </summary>
     /// <remarks>

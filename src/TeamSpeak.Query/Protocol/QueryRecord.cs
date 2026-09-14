@@ -111,6 +111,37 @@ public sealed class QueryRecord : IReadOnlyDictionary<string, string>
             ? DateTimeOffset.FromUnixTimeSeconds(seconds)
             : null;
 
+    /// <summary>
+    /// Gets an absolute time from a field whose unit is not consistent across commands.
+    /// </summary>
+    /// <param name="key">The field name.</param>
+    /// <returns>The time, or <see langword="null"/> when the field is absent, empty or zero.</returns>
+    /// <remarks>
+    /// Measured on 6.0.0-beta12.1 for the same file: <c>ftgetfilelist</c> writes <c>datetime</c> in
+    /// milliseconds, <c>ftgetfileinfo</c> in nanoseconds, and the reference shows seconds. The unit is
+    /// therefore read from the magnitude: any real date since 1973 in one unit is at least a thousand
+    /// times larger than the same date in the next coarser unit.
+    /// </remarks>
+    public DateTimeOffset? GetUnixTimeOfAnyPrecision(string key)
+    {
+        if (!TryGetValue(key, out var raw)
+            || !long.TryParse(raw, CultureInfo.InvariantCulture, out var value)
+            || value <= 0)
+        {
+            return null;
+        }
+
+        var ticks = value switch
+        {
+            < 100_000_000_000L => value * TimeSpan.TicksPerSecond,
+            < 100_000_000_000_000L => value * TimeSpan.TicksPerMillisecond,
+            < 100_000_000_000_000_000L => value * TimeSpan.TicksPerMicrosecond,
+            _ => value / TimeSpan.NanosecondsPerTick,
+        };
+
+        return DateTimeOffset.UnixEpoch.AddTicks(ticks);
+    }
+
     /// <summary>Gets a duration the server encodes as a whole number of seconds.</summary>
     /// <param name="key">The field name.</param>
     /// <returns>The duration, or <see langword="null"/> when the field is absent or not a number.</returns>
