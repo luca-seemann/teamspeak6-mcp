@@ -133,6 +133,33 @@ public class HttpQueryTransportTests
         Assert.Throws<InvalidOperationException>(() => new HttpQueryTransport(profile));
     }
 
+    [Fact]
+    public async Task Runs_exclusive_sequences_one_at_a_time_for_its_lasting_internal_client()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var transport = new HttpQueryTransport(Profile(), new HttpClient(new StubHandler(Ok)));
+
+        // The WebQuery's internal client keeps its channel between requests, so it counts as a session.
+        Assert.True(transport.HoldsSession);
+
+        var inside = 0;
+        var mostInside = 0;
+
+        async Task<int> Sequence(QuerySender send)
+        {
+            var now = Interlocked.Increment(ref inside);
+            mostInside = Math.Max(mostInside, now);
+            await send(new QueryCommand("version"), ct);
+            await Task.Delay(20, ct);
+            Interlocked.Decrement(ref inside);
+            return now;
+        }
+
+        await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => transport.RunExclusiveAsync(Sequence, ct)));
+
+        Assert.Equal(1, mostInside);
+    }
+
     private const string Ok =
         """{"body":[{"version":"6.0.0-beta12.1"}],"status":{"code":0,"message":"ok"}}""";
 

@@ -129,8 +129,8 @@ public sealed class QueryExecutor
         if (requireSession && !transport.HoldsSession)
         {
             throw new McpException(
-                $"{action} has to act as this server's own query client, which needs the SSH interface. " +
-                $"Profile '{resolved.Name}' uses the WebQuery, where every request stands on its own. Nothing was sent.");
+                $"{action} has to act as this server's own query client, and the interface profile " +
+                $"'{resolved.Name}' uses keeps no such client between commands. Nothing was sent.");
         }
 
         try

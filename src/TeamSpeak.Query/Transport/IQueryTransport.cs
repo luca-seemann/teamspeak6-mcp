@@ -29,8 +29,9 @@ public interface IQueryTransport : IAsyncDisposable
     /// state — selected virtual server, current channel — lasts between commands.
     /// </summary>
     /// <remarks>
-    /// True for SSH. The WebQuery answers each request on its own, so there is no client to move
-    /// into a channel and nothing to protect from being kicked.
+    /// True for SSH, and for the WebQuery, whose internal query client keeps its channel between
+    /// requests. A transport without such a client has nothing to move into a channel and nothing to
+    /// protect from being kicked.
     /// </remarks>
     bool HoldsSession { get; }
 

@@ -189,7 +189,7 @@
   {
     "name": "ts_ban_add",
     "title": "Ban someone",
-    "description": "Bans someone. Pass clientId to ban a connected client, which disconnects them and bans their IP address and identity. Or add a rule matching an ip, a nickname pattern (name), a uniqueId or a myTeamSpeakId, which also works for people who are offline. durationSeconds 0 or omitted bans permanently. Returns the new ban ids; ts_ban_delete lifts a ban. Needs Destructive.",
+    "description": "Bans someone. Pass clientId to ban a connected client, which disconnects them and creates separate rules for their identity, their myTeamSpeak id and their IP address as the server sees it. Behind NAT or Docker port publishing many people can share that address, and the IP rule then locks out everyone connecting through it until it is lifted with ts_ban_delete. Or add a rule matching an ip, a nickname pattern (name), a uniqueId or a myTeamSpeakId, which also works for people who are offline. durationSeconds 0 or omitted bans permanently. Returns the new ban ids; ts_ban_delete lifts a ban. Needs Destructive.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1472,8 +1472,8 @@
   },
   {
     "name": "ts_client_edit",
-    "title": "Change a client\u0027s description",
-    "description": "Changes a client\u0027s description, which others see in their client info, for a connected client by clientId or for any known identity by databaseId. A description cannot be cleared to empty; TeamSpeak treats an empty value as missing. To let someone talk in a moderated channel, grant i_client_talk_power with ts_perm_set instead. Needs Write.",
+    "title": "Change a client\u0027s description or talker status",
+    "description": "Changes a client\u0027s description, which others see in their client info, for a connected client by clientId or for any known identity by databaseId. For a connected client in a moderated channel, one that needs more talk power than the client has, it can also grant or withdraw talker status, which lets the client speak there anyway; the server refuses that for a client that can already speak. A description cannot be cleared to empty, because TeamSpeak treats an empty value as missing. Needs Write.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1497,6 +1497,14 @@
           "description": "The new description. It cannot be empty.",
           "type": [
             "string",
+            "null"
+          ],
+          "default": null
+        },
+        "isTalker": {
+          "description": "For a connected client in a moderated channel: grant (true) or withdraw (false) talker status.",
+          "type": [
+            "boolean",
             "null"
           ],
           "default": null
@@ -1548,7 +1556,7 @@
       ]
     },
     "annotations": {
-      "title": "Change a client\u0027s description",
+      "title": "Change a client\u0027s description or talker status",
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false,
@@ -3428,7 +3436,7 @@
   {
     "name": "ts_message_send",
     "title": "Send a text message",
-    "description": "Sends a text chat message: privately to one connected client, into a channel\u0027s chat, into the whole virtual server\u0027s chat, or to everyone on every virtual server of the instance. A channel message moves this server\u0027s own query session into the channel and back as one uninterrupted step, because TeamSpeak delivers channel messages only to the channel the sender is in; that needs a profile using the SSH interface. Needs Write.",
+    "description": "Sends a text chat message: privately to one connected client, into a channel\u0027s chat, into the whole virtual server\u0027s chat, or to everyone on every virtual server of the instance. A channel message moves this server\u0027s own query session into the channel and back as one uninterrupted step, because TeamSpeak delivers channel messages only to the channel the sender is in. Needs Write.",
     "inputSchema": {
       "type": "object",
       "properties": {

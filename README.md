@@ -188,9 +188,12 @@ of the new server.
 
 `ts_client_kick` and `ts_ban_add` refuse to act on this server's own query session, which would
 cut off every tool call on the profile. A channel message has to move that session into the
-channel and back, so it runs as one uninterrupted sequence and needs a profile that uses SSH.
-`ts_client_edit` changes descriptions only: TeamSpeak 6 refuses to set talker status that way, so
-grant `i_client_talk_power` with `ts_perm_set` instead.
+channel and back, so it runs as one uninterrupted sequence; this works over SSH and the WebQuery
+alike, because the WebQuery's internal client keeps its channel between requests. Banning a
+connected client creates separate rules for its identity, its myTeamSpeak id and its IP address.
+Behind NAT or Docker port publishing that address may be shared by everyone, so lift the IP rule if
+it is too broad. `ts_client_edit` grants talker status only to a client that lacks the talk power
+its channel needs; the server refuses it for anyone who can already speak.
 
 A few commands stay reachable only through `ts_query_raw`, because a dedicated tool
 would make them too easy to call: stopping the whole instance (`serverprocessstop`), deleting every

@@ -18,8 +18,11 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
     /// <summary>Bans a client or adds a ban rule.</summary>
     [McpServerTool(Name = "ts_ban_add", Title = "Ban someone",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Bans someone. Pass clientId to ban a connected client, which disconnects them and bans " +
-                 "their IP address and identity. Or add a rule matching an ip, a nickname pattern (name), a " +
+    [Description("Bans someone. Pass clientId to ban a connected client, which disconnects them and creates " +
+                 "separate rules for their identity, their myTeamSpeak id and their IP address as the server " +
+                 "sees it. Behind NAT or Docker port publishing many people can share that address, and the " +
+                 "IP rule then locks out everyone connecting through it until it is lifted with " +
+                 "ts_ban_delete. Or add a rule matching an ip, a nickname pattern (name), a " +
                  "uniqueId or a myTeamSpeakId, which also works for people who are offline. durationSeconds " +
                  "0 or omitted bans permanently. Returns the new ban ids; ts_ban_delete lifts a ban. Needs " +
                  "Destructive.")]

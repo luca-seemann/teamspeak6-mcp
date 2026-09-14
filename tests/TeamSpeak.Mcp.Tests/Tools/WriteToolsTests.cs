@@ -214,7 +214,7 @@ public class WriteToolsTests
     }
 
     [Fact]
-    public async Task Over_the_web_query_there_is_no_own_session_to_protect()
+    public async Task Without_a_lasting_client_there_is_no_own_session_to_protect()
     {
         await using var harness = KickHarness(ownClientId: 5, holdsSession: false);
 
@@ -232,10 +232,28 @@ public class WriteToolsTests
 
         await Assert.ThrowsAsync<McpException>(() => tools.EditAsync(clientId: 1, databaseId: 3, description: "x", cancellationToken: Ct));
         await Assert.ThrowsAsync<McpException>(() => tools.EditAsync(databaseId: 3, description: " ", cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => tools.EditAsync(databaseId: 3, isTalker: true, cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => tools.EditAsync(databaseId: 3, cancellationToken: Ct));
         await tools.EditAsync(databaseId: 3, description: "Guild lead", cancellationToken: Ct);
 
         var sent = Assert.Single(harness.Transport.SentCommands);
         Assert.Equal(("clientdbedit", "3", "Guild lead"), (sent.Name, sent.Parameters!["cldbid"], sent.Parameters["client_description"]));
+    }
+
+    [Fact]
+    public async Task Grants_and_withdraws_talker_status_on_a_connected_client_alone()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Write);
+        harness.Transport.Returns("clientedit", ToolHarness.Records());
+        var tools = new ClientAdminTools(harness.Executor);
+
+        await tools.EditAsync(clientId: 61, isTalker: true, cancellationToken: Ct);
+        await tools.EditAsync(clientId: 61, isTalker: false, cancellationToken: Ct);
+
+        var sent = harness.Transport.SentCommands;
+        Assert.Equal(("61", "1"), (sent[0].Parameters!["clid"], sent[0].Parameters!["client_is_talker"]));
+        Assert.Equal("0", sent[1].Parameters!["client_is_talker"]);
+        Assert.False(sent[0].Parameters!.ContainsKey("client_description"));
     }
 
     private static ToolHarness ChannelMessageHarness(string currentChannel = "1", bool holdsSession = true)
@@ -264,6 +282,17 @@ public class WriteToolsTests
         Assert.Equal("1", sent[4].Parameters!["cid"]);
         Assert.Equal(1, harness.Transport.ExclusiveSequences);
         Assert.Equal("Sent the message to channel 3.", result.Done);
+    }
+
+    [Fact]
+    public async Task A_channel_message_refuses_when_the_own_client_is_on_another_virtual_server()
+    {
+        await using var harness = ChannelMessageHarness();
+
+        await Assert.ThrowsAsync<McpException>(() => new ClientAdminTools(harness.Executor)
+            .SendMessageAsync("channel", "hi", channelId: 3, virtualServerId: 2, cancellationToken: Ct));
+
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name is "clientmove" or "sendtextmessage");
     }
 
     [Fact]
@@ -302,13 +331,13 @@ public class WriteToolsTests
     }
 
     [Fact]
-    public async Task A_channel_message_needs_a_session_and_is_refused_over_the_web_query()
+    public async Task A_channel_message_is_refused_by_a_transport_without_a_lasting_client()
     {
         await using var harness = ChannelMessageHarness(holdsSession: false);
 
         var ex = await Assert.ThrowsAsync<McpException>(() => new ClientAdminTools(harness.Executor).SendMessageAsync("channel", "hi", channelId: 3, cancellationToken: Ct));
 
-        Assert.Contains("SSH", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Nothing was sent", ex.Message, StringComparison.Ordinal);
         Assert.Empty(harness.Transport.SentCommands);
     }
 

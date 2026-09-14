@@ -48,7 +48,7 @@ All notable changes to this project are documented here. The format follows
   API keys, query logins and log entries. Each action takes its safety level from the command
   catalog. Deleting a virtual server, deploying a snapshot and resetting permissions also require the
   virtual server's exact name. Channel messages move the query session into the channel and back as
-  one uninterrupted sequence on the session, which needs a profile that uses SSH.
+  one uninterrupted sequence on the session, over SSH and the WebQuery alike.
 - `IQueryTransport.RunExclusiveAsync`, which runs several commands without any other caller's
   command in between, and `HoldsSession`, which says whether the interface has a session to protect.
 - A readable explanation for `1541 invalid parameter size`, which the server returns for names that
@@ -80,8 +80,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed (review of phase 6)
 
-- `ts_client_edit` no longer offers `isTalker`: TeamSpeak 6 refuses `client_is_talker=1` with
-  `1538 invalid parameter`, even in a channel that needs talk power.
+- `ts_client_edit` explains that talker status can only be granted to a client lacking the talk
+  power its channel needs. For anyone who can already speak, the server refuses it with `1538`.
+- Channel messages work over the WebQuery. They had been refused there on the untested assumption
+  that the WebQuery keeps no client of its own. Its internal client in fact keeps its channel between
+  requests, and its sequences are serialised like SSH's.
+- `ts_ban_add` warns that banning a client also bans its IP address, which behind NAT or Docker port
+  publishing may be shared by everyone.
 - `ts_message_send` takes a `channelPassword` for password-protected channels.
 - `ts_apikey_list` and `ts_apikey_manage` take a `virtualServerId`.
 

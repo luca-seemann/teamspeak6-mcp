@@ -25,6 +25,7 @@ public sealed class HttpQueryTransport : IQueryTransport
     private readonly HttpClient _http;
     private readonly bool _ownsClient;
     private readonly FloodGuard _guard;
+    private readonly SemaphoreSlim _sequenceGate = new(1, 1);
     private readonly int _defaultVirtualServerId;
 
     /// <summary>Creates a transport for a profile.</summary>
@@ -82,18 +83,33 @@ public sealed class HttpQueryTransport : IQueryTransport
     public bool SupportsEvents => false;
 
     /// <inheritdoc />
-    /// <remarks>Always <see langword="false"/>: every request stands on its own.</remarks>
-    public bool HoldsSession => false;
+    /// <remarks>
+    /// Always <see langword="true"/>. Requests stand on their own at the HTTP level, but the server
+    /// answers them through one internal query client per key that keeps its client id and its
+    /// channel between requests: moving it with one request and asking <c>whoami</c> in the next
+    /// shows it in the new channel.
+    /// </remarks>
+    public bool HoldsSession => true;
 
     /// <inheritdoc />
     /// <remarks>
-    /// With no session there is no state for another caller to change, so the commands simply run as
-    /// ordinary requests.
+    /// The virtual server travels in each request's URL, so the one piece of shared state is the
+    /// internal client's channel, which only sequences change. Sequences are therefore serialised
+    /// among themselves, while ordinary requests keep running alongside them.
     /// </remarks>
-    public Task<T> RunExclusiveAsync<T>(Func<QuerySender, Task<T>> work, CancellationToken cancellationToken = default)
+    public async Task<T> RunExclusiveAsync<T>(Func<QuerySender, Task<T>> work, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(work);
-        return work(SendAsync);
+
+        await _sequenceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await work(SendAsync).ConfigureAwait(false);
+        }
+        finally
+        {
+            _sequenceGate.Release();
+        }
     }
 
     /// <inheritdoc />
@@ -128,6 +144,7 @@ public sealed class HttpQueryTransport : IQueryTransport
     public ValueTask DisposeAsync()
     {
         _guard.Dispose();
+        _sequenceGate.Dispose();
 
         if (_ownsClient)
         {

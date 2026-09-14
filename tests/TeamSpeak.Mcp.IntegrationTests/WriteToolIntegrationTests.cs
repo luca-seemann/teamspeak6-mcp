@@ -377,6 +377,68 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         Assert.Equal(person.ChannelId, await ChannelOfPersonAsync());
     }
 
+    [RequiresTeamSpeakServerFact]
+    public async Task A_client_without_enough_talk_power_can_be_made_a_talker_in_a_moderated_channel()
+    {
+        await using var connections = Connections();
+        var executor = Executor(connections);
+        var admin = new ClientAdminTools(executor);
+        var clients = new ClientTools(executor);
+        const int NeededTalkPower = 100;
+
+        // Talker status only exists for someone who could not otherwise speak in the channel.
+        OnlineClient? person = null;
+        foreach (var candidate in (await clients.ListClientsAsync(virtualServerId: 1, cancellationToken: Ct)).Clients)
+        {
+            var power = (await clients.ClientInfoAsync(candidate.ClientId, 1, cancellationToken: Ct)).Fields.GetValueOrDefault("client_talk_power", "0");
+            if (int.TryParse(power, CultureInfo.InvariantCulture, out var value) && value < NeededTalkPower)
+            {
+                person = candidate;
+                break;
+            }
+        }
+
+        if (person is null)
+        {
+            Assert.Skip($"No connected client has less than {NeededTalkPower} talk power, so nobody can be made a talker.");
+        }
+
+        var channelAdmin = new ChannelAdminTools(executor);
+        var moderated = Id(
+            await channelAdmin.CreateAsync(
+                Unique("moderated"),
+                properties: new Dictionary<string, string>
+                {
+                    ["channel_flag_permanent"] = "1",
+                    ["channel_needed_talk_power"] = NeededTalkPower.ToString(CultureInfo.InvariantCulture),
+                },
+                virtualServerId: 1,
+                cancellationToken: Ct),
+            "cid");
+
+        try
+        {
+            await admin.MoveAsync(person.ClientId, moderated, virtualServerId: 1, cancellationToken: Ct);
+
+            await admin.EditAsync(clientId: person.ClientId, isTalker: true, virtualServerId: 1, cancellationToken: Ct);
+            Assert.Equal("1", (await clients.ClientInfoAsync(person.ClientId, 1, cancellationToken: Ct)).Fields["client_is_talker"]);
+
+            await admin.EditAsync(clientId: person.ClientId, isTalker: false, virtualServerId: 1, cancellationToken: Ct);
+            Assert.Equal("0", (await clients.ClientInfoAsync(person.ClientId, 1, cancellationToken: Ct)).Fields["client_is_talker"]);
+        }
+        finally
+        {
+            try
+            {
+                await admin.MoveAsync(person.ClientId, person.ChannelId, virtualServerId: 1, cancellationToken: Ct);
+            }
+            finally
+            {
+                await channelAdmin.DeleteAsync(moderated, force: true, virtualServerId: 1, cancellationToken: Ct);
+            }
+        }
+    }
+
     [RequiresDisruptiveLiveTestFact]
     public async Task A_connected_client_receives_an_offline_message_and_can_be_kicked_off_the_server()
     {

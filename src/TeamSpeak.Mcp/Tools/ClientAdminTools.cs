@@ -116,22 +116,26 @@ public sealed class ClientAdminTools(QueryExecutor executor)
         return ActionResult.From($"Kicked client {clientId} from the {choice}.", records);
     }
 
-    /// <summary>Changes a client's description.</summary>
+    /// <summary>Changes a client's description or talker status.</summary>
     /// <remarks>
-    /// The reference also lists <c>client_is_talker</c> for <c>clientedit</c>, but TeamSpeak 6 refuses
-    /// setting it with <c>1538 invalid parameter</c>, even in a channel that needs talk power, so the
-    /// tool does not offer it. Talk power is granted as a permission instead.
+    /// Talker status only exists for a client that lacks the talk power its channel needs. Observed on a
+    /// live server: granting it to a client with 0 talk power in a channel needing 100 worked, while for a
+    /// client that could already speak the server refused <c>client_is_talker=1</c> with
+    /// <c>1538 invalid parameter</c>.
     /// </remarks>
-    [McpServerTool(Name = "ts_client_edit", Title = "Change a client's description",
+    [McpServerTool(Name = "ts_client_edit", Title = "Change a client's description or talker status",
         ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Changes a client's description, which others see in their client info, for a connected " +
-                 "client by clientId or for any known identity by databaseId. A description cannot be " +
-                 "cleared to empty; TeamSpeak treats an empty value as missing. To let someone talk in a " +
-                 "moderated channel, grant i_client_talk_power with ts_perm_set instead. Needs Write.")]
+                 "client by clientId or for any known identity by databaseId. For a connected client in a " +
+                 "moderated channel, one that needs more talk power than the client has, it can also grant " +
+                 "or withdraw talker status, which lets the client speak there anyway; the server refuses " +
+                 "that for a client that can already speak. A description cannot be cleared to empty, " +
+                 "because TeamSpeak treats an empty value as missing. Needs Write.")]
     public async Task<ActionResult> EditAsync(
         [Description("A connected client's session id.")] int? clientId = null,
         [Description("A known identity's database id, whether or not it is online.")] int? databaseId = null,
         [Description("The new description. It cannot be empty.")] string? description = null,
+        [Description("For a connected client in a moderated channel: grant (true) or withdraw (false) talker status.")] bool? isTalker = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -141,10 +145,26 @@ public sealed class ClientAdminTools(QueryExecutor executor)
             throw new McpException("Pass exactly one of clientId or databaseId.");
         }
 
-        var parameters = new Dictionary<string, string>
+        if (databaseId is not null && isTalker is not null)
         {
-            ["client_description"] = RequireText(description, nameof(description)),
-        };
+            throw new McpException("Talker status belongs to a connected client in its current channel; pass clientId.");
+        }
+
+        var parameters = new Dictionary<string, string>();
+        if (description is not null)
+        {
+            parameters["client_description"] = RequireText(description, nameof(description));
+        }
+
+        if (isTalker is { } talker)
+        {
+            parameters["client_is_talker"] = talker ? "1" : "0";
+        }
+
+        if (parameters.Count == 0)
+        {
+            throw new McpException("Pass description, isTalker, or both.");
+        }
 
         QueryCommand command = clientId is { } clid
             ? new("clientedit", new Dictionary<string, string>(parameters) { ["clid"] = Text(clid) }, VirtualServerId: virtualServerId)
@@ -183,7 +203,7 @@ public sealed class ClientAdminTools(QueryExecutor executor)
                  "into the whole virtual server's chat, or to everyone on every virtual server of the " +
                  "instance. A channel message moves this server's own query session into the channel and " +
                  "back as one uninterrupted step, because TeamSpeak delivers channel messages only to the " +
-                 "channel the sender is in; that needs a profile using the SSH interface. Needs Write.")]
+                 "channel the sender is in. Needs Write.")]
     public async Task<ActionResult> SendMessageAsync(
         [Description("client, channel, server, or instance.")] string target,
         [Description("The message text.")] string message,
@@ -286,7 +306,7 @@ public sealed class ClientAdminTools(QueryExecutor executor)
             new Dictionary<string, string> { ["clid"] = Text(clientId) },
             VirtualServerId: virtualServerId)).ConfigureAwait(false);
 
-        // Over the WebQuery there is no session of this server's own to cut off.
+        // Without a lasting client of its own there is nothing of this server's to cut off.
         if (!session.HoldsSession)
         {
             return;
@@ -331,6 +351,17 @@ public sealed class ClientAdminTools(QueryExecutor executor)
                 if (me.Count == 0)
                 {
                     throw new McpException("The server did not say which client this session is; nothing was sent.");
+                }
+
+                // Over SSH the channelinfo above has selected the right virtual server. The WebQuery's
+                // whoami has no virtual server in its path, so make sure the client it reports is on
+                // the one being addressed before moving it anywhere.
+                var expectedServer = virtualServerId ?? session.Profile.DefaultVirtualServerId;
+                if (me[0].GetInt32("virtualserver_id") != expectedServer)
+                {
+                    throw new McpException(
+                        $"This server's own client is on virtual server {me[0].GetInt32("virtualserver_id")}, not {expectedServer}, " +
+                        "so it cannot carry a message into that channel. Nothing was sent.");
                 }
 
                 var ownClientId = me[0].GetInt32("client_id");
