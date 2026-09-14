@@ -1,0 +1,693 @@
+[
+  {
+    "name": "ts_channel_info",
+    "title": "Show a channel",
+    "description": "Shows every property of one channel: name, topic, description, codec, limits, needed talk power, flags and the rest of its configuration, by their ServerQuery field names.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel id, as listed by ts_channel_list.",
+          "type": "integer"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "fields"
+      ]
+    },
+    "annotations": {
+      "title": "Show a channel",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_channel_list",
+    "title": "List channels",
+    "description": "Lists the channels of a virtual server in the order TeamSpeak clients display them, with topic, client counts, slot limit and whether each is the default, password-protected, permanent, semi-permanent or temporary. Set tree to true to nest sub-channels under their parents instead of a flat list with parent ids.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tree": {
+          "description": "Nest sub-channels under their parents. Defaults to a flat list in display order.",
+          "type": "boolean",
+          "default": false
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "parentId": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "topic": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "totalClients": {
+                "type": "integer"
+              },
+              "maxClients": {
+                "type": "integer"
+              },
+              "isDefault": {
+                "type": "boolean"
+              },
+              "hasPassword": {
+                "type": "boolean"
+              },
+              "lifetime": {
+                "type": "string"
+              },
+              "children": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/properties/channels/items"
+                },
+                "default": null
+              }
+            },
+            "required": [
+              "id",
+              "parentId",
+              "name",
+              "topic",
+              "totalClients",
+              "maxClients",
+              "isDefault",
+              "hasPassword",
+              "lifetime"
+            ]
+          }
+        }
+      },
+      "required": [
+        "channels"
+      ]
+    },
+    "annotations": {
+      "title": "List channels",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_client_info",
+    "title": "Show an online client",
+    "description": "Shows every property of one connected client: version, platform, country, connection time, idle time, groups, talk power, mute state and the rest, by their ServerQuery field names. Takes the session client id from ts_client_list, which changes on every reconnect, not the permanent database id.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "description": "The client\u0027s session id (clientId in ts_client_list), not its database id.",
+          "type": "integer"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "clientId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "fields"
+      ]
+    },
+    "annotations": {
+      "title": "Show an online client",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_client_list",
+    "title": "List online clients",
+    "description": "Lists the clients currently connected to a virtual server: nickname, the channel they are in, their session client id and permanent database id, unique identity, server groups, channel group and away status. Query clients, including this MCP server\u0027s own session, are left out unless includeQueryClients is true.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "includeQueryClients": {
+          "description": "Include ServerQuery clients such as bots and this MCP server\u0027s own session.",
+          "type": "boolean",
+          "default": false
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "clients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "clientId": {
+                "type": "integer"
+              },
+              "databaseId": {
+                "type": "integer"
+              },
+              "channelId": {
+                "type": "integer"
+              },
+              "nickname": {
+                "type": "string"
+              },
+              "uniqueId": {
+                "type": "string"
+              },
+              "isQueryClient": {
+                "type": "boolean"
+              },
+              "isAway": {
+                "type": "boolean"
+              },
+              "awayMessage": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "serverGroupIds": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "channelGroupId": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "clientId",
+              "databaseId",
+              "channelId",
+              "nickname",
+              "uniqueId",
+              "isQueryClient",
+              "isAway",
+              "awayMessage",
+              "serverGroupIds",
+              "channelGroupId"
+            ]
+          }
+        }
+      },
+      "required": [
+        "clients"
+      ]
+    },
+    "annotations": {
+      "title": "List online clients",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_instance_info",
+    "title": "Show the server instance",
+    "description": "Summarises a TeamSpeak server instance in one call: the server version and platform, uptime and totals across all virtual servers, instance-wide settings such as the file transfer port and query flood limits, and the IP addresses it listens on.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "host": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "instance": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "boundAddresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "host",
+        "instance",
+        "boundAddresses"
+      ]
+    },
+    "annotations": {
+      "title": "Show the server instance",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_profiles_list",
+    "title": "List TeamSpeak profiles",
+    "description": "Lists the TeamSpeak servers this MCP server is configured to administer, with the interface and safety level each uses. Does not contact any server. Call this first when several profiles exist and a tool needs a profile name.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "host": {
+                "type": "string"
+              },
+              "interface": {
+                "type": "string"
+              },
+              "eventsAvailable": {
+                "type": "boolean"
+              },
+              "safety": {
+                "type": "string"
+              },
+              "defaultVirtualServerId": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "name",
+              "host",
+              "interface",
+              "eventsAvailable",
+              "safety",
+              "defaultVirtualServerId"
+            ]
+          }
+        }
+      },
+      "required": [
+        "profiles"
+      ]
+    },
+    "annotations": {
+      "title": "List TeamSpeak profiles",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_query_raw",
+    "title": "Send a raw ServerQuery command",
+    "description": "Sends one TeamSpeak ServerQuery command that no dedicated tool covers, and returns the records it produces. Prefer a dedicated tool whenever one exists. The command needs the safety level of what it does: read commands need ReadOnly, changes need Write, and deleting, banning, kicking or handing out access needs Destructive, as does any command this server does not classify. Session commands (use, login, logout, quit, servernotifyregister, servernotifyunregister) are refused because the connection is shared.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command name alone, for example \u0027clientdbfind\u0027. Parameters and options go in their own arguments.",
+          "type": "string"
+        },
+        "parameters": {
+          "description": "Key/value parameters, for example {\u0022pattern\u0022: \u0022Alice\u0022}. Values are escaped automatically.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "options": {
+          "description": "Flag options, for example [\u0022-uid\u0022]. The leading dash is optional.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "command"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "safetyLevel": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "command",
+        "safetyLevel",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Send a raw ServerQuery command",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_vserver_info",
+    "title": "Show a virtual server",
+    "description": "Shows every property of one virtual server: name, welcome message, slots, uptime, packet loss and ping totals, security level, default groups, and the rest of its configuration, by their ServerQuery field names.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "fields"
+      ]
+    },
+    "annotations": {
+      "title": "Show a virtual server",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_vserver_list",
+    "title": "List virtual servers",
+    "description": "Lists the virtual servers on a TeamSpeak instance with their id, port, status, name and how many clients are online. The id is what other tools take as virtualServerId.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "virtualServers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "port": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "clientsOnline": {
+                "type": "integer"
+              },
+              "queryClientsOnline": {
+                "type": "integer"
+              },
+              "maxClients": {
+                "type": "integer"
+              },
+              "uptimeSeconds": {
+                "type": "integer"
+              },
+              "autostart": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "port",
+              "status",
+              "name",
+              "clientsOnline",
+              "queryClientsOnline",
+              "maxClients",
+              "uptimeSeconds",
+              "autostart"
+            ]
+          }
+        }
+      },
+      "required": [
+        "virtualServers"
+      ]
+    },
+    "annotations": {
+      "title": "List virtual servers",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_whoami",
+    "title": "Show the query session identity",
+    "description": "Shows who this MCP server is logged in as on a TeamSpeak server: the query login, its client and database ids, and the virtual server its session currently has selected. Useful for checking that a profile connects and with which account.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "fields"
+      ]
+    },
+    "annotations": {
+      "title": "Show the query session identity",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  }
+]

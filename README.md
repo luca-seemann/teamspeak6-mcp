@@ -99,9 +99,66 @@ If that line does not list your address, the allow list is not doing anything.
 
 ## Safety
 
-Administration tools can do real damage, so every tool is classified as **read**, **write** or
-**destructive**, and a server runs read-only unless you opt in. Tools also carry the MCP
-`readOnlyHint` / `destructiveHint` annotations so your client can prompt appropriately.
+Administration tools can do real damage, so every action is classified as `ReadOnly`, `Write` or
+`Destructive`, and a server runs read-only unless you opt in. The check happens on the server before
+anything reaches TeamSpeak; tools also carry the MCP `readOnlyHint` / `destructiveHint` annotations so
+your client can prompt appropriately.
+
+The level is set globally and can be overridden per profile, in either direction:
+
+```json
+{
+  "TeamSpeak": {
+    "Safety": "ReadOnly",
+    "Profiles": {
+      "prod":    { "Host": "ts.example.com" },
+      "staging": { "Host": "staging.example.com", "Safety": "Destructive" }
+    }
+  }
+}
+```
+
+`ts_query_raw` takes the level of the command it sends. Every one of the 143 commands in the captured
+reference is classified; anything unknown needs `Destructive`. Commands that reveal credentials — privilege key
+lists, temporary passwords, snapshots — are never `ReadOnly`, and commands that control the shared
+session (`use`, `login`, `logout`, `quit`, notification registration) are refused outright.
+
+A WebQuery API key has its own server-side scope (`read`, `write` or `manage`). A `read` key keeps a
+profile read-only even if the configuration would allow more.
+
+## Configuration
+
+Settings are read from `appsettings.json` next to the process and from environment variables
+prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment:
+
+| Setting | Environment variable | Default |
+|---|---|---|
+| `TeamSpeak:Safety` | `TSMCP_TeamSpeak__Safety` | `ReadOnly` |
+| `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | — |
+| `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | — (enables SSH) |
+| `TeamSpeak:Profiles:<name>:SshPort` | `TSMCP_TeamSpeak__Profiles__<name>__SshPort` | `10022` |
+| `TeamSpeak:Profiles:<name>:WebQueryUrl` | `TSMCP_TeamSpeak__Profiles__<name>__WebQueryUrl` | — |
+| `TeamSpeak:Profiles:<name>:ApiKey` | `TSMCP_TeamSpeak__Profiles__<name>__ApiKey` | — (enables the WebQuery) |
+| `TeamSpeak:Profiles:<name>:Transport` | `TSMCP_TeamSpeak__Profiles__<name>__Transport` | `Auto` (SSH when a password is set) |
+| `TeamSpeak:Profiles:<name>:DefaultVirtualServerId` | `TSMCP_TeamSpeak__Profiles__<name>__DefaultVirtualServerId` | `1` |
+| `TeamSpeak:Profiles:<name>:Safety` | `TSMCP_TeamSpeak__Profiles__<name>__Safety` | the global level |
+
+Each profile keeps one long-lived connection, opened on the first tool call that needs it.
+
+## Tools
+
+| Tool | What it does |
+|---|---|
+| `ts_profiles_list` | The configured servers, their interface and safety level. Contacts nothing. |
+| `ts_whoami` | Which query login this server uses, and its session. |
+| `ts_instance_info` | Version, uptime and totals, instance settings and bound addresses in one call. |
+| `ts_vserver_list` / `ts_vserver_info` | Virtual servers at a glance, or one in full. |
+| `ts_channel_list` / `ts_channel_info` | Channels in display order, flat or as a tree, or one in full. |
+| `ts_client_list` / `ts_client_info` | Who is online, with groups and away state, or one client in full. |
+| `ts_query_raw` | Any other ServerQuery command, at the safety level of that command. |
+
+Every tool except `ts_profiles_list` takes an optional `profile`, and every tool below the instance
+level an optional `virtualServerId`.
 
 ## Requirements
 
@@ -128,7 +185,10 @@ dotnet run --project src/TeamSpeak.Mcp -- --transport http --url http://127.0.0.
 To register it with Claude Code:
 
 ```bash
-claude mcp add teamspeak -- dotnet run --project /path/to/teamspeak6-mcp/src/TeamSpeak.Mcp
+claude mcp add teamspeak \
+  -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com \
+  -e TSMCP_TeamSpeak__Profiles__home__Password=<query admin password> \
+  -- dotnet run --project /path/to/teamspeak6-mcp/src/TeamSpeak.Mcp
 ```
 
 ## Repository layout

@@ -1,0 +1,192 @@
+using System.ComponentModel;
+
+using ModelContextProtocol;
+using ModelContextProtocol.Server;
+
+using TeamSpeak.Mcp.Configuration;
+using TeamSpeak.Mcp.Safety;
+using TeamSpeak.Query.Client;
+using TeamSpeak.Query.Protocol;
+
+namespace TeamSpeak.Mcp.Tools;
+
+/// <summary>Tools about the configuration, the connection and the instance as a whole.</summary>
+/// <param name="executor">The shared path to the server.</param>
+[McpServerToolType]
+public sealed class MetaTools(QueryExecutor executor)
+{
+    /// <summary>Lists the configured profiles.</summary>
+    /// <returns>The profiles, without credentials.</returns>
+    [McpServerTool(Name = "ts_profiles_list", Title = "List TeamSpeak profiles",
+        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Lists the TeamSpeak servers this MCP server is configured to administer, with the " +
+                 "interface and safety level each uses. Does not contact any server. Call this first " +
+                 "when several profiles exist and a tool needs a profile name.")]
+    public ProfileList ListProfiles()
+    {
+        var registry = executor.Connections.Profiles;
+
+        return new ProfileList(registry.Names
+            .Select(registry.Resolve)
+            .Select(profile =>
+            {
+                var transport = QueryConnectionManager.ResolveTransport(profile);
+                return new ProfileSummary(
+                    profile.Name,
+                    profile.Host,
+                    transport == PreferredTransport.Ssh ? "ssh" : "webquery",
+                    EventsAvailable: transport == PreferredTransport.Ssh,
+                    executor.Safety.LevelFor(profile.Name).ToString(),
+                    profile.DefaultVirtualServerId);
+            })
+            .ToList());
+    }
+
+    /// <summary>Shows the identity of this server's own query session.</summary>
+    /// <param name="profile">The profile.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The session's fields.</returns>
+    [McpServerTool(Name = "ts_whoami", Title = "Show the query session identity",
+        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Shows who this MCP server is logged in as on a TeamSpeak server: the query login, " +
+                 "its client and database ids, and the virtual server its session currently has " +
+                 "selected. Useful for checking that a profile connects and with which account.")]
+    public async Task<RecordResult> WhoAmIAsync(
+        [Description(ToolDescriptions.Profile)] string? profile = null,
+        CancellationToken cancellationToken = default)
+    {
+        var records = await executor.RunAsync(
+            "ts_whoami", SafetyLevel.ReadOnly, profile, new QueryCommand("whoami"), cancellationToken)
+            .ConfigureAwait(false);
+
+        return new RecordResult(records.Count > 0 ? QueryExecutor.ToFields(records[0]) : new Dictionary<string, string>());
+    }
+
+    /// <summary>Summarises the server instance.</summary>
+    /// <param name="profile">The profile.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>Version, host statistics, instance settings and bound addresses.</returns>
+    [McpServerTool(Name = "ts_instance_info", Title = "Show the server instance",
+        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Summarises a TeamSpeak server instance in one call: the server version and platform, " +
+                 "uptime and totals across all virtual servers, instance-wide settings such as the " +
+                 "file transfer port and query flood limits, and the IP addresses it listens on.")]
+    public async Task<InstanceInfo> InstanceInfoAsync(
+        [Description(ToolDescriptions.Profile)] string? profile = null,
+        CancellationToken cancellationToken = default)
+    {
+        async Task<IReadOnlyList<QueryRecord>> Run(string command) =>
+            await executor.RunAsync(
+                "ts_instance_info", SafetyLevel.ReadOnly, profile, new QueryCommand(command), cancellationToken)
+                .ConfigureAwait(false);
+
+        static IReadOnlyDictionary<string, string> First(IReadOnlyList<QueryRecord> records) =>
+            records.Count > 0 ? QueryExecutor.ToFields(records[0]) : new Dictionary<string, string>();
+
+        // Sequential on purpose: they share one paced connection, so parallel calls gain nothing.
+        var version = await Run("version").ConfigureAwait(false);
+        var host = await Run("hostinfo").ConfigureAwait(false);
+        var instance = await Run("instanceinfo").ConfigureAwait(false);
+        var bindings = await Run("bindinglist").ConfigureAwait(false);
+
+        return new InstanceInfo(
+            First(version),
+            First(host),
+            First(instance),
+            bindings.Select(binding => binding.GetString("ip")).Where(ip => ip.Length > 0).ToList());
+    }
+
+    /// <summary>Sends any ServerQuery command.</summary>
+    /// <param name="command">The command name.</param>
+    /// <param name="parameters">Key/value parameters.</param>
+    /// <param name="options">Flag options.</param>
+    /// <param name="virtualServerId">The virtual server.</param>
+    /// <param name="profile">The profile.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The records the server returned.</returns>
+    [McpServerTool(Name = "ts_query_raw", Title = "Send a raw ServerQuery command",
+        ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Sends one TeamSpeak ServerQuery command that no dedicated tool covers, and returns " +
+                 "the records it produces. Prefer a dedicated tool whenever one exists. The command " +
+                 "needs the safety level of what it does: read commands need ReadOnly, changes need " +
+                 "Write, and deleting, banning, kicking or handing out access needs Destructive, as " +
+                 "does any command this server does not classify. Session commands (use, login, " +
+                 "logout, quit, servernotifyregister, servernotifyunregister) are refused because the " +
+                 "connection is shared.")]
+    public async Task<RawQueryResult> QueryRawAsync(
+        [Description("The command name alone, for example 'clientdbfind'. Parameters and options go in their own arguments.")]
+        string command,
+        [Description("Key/value parameters, for example {\"pattern\": \"Alice\"}. Values are escaped automatically.")]
+        IReadOnlyDictionary<string, string>? parameters = null,
+        [Description("Flag options, for example [\"-uid\"]. The leading dash is optional.")]
+        IReadOnlyList<string>? options = null,
+        [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
+        [Description(ToolDescriptions.Profile)] string? profile = null,
+        CancellationToken cancellationToken = default)
+    {
+        var name = command?.Trim() ?? string.Empty;
+
+        if (name.Length == 0 || name.Any(char.IsWhiteSpace))
+        {
+            throw new McpException(
+                "Pass only the command name in 'command', for example 'clientdbfind'. " +
+                "Parameters belong in 'parameters' and flags in 'options'.");
+        }
+
+        if (CommandCatalog.IsSessionControl(name))
+        {
+            throw new McpException(
+                $"'{name}' controls the query session itself, which every tool call shares, so it is " +
+                "refused. To address a virtual server, pass virtualServerId instead of sending 'use'.");
+        }
+
+        var required = CommandCatalog.RequiredLevel(name);
+        var records = await executor.RunAsync(
+            $"ts_query_raw with '{name}'",
+            required,
+            profile,
+            new QueryCommand(name, parameters, options, virtualServerId),
+            cancellationToken).ConfigureAwait(false);
+
+        return new RawQueryResult(name, required.ToString(), records.Select(QueryExecutor.ToFields).ToList());
+    }
+}
+
+/// <summary>The configured profiles.</summary>
+/// <param name="Profiles">One entry per profile.</param>
+public sealed record ProfileList(IReadOnlyList<ProfileSummary> Profiles);
+
+/// <summary>A configured profile, without its credentials.</summary>
+/// <param name="Name">The profile name to pass to other tools.</param>
+/// <param name="Host">The server host.</param>
+/// <param name="Interface">The query interface in use: <c>ssh</c> or <c>webquery</c>.</param>
+/// <param name="EventsAvailable">Whether the interface can deliver server events.</param>
+/// <param name="Safety">The highest safety level tools may use on this profile.</param>
+/// <param name="DefaultVirtualServerId">The virtual server addressed when a tool call names none.</param>
+public sealed record ProfileSummary(
+    string Name,
+    string Host,
+    string Interface,
+    bool EventsAvailable,
+    string Safety,
+    int DefaultVirtualServerId);
+
+/// <summary>A summary of a server instance.</summary>
+/// <param name="Version">The <c>version</c> fields.</param>
+/// <param name="Host">The <c>hostinfo</c> fields: uptime and totals across virtual servers.</param>
+/// <param name="Instance">The <c>instanceinfo</c> fields: instance-wide settings.</param>
+/// <param name="BoundAddresses">The IP addresses the instance listens on.</param>
+public sealed record InstanceInfo(
+    IReadOnlyDictionary<string, string> Version,
+    IReadOnlyDictionary<string, string> Host,
+    IReadOnlyDictionary<string, string> Instance,
+    IReadOnlyList<string> BoundAddresses);
+
+/// <summary>The outcome of a raw command.</summary>
+/// <param name="Command">The command that was sent.</param>
+/// <param name="SafetyLevel">The safety level the command required.</param>
+/// <param name="Records">The records returned, by their ServerQuery field names.</param>
+public sealed record RawQueryResult(
+    string Command,
+    string SafetyLevel,
+    IReadOnlyList<IReadOnlyDictionary<string, string>> Records);

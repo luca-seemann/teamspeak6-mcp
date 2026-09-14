@@ -26,6 +26,22 @@ All notable changes to this project are documented here. The format follows
   overriding the file so credentials need not be written to disk.
 - An integration suite that runs against a live server when `TSMCP_TEST_HOST` is set and skips
   itself otherwise.
+- `QueryConnectionManager`, which opens one connection per profile on first use, shares it with
+  every caller, and resolves `PreferredTransport.Auto` to SSH whenever a password is configured.
+- Safety levels per profile, overriding the global `TeamSpeak:Safety` in either direction and
+  enforced on the server before any command is sent.
+- The first ten tools: `ts_profiles_list`, `ts_whoami`, `ts_instance_info`, `ts_vserver_list`,
+  `ts_vserver_info`, `ts_channel_list`, `ts_channel_info`, `ts_client_list`, `ts_client_info` and
+  `ts_query_raw`, with structured output and MCP annotations.
+- A command catalog giving `ts_query_raw` the safety level of each of the 143 reference commands,
+  and a snapshot test that pins the tool schemas.
+
+### Changed
+
+- The virtual server now travels with each `QueryCommand` instead of being selected on the
+  transport. `IQueryTransport.SelectVirtualServerAsync` and `VirtualServerId` are gone; the SSH
+  transport sends `use` only when needed, under the same lock as the command, so concurrent callers
+  can no longer run on each other's selection.
 
 ### Notes
 

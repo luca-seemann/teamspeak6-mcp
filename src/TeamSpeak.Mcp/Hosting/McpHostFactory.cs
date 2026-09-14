@@ -5,6 +5,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using TeamSpeak.Mcp.Configuration;
+using TeamSpeak.Mcp.Tools;
+using TeamSpeak.Query.Client;
 
 namespace TeamSpeak.Mcp.Hosting;
 
@@ -81,14 +83,21 @@ public static class McpHostFactory
     }
 
     /// <summary>
-    /// Registers the TeamSpeak options and the profile registry.
+    /// Registers the TeamSpeak options, profiles, connections, safety policy and tool executor.
     /// </summary>
     /// <param name="services">The service collection to add to.</param>
     /// <param name="configuration">The configuration to bind from.</param>
     /// <returns>The service collection, for chaining.</returns>
     /// <remarks>
+    /// <para>
     /// Profiles are validated while the registry is being built, so a mistyped host or a missing
     /// password fails at startup with a clear message rather than on the first tool call.
+    /// </para>
+    /// <para>
+    /// Everything is a singleton. The connection manager in particular must outlive any MCP
+    /// session: the Streamable HTTP transport is stateless, and a connection per session would
+    /// reconnect on nearly every call.
+    /// </para>
     /// </remarks>
     public static IServiceCollection AddTeamSpeak(IServiceCollection services, IConfiguration configuration)
     {
@@ -97,11 +106,14 @@ public static class McpHostFactory
 
         services.Configure<TeamSpeakMcpOptions>(configuration.GetSection(TeamSpeakMcpOptions.SectionName));
 
-        services.AddSingleton(provider =>
-            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<TeamSpeakMcpOptions>>()
-                    .Value
-                    .BuildRegistry());
+        services.AddSingleton(provider => Options(provider).BuildRegistry());
+        services.AddSingleton(provider => Options(provider).BuildSafetyPolicy());
+        services.AddSingleton(provider => new QueryConnectionManager(provider.GetRequiredService<ProfileRegistry>()));
+        services.AddSingleton<QueryExecutor>();
 
         return services;
+
+        static TeamSpeakMcpOptions Options(IServiceProvider provider) =>
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<TeamSpeakMcpOptions>>().Value;
     }
 }

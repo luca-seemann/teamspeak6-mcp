@@ -1,3 +1,4 @@
+using TeamSpeak.Mcp.Safety;
 using TeamSpeak.Query.Client;
 
 namespace TeamSpeak.Mcp.Configuration;
@@ -22,7 +23,7 @@ public sealed class TeamSpeakMcpOptions
     /// </remarks>
     public Dictionary<string, QueryProfileOptions> Profiles { get; } = [];
 
-    /// <summary>Gets or sets how much damage tools are allowed to do.</summary>
+    /// <summary>Gets or sets how much damage tools are allowed to do on profiles that do not say.</summary>
     public SafetyLevel Safety { get; set; } = SafetyLevel.ReadOnly;
 
     /// <summary>Turns the bound options into validated profiles.</summary>
@@ -30,6 +31,18 @@ public sealed class TeamSpeakMcpOptions
     /// <exception cref="InvalidOperationException">Thrown when a profile is unusable.</exception>
     public ProfileRegistry BuildRegistry() =>
         new(Profiles.Select(entry => entry.Value.ToProfile(entry.Key)));
+
+    /// <summary>Builds the safety policy from the global level and each profile's own setting.</summary>
+    /// <returns>The policy.</returns>
+    public SafetyPolicy BuildSafetyPolicy() =>
+        new(
+            Safety,
+            Profiles
+                .Where(entry => entry.Value.Safety is not null)
+                .ToDictionary(
+                    entry => string.IsNullOrWhiteSpace(entry.Value.Name) ? entry.Key : entry.Value.Name,
+                    entry => entry.Value.Safety!.Value,
+                    StringComparer.OrdinalIgnoreCase));
 }
 
 /// <summary>
@@ -74,6 +87,16 @@ public sealed class QueryProfileOptions
 
     /// <summary>Gets or sets how long to wait for one command to answer, in seconds.</summary>
     public int CommandTimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Gets or sets how much damage tools may do on this profile, overriding the global level.
+    /// </summary>
+    /// <remarks>
+    /// The override works in both directions: a staging server can allow destructive tools while
+    /// production stays read-only, or one production profile can be locked down below a permissive
+    /// global default.
+    /// </remarks>
+    public SafetyLevel? Safety { get; set; }
 
     /// <summary>Converts these settings into a validated profile.</summary>
     /// <param name="key">The configuration key, used when no explicit name is set.</param>
