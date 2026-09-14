@@ -149,21 +149,25 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
             (await new VirtualServerTools(executor).VirtualServerInfoAsync(1, cancellationToken: Ct)).Fields["virtualserver_default_channel_group"],
             CultureInfo.InvariantCulture);
 
+        // Not channel 1: a snapshot deploy gives every channel a new id.
+        var channel = (await new ChannelTools(executor).ListChannelsAsync(virtualServerId: 1, cancellationToken: Ct)).Channels
+            .Single(entry => entry.IsDefault).Id;
+
         // Restore whatever the identity held in the channel before, not merely the default group.
-        var before = (await new GroupTools(executor).ChannelGroupMembersAsync(channelId: 1, databaseId: identity.DatabaseId, virtualServerId: 1, cancellationToken: Ct)).Assignments;
+        var before = (await new GroupTools(executor).ChannelGroupMembersAsync(channelId: channel, databaseId: identity.DatabaseId, virtualServerId: 1, cancellationToken: Ct)).Assignments;
         var originalGroup = before.Count > 0 ? before[0].ChannelGroupId : defaultGroup;
 
         var groupId = Id(await groups.ManageChannelGroupAsync("create", Unique("channel group"), virtualServerId: 1, cancellationToken: Ct), "cgid");
 
         try
         {
-            await groups.SetChannelGroupAsync(identity.DatabaseId, 1, groupId, 1, cancellationToken: Ct);
-            var assignments = await new GroupTools(executor).ChannelGroupMembersAsync(channelId: 1, databaseId: identity.DatabaseId, virtualServerId: 1, cancellationToken: Ct);
+            await groups.SetChannelGroupAsync(identity.DatabaseId, channel, groupId, 1, cancellationToken: Ct);
+            var assignments = await new GroupTools(executor).ChannelGroupMembersAsync(channelId: channel, databaseId: identity.DatabaseId, virtualServerId: 1, cancellationToken: Ct);
             Assert.Contains(assignments.Assignments, assignment => assignment.ChannelGroupId == groupId);
         }
         finally
         {
-            await groups.SetChannelGroupAsync(identity.DatabaseId, 1, originalGroup, 1, cancellationToken: Ct);
+            await groups.SetChannelGroupAsync(identity.DatabaseId, channel, originalGroup, 1, cancellationToken: Ct);
             await groups.DeleteChannelGroupAsync(groupId, force: true, virtualServerId: 1, cancellationToken: Ct);
         }
     }

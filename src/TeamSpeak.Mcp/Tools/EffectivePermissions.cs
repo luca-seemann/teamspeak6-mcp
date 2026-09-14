@@ -22,7 +22,8 @@ public sealed partial class PermissionTools
         "(the highest value among them, or the lowest among those with the negate flag), then the " +
         "client's own permission, then its channel group in the channel, then its permission in that " +
         "channel. A skip flag on a server group or on the client's own permission keeps the two " +
-        "channel layers out. Channel permissions are requirements set on the channel, not grants. " +
+        "channel layers out, and a client holding b_client_skip_channelgroup_permissions ignores its " +
+        "channel group. Channel permissions are requirements set on the channel, not grants. " +
         "This is TeamSpeak's documented order; it was not independently verified against every " +
         "TeamSpeak 6 client behaviour.";
 
@@ -40,8 +41,8 @@ public sealed partial class PermissionTools
     [Description("Answers 'why can or can't this client do X?'. For one client identity in one channel, " +
                  "shows the value the client ends up with for a permission and every assignment that fed " +
                  "into it: each server group, the client itself, its channel group in that channel and " +
-                 "any client-in-channel permission, marking which one decided and whether a skip flag " +
-                 "kept the channel layers out. Pass permission for an exact name, or search for text in " +
+                 "any client-in-channel permission, marking which one decided and whether a skip flag or " +
+                 "b_client_skip_channelgroup_permissions kept channel values out. Pass permission for an exact name, or search for text in " +
                  "names such as 'kick'. Without channelId it uses the channel the client is in, or the " +
                  "default channel when the client is offline. Channel permissions such as the power " +
                  "needed to join are listed as requirements, not grants.")]
@@ -84,6 +85,9 @@ public sealed partial class PermissionTools
             cancellationToken).ConfigureAwait(false);
 
         var rows = records.Select(PermissionRow.From).ToList();
+        var skipsChannelGroups = await SkipsChannelGroupsAsync(databaseId, channel, definition, rows, names, virtualServerId, profile, cancellationToken)
+            .ConfigureAwait(false);
+
         if (definition is null)
         {
             var text = search!.Trim();
@@ -96,7 +100,7 @@ public sealed partial class PermissionTools
         var resolved = rows
             .GroupBy(row => row.PermissionId)
             .OrderBy(group => names.NameOf(group.Key), StringComparer.Ordinal)
-            .Select(group => Resolve(group.Key, group.ToList(), names, groups))
+            .Select(group => Resolve(group.Key, group.ToList(), names, groups, skipsChannelGroups))
             .ToList();
 
         // An exact permission nothing assigns is still an answer: the client simply does not have it.
@@ -114,7 +118,70 @@ public sealed partial class PermissionTools
             Rules);
     }
 
-    private static PermissionResolution Resolve(int id, List<PermissionRow> rows, PermissionNames names, GroupNames groups)
+    /// <summary>The permission that makes a client ignore its channel group's values.</summary>
+    private const string SkipChannelGroupPermission = "b_client_skip_channelgroup_permissions";
+
+    /// <summary>
+    /// Whether the client holds <see cref="SkipChannelGroupPermission"/>, from its server groups and its
+    /// own permission.
+    /// </summary>
+    /// <remarks>
+    /// Server Admin has it by default. Measured live: an admin with 75 talk power from Server Admin and
+    /// a channel group granting 62 keeps 75.
+    /// </remarks>
+    private async Task<bool> SkipsChannelGroupsAsync(
+        int databaseId,
+        int channel,
+        PermissionDefinition? asked,
+        List<PermissionRow> rows,
+        PermissionNames names,
+        int? virtualServerId,
+        string? profile,
+        CancellationToken cancellationToken)
+    {
+        if (!names.TryFind(SkipChannelGroupPermission, out var skipPermission))
+        {
+            return false;
+        }
+
+        // An overview of every permission, or of this one, already holds the rows; otherwise ask for them.
+        var skipRows = asked is null || asked.Id == skipPermission.Id
+            ? rows
+            : (await executor.RunAsync(
+                "ts_perm_effective",
+                SafetyLevel.ReadOnly,
+                profile,
+                new QueryCommand(
+                    "permoverview",
+                    new Dictionary<string, string>
+                    {
+                        ["cldbid"] = Text(databaseId),
+                        ["cid"] = Text(channel),
+                        ["permid"] = Text(skipPermission.Id),
+                    },
+                    VirtualServerId: virtualServerId),
+                cancellationToken).ConfigureAwait(false)).Select(PermissionRow.From).ToList();
+
+        var held = HeldValue(skipRows.Where(row => row.PermissionId == skipPermission.Id).ToList());
+        return held is > 0;
+    }
+
+    /// <summary>The value from server groups and the client's own permission, before any channel layer.</summary>
+    private static int? HeldValue(List<PermissionRow> rows)
+    {
+        int? value = null;
+
+        var serverGroups = rows.Where(row => row.Source.Kind == PermissionSourceKind.ServerGroup).ToList();
+        if (serverGroups.Count > 0)
+        {
+            var negated = serverGroups.Where(row => row.Negated).ToList();
+            value = (negated.Count > 0 ? negated.MinBy(row => row.Value) : serverGroups.MaxBy(row => row.Value))!.Value;
+        }
+
+        return rows.FirstOrDefault(row => row.Source.Kind == PermissionSourceKind.Client)?.Value ?? value;
+    }
+
+    private static PermissionResolution Resolve(int id, List<PermissionRow> rows, PermissionNames names, GroupNames groups, bool skipsChannelGroups)
     {
         PermissionRow? decided = null;
 
@@ -135,7 +202,11 @@ public sealed partial class PermissionTools
 
         if (!skip)
         {
-            decided = rows.FirstOrDefault(row => row.Source.Kind == PermissionSourceKind.ChannelGroup) ?? decided;
+            if (!skipsChannelGroups)
+            {
+                decided = rows.FirstOrDefault(row => row.Source.Kind == PermissionSourceKind.ChannelGroup) ?? decided;
+            }
+
             decided = rows.FirstOrDefault(row => row.Source.Kind == PermissionSourceKind.ChannelClient) ?? decided;
         }
 
@@ -154,6 +225,8 @@ public sealed partial class PermissionTools
                         "Set on the channel itself: a requirement others must meet, not something the client holds.",
                     PermissionSourceKind.ChannelGroup or PermissionSourceKind.ChannelClient when skip =>
                         "Ignored: a skip flag on a server group or on the client's own permission keeps channel values out.",
+                    PermissionSourceKind.ChannelGroup when skipsChannelGroups =>
+                        $"Ignored: the client holds {SkipChannelGroupPermission}, so channel group values do not count.",
                     _ => null,
                 }))
             .ToList();

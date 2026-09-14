@@ -3740,7 +3740,7 @@
   {
     "name": "ts_perm_effective",
     "title": "Explain a client\u0027s effective permissions",
-    "description": "Answers \u0027why can or can\u0027t this client do X?\u0027. For one client identity in one channel, shows the value the client ends up with for a permission and every assignment that fed into it: each server group, the client itself, its channel group in that channel and any client-in-channel permission, marking which one decided and whether a skip flag kept the channel layers out. Pass permission for an exact name, or search for text in names such as \u0027kick\u0027. Without channelId it uses the channel the client is in, or the default channel when the client is offline. Channel permissions such as the power needed to join are listed as requirements, not grants.",
+    "description": "Answers \u0027why can or can\u0027t this client do X?\u0027. For one client identity in one channel, shows the value the client ends up with for a permission and every assignment that fed into it: each server group, the client itself, its channel group in that channel and any client-in-channel permission, marking which one decided and whether a skip flag or b_client_skip_channelgroup_permissions kept channel values out. Pass permission for an exact name, or search for text in names such as \u0027kick\u0027. Without channelId it uses the channel the client is in, or the default channel when the client is offline. Channel permissions such as the power needed to join are listed as requirements, not grants.",
     "inputSchema": {
       "type": "object",
       "properties": {

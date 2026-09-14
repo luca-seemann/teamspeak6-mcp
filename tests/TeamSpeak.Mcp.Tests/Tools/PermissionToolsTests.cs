@@ -28,7 +28,8 @@ public class PermissionToolsTests
             .Returns("permissionlist", ToolHarness.Records(
                 Permission(89, "i_channel_needed_join_power"),
                 Permission(153, "i_client_kick_from_channel_power"),
-                Permission(226, "i_client_talk_power")))
+                Permission(226, "i_client_talk_power"),
+                Permission(300, "b_client_skip_channelgroup_permissions")))
             .Returns("servergrouplist", ToolHarness.Records(
                 new Dictionary<string, string> { ["sgid"] = "6", ["name"] = "Server Admin", ["type"] = "1" },
                 new Dictionary<string, string> { ["sgid"] = "7", ["name"] = "Normal", ["type"] = "1" }))
@@ -76,6 +77,25 @@ public class PermissionToolsTests
         Assert.Equal("channel group 'Guest' (8) in channel 1", talk.Contributions[1].Source);
         Assert.False(talk.Contributions[1].Decided);
         Assert.NotNull(talk.Contributions[1].Note);
+    }
+
+    [Fact]
+    public async Task A_client_holding_the_skip_channel_group_permission_keeps_its_server_group_value()
+    {
+        // Measured live: Server Admin grants 75 talk power and b_client_skip_channelgroup_permissions, a
+        // channel group grants 62, and the server computes 75.
+        await using var harness = Harness();
+        harness.Transport.Returns("permoverview", command => command.Parameters!["permid"] == "300"
+            ? ToolHarness.Records(Overview(0, 6, 0, 300, 1))
+            : ToolHarness.Records(Overview(0, 6, 0, 226, 75), Overview(3, 1, 8, 226, 62)));
+
+        var talk = Assert.Single((await Tools(harness).EffectivePermissionsAsync(
+            3, permission: "i_client_talk_power", channelId: 1, cancellationToken: TestContext.Current.CancellationToken)).Permissions);
+
+        Assert.Equal(75, talk.Value);
+        Assert.Equal("server group 'Server Admin' (6)", talk.DecidedBy);
+        Assert.False(talk.Contributions[1].Decided);
+        Assert.Contains("b_client_skip_channelgroup_permissions", talk.Contributions[1].Note, StringComparison.Ordinal);
     }
 
     [Fact]
