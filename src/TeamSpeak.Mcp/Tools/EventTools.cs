@@ -25,6 +25,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
     /// <summary>Subscribes to events.</summary>
     /// <param name="categories">The categories.</param>
     /// <param name="channelId">One channel for the channel category.</param>
+    /// <param name="textChannelId">The channel to move the event session into for textchannel messages.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -45,6 +46,8 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
     public async Task<EventSubscribeResult> SubscribeAsync(
         [Description("Categories to add: " + CategoryList + ". Omit for all.")] string[]? categories = null,
         [Description("Limit the channel category to one channel id; omit for every channel.")] int? channelId = null,
+        [Description("For the textchannel category, the channel whose chat to receive: the event session is moved into it and appears there as a query client. Omit to stay in the default channel.")]
+        int? textChannelId = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -58,7 +61,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
         var subscription = await Run(
             resolved.Name,
             "Subscribing",
-            () => hub.SubscribeAsync(resolved.Name, serverId, wanted, channelId ?? 0, cancellationToken)).ConfigureAwait(false);
+            () => hub.SubscribeAsync(resolved.Name, serverId, wanted, channelId ?? 0, textChannelId ?? 0, cancellationToken)).ConfigureAwait(false);
 
         return new EventSubscribeResult(
             View(subscription),
@@ -265,6 +268,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
             subscription.VirtualServerId,
             subscription.Categories.Select(QueryEventHub.WireName).ToList(),
             subscription.ChannelId,
+            subscription.TextChannelId,
             subscription.Since,
             subscription.SessionsOpened,
             subscription.ClientId,
@@ -277,6 +281,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
 /// <param name="VirtualServerId">The virtual server.</param>
 /// <param name="Categories">The subscribed categories.</param>
 /// <param name="ChannelId">The one channel the channel category covers; 0 for every channel.</param>
+/// <param name="TextChannelId">The channel the event session sits in for textchannel messages; 0 for the default channel.</param>
 /// <param name="Since">When its event session was opened.</param>
 /// <param name="SessionsOpened">How many sessions have carried it; above 1 means events may have been lost.</param>
 /// <param name="ClientId">The event session's client id: send private messages here to see them as textprivate events.</param>
@@ -287,6 +292,7 @@ public sealed record EventSubscriptionView(
     int VirtualServerId,
     IReadOnlyList<string> Categories,
     int ChannelId,
+    int TextChannelId,
     DateTimeOffset Since,
     int SessionsOpened,
     int? ClientId,

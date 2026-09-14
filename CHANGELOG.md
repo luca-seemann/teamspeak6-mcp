@@ -61,6 +61,11 @@ All notable changes to this project are documented here. The format follows
   - The buffer size is `TeamSpeak:EventBufferSize`.
 - `SshQueryTransport.ConnectAsync` takes a callback that prepares every session it opens, the first
   and each replacement. `QueryEventHub` and `EventBuffer` are usable without MCP.
+- Events that carry only a client id, such as a move or a client leaving, are given a
+  `client_nickname` from a per-session name cache, seeded from `clientlist` at subscribe and kept
+  current from join events, without a query per event.
+- `ts_events_subscribe` takes `textChannelId`: it moves the event session into that channel so its
+  `textchannel` events are that channel's chat, re-applied after a reconnect.
 
 ### Fixed
 

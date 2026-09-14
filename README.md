@@ -229,7 +229,13 @@ Server Admin holds by default, keeps out the channel group.
 It returns a cursor. `ts_events_poll` returns what arrived after a cursor, and `ts_events_wait` does
 the same but waits up to 60 seconds for something to arrive. Each answer carries the next cursor, so
 reading needs no session and works behind the stateless HTTP transport. Every event keeps
-TeamSpeak's notification name (for example `notifytextmessage`) and its fields.
+TeamSpeak's notification name (for example `notifytextmessage`) and its fields. Events that carry only
+a client id, such as a move, are given a `client_nickname` from a cache seeded at subscribe time and
+kept up to date from join events; a name it never learned is simply absent.
+
+`textchannel` covers the channel the event session sits in, which is the default channel unless you
+pass `textChannelId` to `ts_events_subscribe`. That moves the event session's own query client into
+the named channel, where it shows up as a query client, and follows it there after a reconnect.
 
 A few things to know:
 - **SSH only.** Events need the SSH query; the WebQuery refuses `servernotifyregister`. A profile
@@ -239,7 +245,9 @@ A few things to know:
 - **A session of its own.** Each subscribed virtual server gets its own query session, so tool calls
   moving the shared session cannot disturb it. That costs one more connection.
 - **Shared by everyone.** Subscriptions belong to the profile, not to the MCP client that made them,
-  and last until `ts_events_unsubscribe` or a restart.
+  and last until `ts_events_unsubscribe` or a restart. Over stdio each client has its own process, so
+  this is invisible; on a shared HTTP server, one client's `ts_events_unsubscribe` stops collection
+  for all of them, though reading is independent because each caller keeps its own cursor.
 - **The buffer has a limit.** Each profile keeps the last `EventBufferSize` events. A reader that
   falls behind is told how many it missed.
 - **A restart of the virtual server is recovered on its own.** Stopping and starting it silently

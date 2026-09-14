@@ -24,6 +24,8 @@ public class QueryEventHubTests
             var transport = new FakeQueryTransport()
                 .Returns("servernotifyregister", Ok)
                 .Returns("servernotifyunregister", Ok)
+                .Returns("clientlist", Ok)
+                .Returns("clientmove", Ok)
                 .Returns("whoami", new QueryResponse([new QueryRecord(new Dictionary<string, string> { ["client_id"] = (40 + Opened.Count).ToString(System.Globalization.CultureInfo.InvariantCulture) })], new QueryError(0, "ok")));
 
             // As the real transport does: register on the fresh session before handing it out.
@@ -46,7 +48,7 @@ public class QueryEventHubTests
         var sessions = new Sessions();
         await using var hub = new QueryEventHub(Registry(), 100, sessions.OpenAsync);
 
-        var subscription = await hub.SubscribeAsync("test", 1, [EventCategory.TextServer, EventCategory.Channel], channelId: 0, Ct);
+        var subscription = await hub.SubscribeAsync("test", 1, [EventCategory.TextServer, EventCategory.Channel], channelId: 0, cancellationToken: Ct);
 
         var (transport, _) = Assert.Single(sessions.Opened);
         Assert.Equal(["textserver", "channel id=0"], Notifies(transport).Select(Registration));
@@ -103,6 +105,45 @@ public class QueryEventHubTests
     }
 
     [Fact]
+    public async Task Events_carrying_only_a_client_id_are_given_the_cached_nickname()
+    {
+        FakeQueryTransport? transport = null;
+        await using var hub = new QueryEventHub(Registry(), 100, async (profile, onOpened, token) =>
+        {
+            transport = new FakeQueryTransport()
+                .Returns("servernotifyregister", Ok)
+                .Returns("whoami", new QueryResponse([new QueryRecord(new Dictionary<string, string> { ["client_id"] = "9" })], new QueryError(0, "ok")))
+                .Returns("clientlist", new QueryResponse(
+                    [new QueryRecord(new Dictionary<string, string> { ["clid"] = "42", ["client_nickname"] = "Bob" })],
+                    new QueryError(0, "ok")));
+            await onOpened(transport.SendAsync, token);
+            return transport;
+        });
+        await hub.SubscribeAsync("test", 1, [EventCategory.Channel], cancellationToken: Ct);
+
+        // A move carries only clid; the nickname must come from the seeded cache.
+        transport!.Push(new QueryEvent("notifyclientmoved", [new Dictionary<string, string> { ["clid"] = "42", ["ctid"] = "5" }], DateTimeOffset.UtcNow));
+        var page = await hub.BufferFor("test").WaitAsync(0, 10, TimeSpan.FromSeconds(5), cancellationToken: Ct);
+
+        var moved = Assert.Single(page.Events);
+        Assert.Equal("Bob", moved.Event.Records[0]["client_nickname"]);
+    }
+
+    [Fact]
+    public async Task Subscribing_with_a_text_channel_moves_the_event_session_into_it()
+    {
+        var sessions = new Sessions();
+        await using var hub = new QueryEventHub(Registry(), 100, sessions.OpenAsync);
+
+        await hub.SubscribeAsync("test", 1, [EventCategory.TextChannel], textChannelId: 7, cancellationToken: Ct);
+
+        var (transport, _) = Assert.Single(sessions.Opened);
+        var move = Assert.Single(transport.SentCommands, command => command.Name == "clientmove");
+        Assert.Equal(("7", 1), (move.Parameters!["cid"], move.VirtualServerId));
+        Assert.Equal(7, Assert.Single(hub.Subscriptions("test")).TextChannelId);
+    }
+
+    [Fact]
     public async Task Unsubscribing_some_categories_unregisters_them_and_the_last_one_closes_the_session()
     {
         var sessions = new Sessions();
@@ -126,9 +167,9 @@ public class QueryEventHubTests
     {
         var sessions = new Sessions();
         await using var hub = new QueryEventHub(Registry(), 100, sessions.OpenAsync);
-        await hub.SubscribeAsync("test", 1, [EventCategory.Channel], channelId: 0, Ct);
+        await hub.SubscribeAsync("test", 1, [EventCategory.Channel], channelId: 0, cancellationToken: Ct);
 
-        var subscription = await hub.SubscribeAsync("test", 1, [EventCategory.Channel], channelId: 7, Ct);
+        var subscription = await hub.SubscribeAsync("test", 1, [EventCategory.Channel], channelId: 7, cancellationToken: Ct);
 
         var (transport, _) = Assert.Single(sessions.Opened);
         Assert.Equal(
@@ -239,6 +280,21 @@ public class QueryEventHubTests
 
         Assert.Contains("SSH", refused.Message, StringComparison.Ordinal);
         Assert.Empty(sessions.Opened);
+    }
+
+    [Fact]
+    public async Task Concurrent_subscribes_to_one_virtual_server_open_a_single_session_with_all_categories()
+    {
+        var sessions = new Sessions();
+        await using var hub = new QueryEventHub(Registry(), 100, sessions.OpenAsync);
+
+        var categories = new[] { EventCategory.Server, EventCategory.Channel, EventCategory.Bans, EventCategory.TextServer };
+        await Task.WhenAll(categories.Select(category =>
+            hub.SubscribeAsync("test", 1, [category], cancellationToken: Ct)));
+
+        // The gate must have serialised them onto one session that ends up holding every category.
+        Assert.Single(sessions.Opened);
+        Assert.Equal(categories.Order(), Assert.Single(hub.Subscriptions("test")).Categories.Order());
     }
 
     [Fact]

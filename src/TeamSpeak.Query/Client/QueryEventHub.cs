@@ -153,6 +153,10 @@ public sealed class QueryEventHub : IAsyncDisposable
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="categories">The categories to add. Categories already subscribed stay.</param>
     /// <param name="channelId">For <see cref="EventCategory.Channel"/>, one channel; 0 for every channel.</param>
+    /// <param name="textChannelId">
+    /// For <see cref="EventCategory.TextChannel"/>, the channel whose chat to receive: the event
+    /// session is moved into it. 0 leaves it in the default channel.
+    /// </param>
     /// <param name="cancellationToken">Abandons the attempt.</param>
     /// <returns>The subscription as it now stands.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the profile has no SSH access.</exception>
@@ -162,6 +166,7 @@ public sealed class QueryEventHub : IAsyncDisposable
         int virtualServerId,
         IReadOnlyCollection<EventCategory> categories,
         int channelId = 0,
+        int textChannelId = 0,
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed != 0, this);
@@ -189,6 +194,7 @@ public sealed class QueryEventHub : IAsyncDisposable
             if (session.Transport is null)
             {
                 session.Replace(categories, channelId);
+                session.TextChannelId = textChannelId;
 
                 try
                 {
@@ -198,6 +204,7 @@ public sealed class QueryEventHub : IAsyncDisposable
                 catch
                 {
                     session.Replace([], 0);
+                    session.TextChannelId = 0;
                     throw;
                 }
 
@@ -222,6 +229,23 @@ public sealed class QueryEventHub : IAsyncDisposable
             {
                 await SendAsync(transport, Register(category, virtualServerId, channelId), cancellationToken).ConfigureAwait(false);
                 session.Add(category, channelId);
+            }
+
+            // Moving the event session to a different text channel on an already-open session.
+            if (textChannelId > 0 && textChannelId != session.TextChannelId && session.ClientId is { } self)
+            {
+                await SendAsync(
+                    transport,
+                    new QueryCommand(
+                        "clientmove",
+                        new Dictionary<string, string>
+                        {
+                            ["clid"] = self.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            ["cid"] = textChannelId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        },
+                        VirtualServerId: virtualServerId),
+                    cancellationToken).ConfigureAwait(false);
+                session.TextChannelId = textChannelId;
             }
 
             return session.Snapshot();
@@ -348,6 +372,37 @@ public sealed class QueryEventHub : IAsyncDisposable
                 ? clientId
                 : null;
 
+            // Seed the client-name cache so events that carry only a client id can still be given a
+            // nickname. Best effort: a failure here must not fail the subscription.
+            var clients = await send(new QueryCommand("clientlist", VirtualServerId: session.VirtualServerId), cancellationToken).ConfigureAwait(false);
+            if (clients.Error.IsSuccess)
+            {
+                session.SeedNames(clients.Records);
+            }
+
+            // For text-channel messages of a chosen channel, the event session's own client has to sit
+            // in that channel. Re-applied here so it survives a reconnect. Best effort.
+            if (session.TextChannelId > 0 && session.ClientId is { } self)
+            {
+                var move = await send(
+                    new QueryCommand(
+                        "clientmove",
+                        new Dictionary<string, string>
+                        {
+                            ["clid"] = self.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            ["cid"] = session.TextChannelId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        },
+                        VirtualServerId: session.VirtualServerId),
+                    cancellationToken).ConfigureAwait(false);
+
+                // 770 "already member of channel" is success for our purpose.
+                if (!move.Error.IsSuccess && move.Error.Id != 770)
+                {
+                    session.RecordError($"Could not move the event session into channel {session.TextChannelId}: {move.Error.Message}");
+                    return;
+                }
+            }
+
             session.RecordError(null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -419,7 +474,7 @@ public sealed class QueryEventHub : IAsyncDisposable
             await foreach (var notification in transport.GetEventsAsync(stop).ConfigureAwait(false))
             {
                 session.RecordEvent();
-                buffer.Append(session.VirtualServerId, notification);
+                buffer.Append(session.VirtualServerId, session.Track(notification));
             }
         }
         catch (OperationCanceledException)
@@ -509,6 +564,7 @@ public sealed class QueryEventHub : IAsyncDisposable
     {
         private readonly HashSet<EventCategory> _categories = [];
         private readonly Lock _health = new();
+        private readonly Dictionary<int, string> _clientNames = [];
         private int _sessionsOpened;
         private string? _lastError;
         private DateTimeOffset? _lastEventAt;
@@ -529,6 +585,9 @@ public sealed class QueryEventHub : IAsyncDisposable
         public CancellationTokenSource Stop { get; private set; } = new();
 
         public int ChannelId { get; private set; }
+
+        /// <summary>The channel the event session's own client is moved into, for text-channel events; 0 for none.</summary>
+        public int TextChannelId { get; set; }
 
         public DateTimeOffset Since { get; set; }
 
@@ -575,6 +634,100 @@ public sealed class QueryEventHub : IAsyncDisposable
 
         public void CountOpened() => Interlocked.Increment(ref _sessionsOpened);
 
+        /// <summary>Fills the client-name cache from a <c>clientlist</c> response.</summary>
+        public void SeedNames(IReadOnlyList<QueryRecord> clients)
+        {
+            lock (_clientNames)
+            {
+                _clientNames.Clear();
+                foreach (var client in clients)
+                {
+                    var clid = client.GetInt32("clid");
+                    var name = client.GetString("client_nickname");
+                    if (clid > 0 && name.Length > 0)
+                    {
+                        _clientNames[clid] = name;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Updates the name cache from an event and returns it with a <c>client_nickname</c> added
+        /// where a record carries only a client id.
+        /// </summary>
+        /// <remarks>
+        /// Best effort: some events (a move, a client leaving) carry only <c>clid</c>. Names are
+        /// filled from what earlier events and the initial <c>clientlist</c> taught, never by asking
+        /// the server per event, which would be one query per event and could flood.
+        /// </remarks>
+        public QueryEvent Track(QueryEvent notification)
+        {
+            // Learn from events that carry both a client id and a name.
+            foreach (var record in notification.Records)
+            {
+                if (record.TryGetValue("clid", out var clidText)
+                    && int.TryParse(clidText, System.Globalization.CultureInfo.InvariantCulture, out var clid)
+                    && record.TryGetValue("client_nickname", out var name)
+                    && !string.IsNullOrEmpty(name))
+                {
+                    lock (_clientNames)
+                    {
+                        _clientNames[clid] = name;
+                    }
+                }
+            }
+
+            var changed = false;
+            var enriched = new List<IReadOnlyDictionary<string, string>>(notification.Records.Count);
+            foreach (var record in notification.Records)
+            {
+                if (NameFor(record) is { } added)
+                {
+                    enriched.Add(new Dictionary<string, string>(record) { ["client_nickname"] = added });
+                    changed = true;
+                }
+                else
+                {
+                    enriched.Add(record);
+                }
+            }
+
+            // A client that just left will not be referenced again; drop it so the cache does not grow.
+            if (notification.Name == "notifyclientleftview")
+            {
+                foreach (var record in notification.Records)
+                {
+                    if (record.TryGetValue("clid", out var clidText)
+                        && int.TryParse(clidText, System.Globalization.CultureInfo.InvariantCulture, out var clid))
+                    {
+                        lock (_clientNames)
+                        {
+                            _clientNames.Remove(clid);
+                        }
+                    }
+                }
+            }
+
+            return changed ? notification with { Records = enriched } : notification;
+        }
+
+        /// <summary>The cached nickname to add to a record, or null when it has one or none is known.</summary>
+        private string? NameFor(IReadOnlyDictionary<string, string> record)
+        {
+            if (record.ContainsKey("client_nickname")
+                || !record.TryGetValue("clid", out var clidText)
+                || !int.TryParse(clidText, System.Globalization.CultureInfo.InvariantCulture, out var clid))
+            {
+                return null;
+            }
+
+            lock (_clientNames)
+            {
+                return _clientNames.TryGetValue(clid, out var name) ? name : null;
+            }
+        }
+
         /// <summary>Records the last event's arrival, for the health view.</summary>
         public void RecordEvent()
         {
@@ -600,6 +753,7 @@ public sealed class QueryEventHub : IAsyncDisposable
             Pump = null;
             Watchdog = null;
             ClientId = null;
+            TextChannelId = 0;
             Stop.Dispose();
             Stop = new CancellationTokenSource();
             Interlocked.Exchange(ref _sessionsOpened, 0);
@@ -608,6 +762,11 @@ public sealed class QueryEventHub : IAsyncDisposable
             {
                 _lastError = null;
                 _lastEventAt = null;
+            }
+
+            lock (_clientNames)
+            {
+                _clientNames.Clear();
             }
         }
 
@@ -620,6 +779,7 @@ public sealed class QueryEventHub : IAsyncDisposable
                     VirtualServerId,
                     [.. Categories().Order()],
                     ChannelId,
+                    TextChannelId,
                     Since,
                     Volatile.Read(ref _sessionsOpened),
                     ClientId,
@@ -635,6 +795,7 @@ public sealed class QueryEventHub : IAsyncDisposable
 /// <param name="VirtualServerId">The virtual server.</param>
 /// <param name="Categories">The subscribed categories.</param>
 /// <param name="ChannelId">The channel the channel category is limited to; 0 for every channel.</param>
+/// <param name="TextChannelId">The channel the event session sits in for text-channel messages; 0 for the default channel.</param>
 /// <param name="Since">When the event session was opened.</param>
 /// <param name="SessionsOpened">
 /// How many sessions have carried the subscription. Anything above one means the connection was
@@ -655,6 +816,7 @@ public sealed record EventSubscription(
     int VirtualServerId,
     IReadOnlyList<EventCategory> Categories,
     int ChannelId,
+    int TextChannelId,
     DateTimeOffset Since,
     int SessionsOpened,
     int? ClientId,

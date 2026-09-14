@@ -3027,6 +3027,9 @@
               "channelId": {
                 "type": "integer"
               },
+              "textChannelId": {
+                "type": "integer"
+              },
               "since": {
                 "type": "string",
                 "format": "date-time"
@@ -3061,6 +3064,7 @@
               "virtualServerId",
               "categories",
               "channelId",
+              "textChannelId",
               "since",
               "sessionsOpened",
               "clientId",
@@ -3131,6 +3135,9 @@
               "channelId": {
                 "type": "integer"
               },
+              "textChannelId": {
+                "type": "integer"
+              },
               "since": {
                 "type": "string",
                 "format": "date-time"
@@ -3165,6 +3172,7 @@
               "virtualServerId",
               "categories",
               "channelId",
+              "textChannelId",
               "since",
               "sessionsOpened",
               "clientId",
@@ -3228,6 +3236,14 @@
           ],
           "default": null
         },
+        "textChannelId": {
+          "description": "For the textchannel category, the channel whose chat to receive: the event session is moved into it and appears there as a query client. Omit to stay in the default channel.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
         "virtualServerId": {
           "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
           "type": [
@@ -3264,6 +3280,9 @@
             "channelId": {
               "type": "integer"
             },
+            "textChannelId": {
+              "type": "integer"
+            },
             "since": {
               "type": "string",
               "format": "date-time"
@@ -3298,6 +3317,7 @@
             "virtualServerId",
             "categories",
             "channelId",
+            "textChannelId",
             "since",
             "sessionsOpened",
             "clientId",
@@ -3390,6 +3410,9 @@
             "channelId": {
               "type": "integer"
             },
+            "textChannelId": {
+              "type": "integer"
+            },
             "since": {
               "type": "string",
               "format": "date-time"
@@ -3424,6 +3447,7 @@
             "virtualServerId",
             "categories",
             "channelId",
+            "textChannelId",
             "since",
             "sessionsOpened",
             "clientId",
@@ -3575,6 +3599,9 @@
               "channelId": {
                 "type": "integer"
               },
+              "textChannelId": {
+                "type": "integer"
+              },
               "since": {
                 "type": "string",
                 "format": "date-time"
@@ -3609,6 +3636,7 @@
               "virtualServerId",
               "categories",
               "channelId",
+              "textChannelId",
               "since",
               "sessionsOpened",
               "clientId",
