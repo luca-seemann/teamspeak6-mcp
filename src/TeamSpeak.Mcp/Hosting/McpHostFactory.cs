@@ -109,6 +109,7 @@ public static class McpHostFactory
         services.AddSingleton(provider => Options(provider).BuildRegistry());
         services.AddSingleton(provider => Options(provider).BuildSafetyPolicy());
         services.AddSingleton(provider => new QueryConnectionManager(provider.GetRequiredService<ProfileRegistry>()));
+        services.AddSingleton(provider => new QueryEventHub(provider.GetRequiredService<ProfileRegistry>(), Options(provider).EventBufferSize));
         services.AddSingleton<QueryExecutor>();
         services.AddSingleton<PermissionNameCache>();
         return services;

@@ -61,11 +61,20 @@ public sealed class SshQueryTransport : IQueryTransport
     // before anything else is sent on it.
     private volatile bool _desynchronized;
 
-    private SshQueryTransport(QueryProfile profile, SshClient client, ShellStream shell)
+    // Run on every fresh session before anything else is sent on it: the first one and each
+    // replacement. Registrations such as servernotifyregister live and die with a session.
+    private readonly Func<QuerySender, CancellationToken, Task>? _onSessionOpened;
+
+    private SshQueryTransport(
+        QueryProfile profile,
+        SshClient client,
+        ShellStream shell,
+        Func<QuerySender, CancellationToken, Task>? onSessionOpened)
     {
         _profile = profile;
         _client = client;
         _shell = shell;
+        _onSessionOpened = onSessionOpened;
         _guard = new FloodGuard(profile.CommandInterval);
         _reconnect = new ReconnectPolicy();
         _commandTimeout = profile.CommandTimeout;
@@ -113,8 +122,24 @@ public sealed class SshQueryTransport : IQueryTransport
     /// <param name="cancellationToken">Abandons the connection attempt.</param>
     /// <returns>A connected transport.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the profile has no password.</exception>
+    public static Task<SshQueryTransport> ConnectAsync(
+        QueryProfile profile,
+        CancellationToken cancellationToken = default) =>
+        ConnectAsync(profile, onSessionOpened: null, cancellationToken);
+
+    /// <summary>Opens a session against a profile, preparing every session it opens.</summary>
+    /// <param name="profile">The server to connect to. Must have a password.</param>
+    /// <param name="onSessionOpened">
+    /// Runs on each fresh session before any other command is sent on it: once now, and again after
+    /// every reconnect. It sends through the sender it is given. When it fails, connecting fails, and
+    /// a reconnect attempt counts as failed.
+    /// </param>
+    /// <param name="cancellationToken">Abandons the connection attempt.</param>
+    /// <returns>A connected transport.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the profile has no password.</exception>
     public static async Task<SshQueryTransport> ConnectAsync(
         QueryProfile profile,
+        Func<QuerySender, CancellationToken, Task>? onSessionOpened,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -126,7 +151,27 @@ public sealed class SshQueryTransport : IQueryTransport
         }
 
         var (client, shell) = await OpenAsync(profile, cancellationToken).ConfigureAwait(false);
-        var transport = new SshQueryTransport(profile, client, shell);
+        var transport = new SshQueryTransport(profile, client, shell, onSessionOpened);
+
+        if (onSessionOpened is not null)
+        {
+            try
+            {
+                await transport.RunExclusiveAsync(
+                    async send =>
+                    {
+                        await onSessionOpened(send, cancellationToken).ConfigureAwait(false);
+                        return true;
+                    },
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                await transport.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
+        }
+
         transport.StartKeepAlive();
         return transport;
     }
@@ -363,6 +408,13 @@ public sealed class SshQueryTransport : IQueryTransport
                     _selectedVirtualServerId = 0;
                     _desynchronized = false;
                     _readerLoop = Task.Run(() => ReadLoopAsync(_shutdown.Token), CancellationToken.None);
+
+                    // Still holding the slot, so the session is prepared before any caller's command.
+                    if (_onSessionOpened is not null)
+                    {
+                        await _onSessionOpened(SendHoldingSlotAsync, cancellationToken).ConfigureAwait(false);
+                    }
+
                     break;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)

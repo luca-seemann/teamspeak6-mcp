@@ -13,6 +13,7 @@ public sealed class FakeQueryTransport : IQueryTransport
 {
     private readonly Dictionary<string, Func<QueryCommand, QueryResponse>> _responses = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<QueryCommand> _sent = [];
+    private readonly System.Threading.Channels.Channel<QueryEvent> _events = System.Threading.Channels.Channel.CreateUnbounded<QueryEvent>();
 
     /// <summary>Initialises a fake that reports the given event support.</summary>
     /// <param name="supportsEvents">What <see cref="SupportsEvents"/> reports.</param>
@@ -70,18 +71,25 @@ public sealed class FakeQueryTransport : IQueryTransport
             : new QueryResponse([], new QueryError(256, "command not found")));
     }
 
+    /// <summary>Delivers an event to whoever reads <see cref="GetEventsAsync"/>, as the server would.</summary>
+    /// <param name="notification">The event.</param>
+    public void Push(QueryEvent notification) => _events.Writer.TryWrite(notification);
+
     /// <inheritdoc />
     public async IAsyncEnumerable<QueryEvent> GetEventsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        yield break;
+        await foreach (var notification in _events.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        {
+            yield return notification;
+        }
     }
 
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         IsDisposed = true;
+        _events.Writer.TryComplete();
         return ValueTask.CompletedTask;
     }
 }

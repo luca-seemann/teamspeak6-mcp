@@ -53,6 +53,14 @@ All notable changes to this project are documented here. The format follows
   command in between, and `HoldsSession`, which says whether the interface has a session to protect.
 - A readable explanation for `1541 invalid parameter size`, which the server returns for names that
   are too long.
+- Events: `ts_events_subscribe`, `ts_events_poll`, `ts_events_wait`, `ts_events_unsubscribe` and
+  `ts_events_status`, for 76 tools in all.
+  - Each subscribed virtual server gets a dedicated SSH session, and the events go into a numbered
+    buffer per profile, read with a cursor.
+  - Categories follow what each registration was measured to deliver on 6.0.0-beta12.1.
+  - The buffer size is `TeamSpeak:EventBufferSize`.
+- `SshQueryTransport.ConnectAsync` takes a callback that prepares every session it opens, the first
+  and each replacement. `QueryEventHub` and `EventBuffer` are usable without MCP.
 
 ### Fixed
 

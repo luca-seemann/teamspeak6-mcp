@@ -26,6 +26,9 @@ public sealed class TeamSpeakMcpOptions
     /// <summary>Gets or sets how much damage tools are allowed to do on profiles that do not say.</summary>
     public SafetyLevel Safety { get; set; } = SafetyLevel.ReadOnly;
 
+    /// <summary>Gets or sets how many events each profile keeps for callers to read.</summary>
+    public int EventBufferSize { get; set; } = QueryEventHub.DefaultCapacity;
+
     /// <summary>Turns the bound options into validated profiles.</summary>
     /// <returns>The profile registry.</returns>
     /// <exception cref="InvalidOperationException">Thrown when a profile is unusable.</exception>

@@ -2906,6 +2906,613 @@
     }
   },
   {
+    "name": "ts_events_poll",
+    "title": "Read collected server events",
+    "description": "Returns the events collected after a cursor, oldest first, without waiting. Pass the nextCursor of the previous answer as \u0027after\u0027 to continue. Each event has TeamSpeak\u0027s notification name, for example notifytextmessage or notifyclientmoved, its categories and its fields. \u0027missed\u0027 counts events that were pushed out of the buffer before they were read. Needs ts_events_subscribe first.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "The last cursor seen: nextCursor from an earlier answer, or the cursor from ts_events_subscribe. 0 for everything still buffered.",
+          "type": "integer",
+          "default": 0
+        },
+        "limit": {
+          "description": "How many events to return, from 1 to 200.",
+          "type": "integer",
+          "default": 50
+        },
+        "categories": {
+          "description": "Only events of these categories: server, channel, textserver, textchannel, textprivate, bans. Omit for all.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "Only events from this virtual server; omit for all.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sequence": {
+                "type": "integer"
+              },
+              "receivedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "virtualServerId": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "required": [
+              "sequence",
+              "receivedAt",
+              "virtualServerId",
+              "name",
+              "categories",
+              "fields"
+            ]
+          }
+        },
+        "nextCursor": {
+          "type": "integer"
+        },
+        "missed": {
+          "type": "integer"
+        },
+        "cursorReset": {
+          "type": "boolean"
+        },
+        "subscriptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "virtualServerId": {
+                "type": "integer"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "channelId": {
+                "type": "integer"
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "sessionsOpened": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "virtualServerId",
+              "categories",
+              "channelId",
+              "since",
+              "sessionsOpened"
+            ]
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "events",
+        "nextCursor",
+        "missed",
+        "cursorReset",
+        "subscriptions",
+        "notes"
+      ]
+    },
+    "annotations": {
+      "title": "Read collected server events",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_events_status",
+    "title": "Show event subscriptions",
+    "description": "Shows which event categories are subscribed on which virtual server, since when, and how many sessions have carried each subscription, plus the buffer\u0027s size and the cursors of its oldest and newest event. A sessionsOpened above 1 means the connection was replaced and events may have been lost in between.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "subscriptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "virtualServerId": {
+                "type": "integer"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "channelId": {
+                "type": "integer"
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "sessionsOpened": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "virtualServerId",
+              "categories",
+              "channelId",
+              "since",
+              "sessionsOpened"
+            ]
+          }
+        },
+        "bufferCapacity": {
+          "type": "integer"
+        },
+        "oldest": {
+          "type": "integer"
+        },
+        "newest": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "subscriptions",
+        "bufferCapacity",
+        "oldest",
+        "newest"
+      ]
+    },
+    "annotations": {
+      "title": "Show event subscriptions",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_events_subscribe",
+    "title": "Subscribe to server events",
+    "description": "Starts collecting events from a virtual server, so ts_events_poll and ts_events_wait can return them. Categories: server (clients connecting and disconnecting, server settings changed), channel (channels created, edited or deleted, clients moving, connecting and disconnecting), textserver (server-wide messages), textchannel (messages in the channel the event session sits in, the default channel), textprivate (private messages to the event session) and bans (bans added or removed). Without categories, all of them. Adding categories keeps the ones already subscribed. Returns a cursor: pass it as \u0027after\u0027 to read only what arrives from now on. Events need the SSH query and use a query session of their own. Subscriptions are shared by everyone using this server, and last until ts_events_unsubscribe or a restart.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "description": "Categories to add: server, channel, textserver, textchannel, textprivate, bans. Omit for all.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "channelId": {
+          "description": "Limit the channel category to one channel id; omit for every channel.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "subscription": {
+          "type": "object",
+          "properties": {
+            "virtualServerId": {
+              "type": "integer"
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "channelId": {
+              "type": "integer"
+            },
+            "since": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sessionsOpened": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "virtualServerId",
+            "categories",
+            "channelId",
+            "since",
+            "sessionsOpened"
+          ]
+        },
+        "cursor": {
+          "type": "integer"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "subscription",
+        "cursor",
+        "note"
+      ]
+    },
+    "annotations": {
+      "title": "Subscribe to server events",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_events_unsubscribe",
+    "title": "Unsubscribe from server events",
+    "description": "Stops collecting some or all event categories from a virtual server. Without categories, or when none would be left, the event session is closed. Events already collected stay readable until newer ones push them out.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "description": "Categories to end: server, channel, textserver, textchannel, textprivate, bans. Omit to end all of them.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "remaining": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "virtualServerId": {
+              "type": "integer"
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "channelId": {
+              "type": "integer"
+            },
+            "since": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sessionsOpened": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "virtualServerId",
+            "categories",
+            "channelId",
+            "since",
+            "sessionsOpened"
+          ]
+        }
+      },
+      "required": [
+        "done",
+        "remaining"
+      ]
+    },
+    "annotations": {
+      "title": "Unsubscribe from server events",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_events_wait",
+    "title": "Wait for server events",
+    "description": "Like ts_events_poll, but when nothing new has been collected yet it waits until an event arrives or the timeout passes, at most 60 seconds. An empty answer means nothing happened in that time; pass its nextCursor to wait again.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "after": {
+          "description": "The last cursor seen: nextCursor from an earlier answer, or the cursor from ts_events_subscribe.",
+          "type": "integer"
+        },
+        "timeoutSeconds": {
+          "description": "How long to wait, from 1 to 60 seconds.",
+          "type": "integer",
+          "default": 30
+        },
+        "limit": {
+          "description": "How many events to return, from 1 to 200.",
+          "type": "integer",
+          "default": 50
+        },
+        "categories": {
+          "description": "Only events of these categories: server, channel, textserver, textchannel, textprivate, bans. Omit for all.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "Only events from this virtual server; omit for all.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "after"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sequence": {
+                "type": "integer"
+              },
+              "receivedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "virtualServerId": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "required": [
+              "sequence",
+              "receivedAt",
+              "virtualServerId",
+              "name",
+              "categories",
+              "fields"
+            ]
+          }
+        },
+        "nextCursor": {
+          "type": "integer"
+        },
+        "missed": {
+          "type": "integer"
+        },
+        "cursorReset": {
+          "type": "boolean"
+        },
+        "subscriptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "virtualServerId": {
+                "type": "integer"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "channelId": {
+                "type": "integer"
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "sessionsOpened": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "virtualServerId",
+              "categories",
+              "channelId",
+              "since",
+              "sessionsOpened"
+            ]
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "events",
+        "nextCursor",
+        "missed",
+        "cursorReset",
+        "subscriptions",
+        "notes"
+      ]
+    },
+    "annotations": {
+      "title": "Wait for server events",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
     "name": "ts_health_report",
     "title": "Check a virtual server\u0027s health",
     "description": "Checks how a virtual server is doing: status, uptime, people and query clients online against the slot limit, channel count, packet loss, average ping and bandwidth, plus findings in plain words for anything that deserves attention, such as slots running out, packet loss or high ping.",

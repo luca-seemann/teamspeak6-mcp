@@ -134,6 +134,7 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | Setting | Environment variable | Default |
 |---|---|---|
 | `TeamSpeak:Safety` | `TSMCP_TeamSpeak__Safety` | `ReadOnly` |
+| `TeamSpeak:EventBufferSize` | `TSMCP_TeamSpeak__EventBufferSize` | `1000` events per profile |
 | `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | — |
 | `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | — (enables SSH) |
 | `TeamSpeak:Profiles:<name>:SshPort` | `TSMCP_TeamSpeak__Profiles__<name>__SshPort` | `10022` |
@@ -147,7 +148,7 @@ Each profile keeps one long-lived connection, opened on the first tool call that
 
 ## Tools
 
-71 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
+76 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
 because privilege keys are live credentials. The changing tools are listed further down with the
 level each needs.
 
@@ -164,6 +165,7 @@ level each needs.
 | Permissions | `ts_perm_effective`, `ts_perm_find`, `ts_perm_assigned`, `ts_perm_list` | **Why can or can't someone do something**; who holds a permission; what one group, channel or client has. |
 | Moderation | `ts_ban_list`, `ts_complaint_list`, `ts_token_list` | Bans with expiry, complaints, unused privilege keys. |
 | Access and logs | `ts_apikey_list`, `ts_querylogin_list`, `ts_message_list`, `ts_message_get`, `ts_log_view`, `ts_custom_info`, `ts_custom_search` | API keys and query logins, the query inbox, the server log, custom client properties. |
+| Events | `ts_events_subscribe`, `ts_events_poll`, `ts_events_wait`, `ts_events_unsubscribe`, `ts_events_status` | **What is happening right now**: messages, people connecting and moving, channel and server changes, bans. |
 | Anything else | `ts_query_raw` | Any other ServerQuery command, at the safety level of that command. |
 
 ### Changing
@@ -213,6 +215,31 @@ a `virtualServerId`, optional except where the wrong server would be costly: `ts
 every assignment behind it, marking the one that decided. It also shows when channel values did not
 count: a skip flag keeps both channel layers out, and `b_client_skip_channelgroup_permissions`, which
 Server Admin holds by default, keeps out the channel group.
+
+### Events
+
+`ts_events_subscribe` starts collecting events from a virtual server:
+- `server`: people connecting and disconnecting, server settings changed
+- `channel`: channels created, edited or deleted, people moving, connecting and disconnecting
+- `textserver`, `textchannel`, `textprivate`: messages to the server, to the channel the event
+  session sits in, or to the event session itself
+- `bans`: bans added or removed
+
+It returns a cursor. `ts_events_poll` returns what arrived after a cursor, and `ts_events_wait` does
+the same but waits up to 60 seconds for something to arrive. Each answer carries the next cursor, so
+reading needs no session and works behind the stateless HTTP transport. Every event keeps
+TeamSpeak's notification name (for example `notifytextmessage`) and its fields.
+
+A few things to know:
+- **SSH only.** Events need the SSH query; the WebQuery refuses `servernotifyregister`.
+- **A session of its own.** Each subscribed virtual server gets its own query session, so tool calls
+  moving the shared session cannot disturb it. That costs one more connection.
+- **Shared by everyone.** Subscriptions belong to the profile, not to the MCP client that made them,
+  and last until `ts_events_unsubscribe` or a restart.
+- **The buffer has a limit.** Each profile keeps the last `EventBufferSize` events. A reader that
+  falls behind is told how many it missed.
+- **One instance only.** Subscriptions and buffers live in the process. Several replicas behind a
+  load balancer need sticky routing.
 
 ### Resources
 
