@@ -71,7 +71,7 @@ public class ToolSchemaSnapshotTests
         "ts_query_raw", "ts_vserver_create", "ts_vserver_power", "ts_vserver_delete", "ts_vserver_snapshot_deploy", "ts_instance_edit",
         "ts_temp_password", "ts_channel_delete", "ts_client_kick", "ts_clientdb_delete", "ts_servergroup_delete",
         "ts_channelgroup_delete", "ts_perm_reset", "ts_ban_add", "ts_token_manage", "ts_apikey_manage",
-        "ts_querylogin_manage",
+        "ts_querylogin_manage", "ts_file_upload", "ts_file_delete",
     ];
 
     /// <summary>Tools that change something but never need more than Write.</summary>
@@ -81,6 +81,10 @@ public class ToolSchemaSnapshotTests
         "ts_channel_move", "ts_client_move", "ts_client_poke", "ts_client_edit", "ts_message_send", "ts_offline_message",
         "ts_servergroup_manage", "ts_channelgroup_manage", "ts_servergroup_membership", "ts_client_channelgroup_set",
         "ts_perm_set", "ts_ban_delete", "ts_complaint_delete", "ts_custom_property", "ts_log_add",
+        "ts_file_manage",
+
+        // Needs only ReadOnly on the server, but can write a file on this machine.
+        "ts_file_download",
     ];
 
     [Fact]
@@ -106,6 +110,7 @@ public class ToolSchemaSnapshotTests
                 "ts_client_info", "ts_client_list", "ts_client_resolve", "ts_clientdb_find", "ts_clientdb_info",
                 "ts_clientdb_list", "ts_complaint_list", "ts_custom_info", "ts_custom_search",
                 "ts_events_poll", "ts_events_status", "ts_events_subscribe", "ts_events_unsubscribe", "ts_events_wait",
+                "ts_file_info", "ts_file_list", "ts_file_transfers",
                 "ts_health_report",
                 "ts_instance_info", "ts_log_view", "ts_message_get", "ts_message_list", "ts_perm_assigned",
                 "ts_perm_effective", "ts_perm_find", "ts_perm_list", "ts_profiles_list",

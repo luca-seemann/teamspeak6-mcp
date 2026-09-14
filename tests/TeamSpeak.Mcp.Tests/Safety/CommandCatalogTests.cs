@@ -73,6 +73,10 @@ public partial class CommandCatalogTests
     [InlineData("banclient", SafetyLevel.Destructive)]
     [InlineData("apikeyadd", SafetyLevel.Destructive)]
     [InlineData("CHANNELDELETE", SafetyLevel.Destructive)]
+    [InlineData("ftinitdownload", SafetyLevel.ReadOnly)]
+    [InlineData("ftinitupload", SafetyLevel.Write)]
+    [InlineData("ftgetchannelfilehttptoken", SafetyLevel.Write)]
+    [InlineData("ftdeletefile", SafetyLevel.Destructive)]
     public void Classifies_representative_commands(string command, SafetyLevel expected) =>
         Assert.Equal(expected, CommandCatalog.RequiredLevel(command));
 

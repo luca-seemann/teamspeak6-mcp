@@ -47,6 +47,9 @@ services:
       # TSMCP_TeamSpeak__Profiles__default__ApiKey: <key>
       # Tools stay read-only unless this is raised to Write or Destructive.
       TSMCP_TeamSpeak__Safety: ReadOnly
+      # File tools pass content inline unless given a directory for local files; mount a volume
+      # there. The bytes travel over port 30033 of the teamspeak service.
+      # TSMCP_TeamSpeak__FileTransfer__LocalDirectory: /data/files
     ports:
       - "7801:7801"
     restart: unless-stopped

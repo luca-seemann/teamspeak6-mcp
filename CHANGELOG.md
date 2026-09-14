@@ -66,6 +66,21 @@ All notable changes to this project are documented here. The format follows
   current from join events, without a query per event.
 - `ts_events_subscribe` takes `textChannelId`: it moves the event session into that channel so its
   `textchannel` events are that channel's chat, re-applied after a reconnect.
+- File transfer: `ts_file_list`, `ts_file_info`, `ts_file_transfers`, `ts_file_download`,
+  `ts_file_upload`, `ts_file_manage` and `ts_file_delete`, for 83 tools in all.
+  - Content travels inline (text or base64, up to `TeamSpeak:FileTransfer:MaxInlineBytes`), or as a
+    local file inside `TeamSpeak:FileTransfer:LocalDirectory`. Local files are off until that is set.
+  - An upload's stored size is compared with what was sent, so a transfer that broke off is reported
+    rather than taken for success.
+  - `ts_file_manage` creates directories, renames or moves files into another channel, and stops a
+    transfer, optionally removing its partial file.
+- `FileTransferClient` and `FileTransferTicket` in `TeamSpeak.Query`: the raw byte transfer over the
+  file transfer port, usable without MCP. The tickets turn a refusal the server reports inside the
+  record, with `error id=0`, into an exception.
+- `QueryRecord.GetUnixTimeOfAnyPrecision`, because `ftgetfilelist` writes file times in milliseconds
+  and `ftgetfileinfo` in nanoseconds.
+- Explanations for the file status codes `2048`, `2050`, `2051` and `2054`. For a file command over the
+  WebQuery, `5120` is now explained as a limit of the WebQuery rather than of the key's scope.
 
 ### Fixed
 
@@ -130,6 +145,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `ftinitdownload` needs `ReadOnly` instead of `Write`, through `ts_query_raw` as well. It changes
+  nothing on the server: the key it returns opens that one download, and lapses unused.
 - The virtual server now travels with each `QueryCommand` instead of being selected on the
   transport. `IQueryTransport.SelectVirtualServerAsync` and `VirtualServerId` are gone; the SSH
   transport sends `use` only when needed, under the same lock as the command, so concurrent callers

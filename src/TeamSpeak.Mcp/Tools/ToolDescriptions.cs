@@ -26,6 +26,10 @@ internal static class ToolDescriptions
     public const string GroupType =
         "regular (the default), template, or query.";
 
+    public const string ChannelPassword =
+        "The channel's password, if it has one. A query login with enough permissions, such as " +
+        "serveradmin, is let in without it.";
+
     public const string ConfirmVirtualServer =
         "The virtual server's exact name, as a safeguard against acting on the wrong one.";
 }

@@ -5,8 +5,8 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server for administe
 tidy up channel trees, explain why a user lacks a permission, work through bans and complaints,
 manage groups, and watch what is happening on the server.
 
-> **Status: early development.** The query client is complete and verified against a live server;
-> the MCP tools are not written yet, so this is not usable as an MCP server yet.
+> **Status: pre-release.** Reading, changing, events and file transfer are complete and verified
+> against a live TeamSpeak 6 server; packaging and prompts are still to come.
 
 ## Why this exists
 
@@ -35,6 +35,10 @@ documentation — all were measured against a live 6.0.0-beta12.1 server:
 - **Events are SSH-only.** Over the WebQuery, `servernotifyregister` comes back as
   `5120 out of scope — command not in api key scope`. It could hardly work anyway: the WebQuery
   closes every connection, so there is nowhere to deliver a notification.
+- **File transfer is SSH-only too.** The WebQuery refuses every `ft*` command with `5120`, even with a
+  `manage` key, and the HTTP file transfer the reference mentions (`ftgetchannelfilehttptoken`)
+  answers `not implemented`. The bytes themselves travel over the file transfer port, 30033 by
+  default, which has to be reachable from wherever this server runs.
 - **The WebQuery authenticates with `x-api-key` and nothing else.** HTTP Basic Auth with correct
   `serveradmin` credentials is refused. Keys come from `apikeyadd scope=manage lifetime=0`, which
   you can only run over SSH — so SSH is also the bootstrap path for using the WebQuery at all.
@@ -135,6 +139,8 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 |---|---|---|
 | `TeamSpeak:Safety` | `TSMCP_TeamSpeak__Safety` | `ReadOnly` |
 | `TeamSpeak:EventBufferSize` | `TSMCP_TeamSpeak__EventBufferSize` | `1000` events per profile |
+| `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | — (file tools pass content inline only) |
+| `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `1048576` |
 | `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | — |
 | `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | — (enables SSH) |
 | `TeamSpeak:Profiles:<name>:SshPort` | `TSMCP_TeamSpeak__Profiles__<name>__SshPort` | `10022` |
@@ -149,7 +155,7 @@ Each profile keeps one long-lived connection, opened on the first tool call that
 
 ## Tools
 
-76 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
+83 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
 because privilege keys are live credentials. The changing tools are listed further down with the
 level each needs.
 
@@ -167,6 +173,7 @@ level each needs.
 | Moderation | `ts_ban_list`, `ts_complaint_list`, `ts_token_list` | Bans with expiry, complaints, unused privilege keys. |
 | Access and logs | `ts_apikey_list`, `ts_querylogin_list`, `ts_message_list`, `ts_message_get`, `ts_log_view`, `ts_custom_info`, `ts_custom_search` | API keys and query logins, the query inbox, the server log, custom client properties. |
 | Events | `ts_events_subscribe`, `ts_events_poll`, `ts_events_wait`, `ts_events_unsubscribe`, `ts_events_status` | **What is happening right now**: messages, people connecting and moving, channel and server changes, bans. |
+| Files | `ts_file_list`, `ts_file_info`, `ts_file_transfers`, `ts_file_download` | What is stored in a channel, one file's size and age, transfers under way, and a file's content. |
 | Anything else | `ts_query_raw` | Any other ServerQuery command, at the safety level of that command. |
 
 ### Changing
@@ -183,6 +190,7 @@ action separately. Tools that can need `Destructive` carry the MCP `destructiveH
 | Permissions | `ts_perm_set` | `ts_perm_reset` |
 | Moderation | `ts_ban_delete`, `ts_complaint_delete`, `ts_token_manage` (delete) | `ts_ban_add`, `ts_token_manage` (add) |
 | Access and settings | `ts_temp_password` (list, delete), `ts_custom_property`, `ts_log_add` | `ts_temp_password` (add), `ts_apikey_manage`, `ts_querylogin_manage` |
+| Files | `ts_file_upload`, `ts_file_manage` | `ts_file_upload` (overwrite), `ts_file_delete` |
 
 The three actions that cannot be undone and reach a whole virtual server — `ts_vserver_delete`,
 `ts_vserver_snapshot_deploy` and `ts_perm_reset` — also require `confirmName`, the virtual server's
@@ -255,6 +263,35 @@ A few things to know:
   subscription's `lastEventAt`, `lastError` and `healthy` flag, so a stalled one is visible.
 - **One instance only.** Subscriptions and buffers live in the process. Several replicas behind a
   load balancer need sticky routing.
+
+### Files
+
+Every channel has a file repository, and channel 0 holds the virtual server's icons and avatars.
+`ts_file_list` shows one directory of it, and `ts_file_download` and `ts_file_upload` move files in
+and out. `ts_file_manage` creates directories, renames or moves files between channels, and stops
+a transfer. `ts_file_delete` removes files, and a directory together with everything in it.
+
+The content comes in one of two ways:
+- **Inline**, up to `MaxInlineBytes` (1 MiB by default). A download comes back as text when it is
+  valid UTF-8 and as base64 otherwise. An upload takes `content` or `contentBase64`.
+- **As a local file**, through `localPath`, only once `TeamSpeak:FileTransfer:LocalDirectory` is set.
+  Every local path is resolved inside that directory, and a path leading outside it is refused. The
+  model chooses these paths, and over Streamable HTTP it does so from another machine. A download
+  never replaces an existing local file.
+
+A few things to know:
+- **SSH and port 30033.** The tickets come from the SSH query, and the bytes travel over the file
+  transfer port, which must be reachable from this server just as the query port is. Publish it
+  alongside the query ports when TeamSpeak runs in a container.
+- **Downloading needs only `ReadOnly`.** It changes nothing on the TeamSpeak server. The tool still
+  carries no `readOnlyHint`, because it can write a file on this machine. Uploading needs `Write`,
+  and replacing an existing file with `overwrite=true` needs `Destructive`.
+- **An upload is checked.** The protocol has no acknowledgement, so after sending, the tool compares
+  the size the server stored with the size it sent. A transfer that broke off is reported as such.
+  The partial file stays until it is deleted or overwritten, and `ts_file_list` shows it with
+  `incompleteSize`.
+- **Channel passwords.** The file tools take `channelPassword`. A query login with enough
+  permissions, such as `serveradmin`, is let in without it.
 
 ### Resources
 

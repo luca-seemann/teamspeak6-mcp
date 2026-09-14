@@ -3671,6 +3671,714 @@
     }
   },
   {
+    "name": "ts_file_delete",
+    "title": "Delete stored files",
+    "description": "Deletes files or directories from a channel\u0027s file repository. A directory goes with everything in it. The paths are deleted one at a time; the first that fails stops the rest, and the error names what was already deleted. Needs Destructive. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel the files are stored in; 0 for icons and avatars.",
+          "type": "integer"
+        },
+        "paths": {
+          "description": "The paths to delete, such as [\u0022/old.txt\u0022, \u0022/archive\u0022].",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "channelPassword": {
+          "description": "The channel\u0027s password, if it has one. A query login with enough permissions, such as serveradmin, is let in without it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId",
+        "paths"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Delete stored files",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_file_download",
+    "title": "Download a stored file",
+    "description": "Downloads a file from a channel\u0027s file repository. Without localPath the content comes back in the answer, as text when it is valid UTF-8 and as base64 otherwise, for files up to TeamSpeak:FileTransfer:MaxInlineBytes (1 MiB unless configured). With localPath it is saved inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory, and an existing local file is never replaced. Needs ReadOnly, since nothing changes on the server. The bytes travel over the server\u0027s file transfer port, 30033 by default, which must be reachable from this machine. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel the file is stored in; 0 for icons and avatars.",
+          "type": "integer"
+        },
+        "path": {
+          "description": "The file\u0027s path, such as /docs/readme.txt.",
+          "type": "string"
+        },
+        "localPath": {
+          "description": "Save the file here instead of returning it: a path relative to, or inside, the configured local directory.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "channelPassword": {
+          "description": "The channel\u0027s password, if it has one. A query login with enough permissions, such as serveradmin, is let in without it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId",
+        "path"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "format": {
+          "type": "string"
+        },
+        "content": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "savedTo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "channelId",
+        "path",
+        "size",
+        "format",
+        "content",
+        "savedTo"
+      ]
+    },
+    "annotations": {
+      "title": "Download a stored file",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_file_info",
+    "title": "Show a stored file",
+    "description": "Shows the size of one file in a channel\u0027s file repository and when it last changed. It takes files only; ts_file_list shows directories. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel the file is stored in; 0 for icons and avatars.",
+          "type": "integer"
+        },
+        "path": {
+          "description": "The file\u0027s path, such as /docs/readme.txt.",
+          "type": "string"
+        },
+        "channelPassword": {
+          "description": "The channel\u0027s password, if it has one. A query login with enough permissions, such as serveradmin, is let in without it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId",
+        "path"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "modified": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "channelId",
+        "path",
+        "size",
+        "modified"
+      ]
+    },
+    "annotations": {
+      "title": "Show a stored file",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_file_list",
+    "title": "List a channel\u0027s files",
+    "description": "Lists the files and directories in one directory of a channel\u0027s file repository: name, size, and when each last changed. An upload that is still running or broke off shows incompleteSize, the size it is meant to reach. Channel 0 holds the virtual server\u0027s icons and avatars. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel whose files to list; 0 for the virtual server\u0027s icons and avatars.",
+          "type": "integer"
+        },
+        "path": {
+          "description": "The directory, such as /screenshots. Omit it for the top level.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "channelPassword": {
+          "description": "The channel\u0027s password, if it has one. A query login with enough permissions, such as serveradmin, is let in without it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "type": "integer"
+        },
+        "directory": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "modified": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "incompleteSize": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "path",
+              "type",
+              "size",
+              "modified",
+              "incompleteSize"
+            ]
+          }
+        }
+      },
+      "required": [
+        "channelId",
+        "directory",
+        "entries"
+      ]
+    },
+    "annotations": {
+      "title": "List a channel\u0027s files",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_file_manage",
+    "title": "Create a directory, rename a file, or stop a transfer",
+    "description": "createdir creates the directory path in a channel\u0027s file repository; its parent must exist. rename renames or moves a file or directory from path to newPath, into another channel\u0027s repository when targetChannelId is given. stop ends a transfer ts_file_transfers lists, by its serverTransferId; deletePartial=true also removes what an unfinished upload left behind. All need Write. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "createdir, rename, or stop.",
+          "type": "string"
+        },
+        "channelId": {
+          "description": "For createdir and rename: the channel.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "path": {
+          "description": "For createdir: the directory to create. For rename: what to rename, such as /old.txt.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "newPath": {
+          "description": "For rename: the new path, such as /archive/new.txt.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "targetChannelId": {
+          "description": "For rename: move into this channel\u0027s repository instead.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "targetChannelPassword": {
+          "description": "For rename into another channel: that channel\u0027s password, if it has one.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "transferId": {
+          "description": "For stop: the transfer\u0027s serverTransferId from ts_file_transfers.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "deletePartial": {
+          "description": "For stop: also delete the partial file of an unfinished upload.",
+          "type": "boolean",
+          "default": false
+        },
+        "channelPassword": {
+          "description": "The channel\u0027s password, if it has one. A query login with enough permissions, such as serveradmin, is let in without it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Create a directory, rename a file, or stop a transfer",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_file_transfers",
+    "title": "List file transfers",
+    "description": "Lists the file transfers running or waiting on a virtual server: which client, which file, how many bytes have moved, and how fast. A transfer that was started but never connected waits here until the server drops it a few minutes later. ts_file_manage with action stop ends one. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "transfers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "serverTransferId": {
+                "type": "integer"
+              },
+              "clientTransferId": {
+                "type": "integer"
+              },
+              "clientId": {
+                "type": "integer"
+              },
+              "direction": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "serverDirectory": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "bytesDone": {
+                "type": "integer"
+              },
+              "currentBytesPerSecond": {
+                "type": "number"
+              },
+              "averageBytesPerSecond": {
+                "type": "number"
+              },
+              "runtimeSeconds": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "serverTransferId",
+              "clientTransferId",
+              "clientId",
+              "direction",
+              "state",
+              "name",
+              "serverDirectory",
+              "size",
+              "bytesDone",
+              "currentBytesPerSecond",
+              "averageBytesPerSecond",
+              "runtimeSeconds"
+            ]
+          }
+        }
+      },
+      "required": [
+        "transfers"
+      ]
+    },
+    "annotations": {
+      "title": "List file transfers",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_file_upload",
+    "title": "Upload a file",
+    "description": "Uploads a file into a channel\u0027s file repository. Give exactly one of content (text, stored as UTF-8), contentBase64, or localPath, a file inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory. Inline content is limited to TeamSpeak:FileTransfer:MaxInlineBytes (1 MiB unless configured). The directory it goes into must exist; ts_file_manage createdir makes one. The stored size is checked afterwards, so a transfer that broke off is reported, not taken for success. Needs Write; replacing an existing file with overwrite=true needs Destructive. The bytes travel over the server\u0027s file transfer port, 30033 by default, which must be reachable from this machine. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel to store the file in; 0 for icons and avatars.",
+          "type": "integer"
+        },
+        "path": {
+          "description": "Where to store it, such as /docs/readme.txt.",
+          "type": "string"
+        },
+        "content": {
+          "description": "The file\u0027s content as text.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "contentBase64": {
+          "description": "The file\u0027s content, base64-encoded, for binary files.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "localPath": {
+          "description": "A local file to upload: a path relative to, or inside, the configured local directory.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "overwrite": {
+          "description": "Replace a file that already exists at path. Needs Destructive.",
+          "type": "boolean",
+          "default": false
+        },
+        "channelPassword": {
+          "description": "The channel\u0027s password, if it has one. A query login with enough permissions, such as serveradmin, is let in without it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId",
+        "path"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "channelId": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "done",
+        "channelId",
+        "path",
+        "bytes"
+      ]
+    },
+    "annotations": {
+      "title": "Upload a file",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_health_report",
     "title": "Check a virtual server\u0027s health",
     "description": "Checks how a virtual server is doing: status, uptime, people and query clients online against the slot limit, channel count, packet loss, average ping and bandwidth, plus findings in plain words for anything that deserves attention, such as slots running out, packet loss or high ping.",

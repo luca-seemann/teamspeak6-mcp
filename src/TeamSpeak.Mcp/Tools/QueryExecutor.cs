@@ -224,6 +224,18 @@ public sealed class QueryExecutor
 
         var hint = error.Id switch
         {
+            QueryErrorCode.OutOfScope when commandName.StartsWith("ft", StringComparison.OrdinalIgnoreCase) =>
+                " TeamSpeak refuses every file command over the WebQuery, whatever the API key's scope. " +
+                "Give the profile an SSH password; with Transport Auto it then uses SSH.",
+            QueryErrorCode.InvalidFileName =>
+                " The name is not a file, for example it is a directory; ts_file_list shows what is there.",
+            QueryErrorCode.FileAlreadyExists =>
+                " Something by that name already exists. An upload replaces a file only with overwrite=true.",
+            QueryErrorCode.FileNotFound =>
+                " There is no file by that name; ts_file_list shows what is there.",
+            QueryErrorCode.InvalidFilePath =>
+                " The path does not exist, or a directory on the way to it is missing; ts_file_manage " +
+                "createdir creates directories.",
             QueryErrorCode.OutOfScope =>
                 " The profile's WebQuery API key does not cover this command. A key created with " +
                 "scope=read or scope=write is limited; create one with 'apikeyadd scope=manage' over " +

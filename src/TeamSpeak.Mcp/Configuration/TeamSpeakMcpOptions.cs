@@ -29,6 +29,9 @@ public sealed class TeamSpeakMcpOptions
     /// <summary>Gets or sets how many events each profile keeps for callers to read.</summary>
     public int EventBufferSize { get; set; } = QueryEventHub.DefaultCapacity;
 
+    /// <summary>Gets or sets where file transfers may read and write locally.</summary>
+    public FileTransferOptions FileTransfer { get; set; } = new();
+
     /// <summary>Turns the bound options into validated profiles.</summary>
     /// <returns>The profile registry.</returns>
     /// <exception cref="InvalidOperationException">Thrown when a profile is unusable.</exception>

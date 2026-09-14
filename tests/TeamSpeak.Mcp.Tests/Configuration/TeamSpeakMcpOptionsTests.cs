@@ -36,6 +36,27 @@ public class TeamSpeakMcpOptionsTests
     }
 
     [Fact]
+    public void Binds_the_file_transfer_settings_and_leaves_local_files_off_by_default()
+    {
+        static FileTransferOptions Bind(Dictionary<string, string?> values)
+        {
+            var services = new ServiceCollection();
+            McpHostFactory.AddTeamSpeak(services, Config(values));
+            return services.BuildServiceProvider().GetRequiredService<FileTransferOptions>();
+        }
+
+        var defaults = Bind([]);
+        var configured = Bind(new Dictionary<string, string?>
+        {
+            ["TeamSpeak:FileTransfer:LocalDirectory"] = "/srv/teamspeak-files",
+            ["TeamSpeak:FileTransfer:MaxInlineBytes"] = "4096",
+        });
+
+        Assert.Equal((null, FileTransferOptions.DefaultMaxInlineBytes), (defaults.LocalDirectory, defaults.MaxInlineBytes));
+        Assert.Equal(("/srv/teamspeak-files", 4096), (configured.LocalDirectory, configured.MaxInlineBytes));
+    }
+
+    [Fact]
     public void Binds_several_profiles()
     {
         var registry = Build(new Dictionary<string, string?>

@@ -36,6 +36,10 @@ public static class CommandCatalog
         "permoverview", "queryloginlist", "servergroupclientlist", "servergrouplist", "servergrouppermlist",
         "servergroupsbyclientid", "serveridgetbyport", "serverinfo", "serverlist",
         "serverrequestconnectioninfo", "version", "whoami",
+
+        // Reads a stored file. The key it returns opens that one download and nothing else, and a
+        // key never used lapses after a few minutes, so it changes no more than reading a message.
+        "ftinitdownload",
     ];
 
     private static readonly string[] WriteCommands =
@@ -45,7 +49,7 @@ public static class CommandCatalog
         "channeldelperm", "channeledit", "channelgroupadd", "channelgroupaddperm", "channelgroupcopy",
         "channelgroupdelperm", "channelgrouprename", "channelmove", "clientaddperm", "clientdbedit",
         "clientdelperm", "clientedit", "clientmove", "clientpoke", "clientupdate", "complainadd",
-        "complaindel", "customdelete", "customset", "ftcreatedir", "ftinitdownload", "ftinitupload",
+        "complaindel", "customdelete", "customset", "ftcreatedir", "ftinitupload",
         "ftrenamefile", "ftstop", "gm", "logadd", "messageadd", "messagedel", "messageupdateflag",
         "privilegekeydelete", "sendtextmessage", "serveredit", "servergroupadd",
         "servergroupaddclient", "servergroupaddperm", "servergroupcopy", "servergroupdelclient",
