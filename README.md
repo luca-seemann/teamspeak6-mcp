@@ -5,8 +5,8 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server for administe
 tidy up channel trees, explain why a user lacks a permission, work through bans and complaints,
 manage groups, and watch what is happening on the server.
 
-> **Status: early development.** The scaffolding is in place; the query client and the tools
-> are being built out phase by phase. Not yet usable.
+> **Status: early development.** The query client is complete and verified against a live server;
+> the MCP tools are not written yet, so this is not usable as an MCP server yet.
 
 ## Why this exists
 

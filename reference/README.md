@@ -43,11 +43,20 @@ the SSH and the HTTP interface for several minutes**, and that block presents as
 closed before the SSH identification string, or an empty HTTP reply — which looks nothing like rate
 limiting. Polling to check whether it has lifted keeps it alive.
 
-No server-side setting avoids this, and three plausible-looking ones do nothing:
-`TSSERVER_QUERY_POOL_SIZE` (tested at 32), `TSSERVER_QUERY_SKIP_BRUTE_FORCE_CHECK` (that covers
-failed *logins*), and the flood allow list (tested with the client IP verifiably loaded — see the
-startup log line `CIDRManager | updated query_ip_allowlist ips:`). Note also that
-`TSSERVER_QUERY_ALLOW_LIST` names a *file* of CIDRs, not an IP value; pointing it at an address
-stops the query interfaces from starting at all.
+Connections cost far more than commands. One session carrying 160 commands was fine; five or six
+connections in quick succession earned the block. A client that reuses one session is in far less
+danger than one that reconnects.
+
+Two settings that look like they should help do not. `TSSERVER_QUERY_POOL_SIZE` changes nothing
+(tested at 32), and `TSSERVER_QUERY_SKIP_BRUTE_FORCE_CHECK` covers failed *logins*, a different
+mechanism.
+
+The flood **allow list does** work — but only if it names the address the server actually sees.
+An allow-listed client address can still achieve nothing, for a reason that has nothing to do
+with the allow list: behind Docker Desktop's port publishing the server saw the
+bridge gateway for every external client. See the deployment note in the top-level
+[README](../README.md); the short version is to read the server's own log line before trusting an
+entry. `TSSERVER_QUERY_ALLOW_LIST` also names a *file* of CIDRs rather than an address — pointing it
+at an address stops the query interfaces from starting at all.
 
 `tests/.../Fixtures/http/flooding.json` is a real 524, captured the hard way.

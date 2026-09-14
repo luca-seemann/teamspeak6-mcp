@@ -16,3 +16,19 @@ All notable changes to this project are documented here. The format follows
   status codes that drive control flow.
 - A captured ServerQuery command reference for 6.0.0-beta12.1, plus raw response fixtures from both
   transports that the parser tests run against.
+- `QueryRecord`, giving typed access to response fields and decoding TeamSpeak's conventions in one
+  place: booleans as `1`/`0`, times as Unix seconds, and a zero timestamp meaning never.
+- `SshQueryTransport` and `HttpQueryTransport`, both verified against a live server, with virtual
+  server selection behind one method despite the two interfaces expressing it very differently.
+- `FloodGuard` and `ConnectionThrottle`, which pace commands and connections so the server does not
+  block the client, plus `ReconnectPolicy` for backoff with jitter.
+- Connection profiles bound from configuration, with `TSMCP_`-prefixed environment variables
+  overriding the file so credentials need not be written to disk.
+- An integration suite that runs against a live server when `TSMCP_TEST_HOST` is set and skips
+  itself otherwise.
+
+### Notes
+
+- Several deployment surprises are documented in [README.md](README.md) and
+  [reference/README.md](reference/README.md), including which client address the server actually
+  sees behind Docker, and why `TESTINGPLATFORM_TELEMETRY_OPTOUT` matters when running the tests.
