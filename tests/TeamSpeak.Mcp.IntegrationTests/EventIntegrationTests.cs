@@ -65,6 +65,44 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
         }
     }
 
+    [RequiresTeamSpeakServerFact]
+    public async Task A_subscription_recovers_on_its_own_after_its_virtual_server_is_restarted()
+    {
+        await using var connections = Connections();
+        var executor = new QueryExecutor(connections, new SafetyPolicy(SafetyLevel.Destructive));
+
+        // A short watchdog interval so the recovery happens within the test rather than in 30 seconds.
+        await using var hub = new QueryEventHub(connections.Profiles, reRegisterInterval: TimeSpan.FromSeconds(2));
+        var events = new EventTools(executor, hub);
+        var power = new VirtualServerAdminTools(executor);
+
+        var subscribed = await events.SubscribeAsync(["textserver"], virtualServerId: 1, cancellationToken: Ct);
+        try
+        {
+            await power.PowerAsync("stop", 1, "event recovery test", cancellationToken: Ct);
+            await power.PowerAsync("start", 1, cancellationToken: Ct);
+
+            // Give the watchdog a few passes to re-register on the restarted virtual server.
+            var message = Unique("recovered");
+            var arrived = false;
+            var cursor = subscribed.Cursor;
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+            while (!arrived && DateTimeOffset.UtcNow < deadline)
+            {
+                await new ClientAdminTools(executor).SendMessageAsync("server", message, virtualServerId: 1, cancellationToken: Ct);
+                var page = await events.WaitAsync(cursor, timeoutSeconds: 5, categories: ["textserver"], virtualServerId: 1, cancellationToken: Ct);
+                arrived = page.Events.Any(e => e.Fields.Count > 0 && e.Fields[0].TryGetValue("msg", out var text) && text == message);
+                cursor = page.NextCursor;
+            }
+
+            Assert.True(arrived, "the subscription did not recover after the virtual server was restarted");
+        }
+        finally
+        {
+            await events.UnsubscribeAsync(virtualServerId: 1, cancellationToken: Ct);
+        }
+    }
+
     /// <summary>Waits until an event of a category with matching fields arrives, reading on from a cursor.</summary>
     private static async Task<EventView> WaitForAsync(EventTools events, long after, string category, Func<IReadOnlyDictionary<string, string>, bool> matches)
     {

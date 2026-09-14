@@ -155,6 +155,55 @@ public class QueryEventHubTests
     }
 
     [Fact]
+    public async Task A_watchdog_re_registers_on_a_timer_to_recover_a_silently_voided_subscription()
+    {
+        var sessions = new Sessions();
+        await using var hub = new QueryEventHub(Registry(), 100, sessions.OpenAsync, reRegisterInterval: TimeSpan.FromMilliseconds(150));
+        await hub.SubscribeAsync("test", 1, [EventCategory.TextServer], cancellationToken: Ct);
+
+        var (transport, _) = Assert.Single(sessions.Opened);
+        var atSubscribe = transport.SentCommands.Count(command => command.Name == "servernotifyregister");
+
+        // Wait for the watchdog to run at least one more registration pass.
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (transport.SentCommands.Count(command => command.Name == "servernotifyregister") <= atSubscribe && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(50, Ct);
+        }
+
+        Assert.True(transport.SentCommands.Count(command => command.Name == "servernotifyregister") > atSubscribe,
+            "the watchdog did not re-register");
+        // Re-registering is not a new session.
+        Assert.Equal(1, Assert.Single(hub.Subscriptions("test")).SessionsOpened);
+    }
+
+    [Fact]
+    public async Task A_refused_re_registration_shows_up_as_a_lastError_on_the_subscription()
+    {
+        var refuse = false;
+        await using var hub = new QueryEventHub(Registry(), 100, async (profile, onOpened, token) =>
+        {
+            var transport = new FakeQueryTransport()
+                .Returns("servernotifyregister", _ => refuse ? new QueryResponse([], new QueryError(1033, "server is not running")) : Ok)
+                .Returns("whoami", Ok);
+            await onOpened(transport.SendAsync, token);
+            return transport;
+        }, reRegisterInterval: TimeSpan.FromMilliseconds(150));
+
+        await hub.SubscribeAsync("test", 1, [EventCategory.TextServer], cancellationToken: Ct);
+        Assert.Null(Assert.Single(hub.Subscriptions("test")).LastError);
+
+        refuse = true;
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (Assert.Single(hub.Subscriptions("test")).LastError is null && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(50, Ct);
+        }
+
+        Assert.Contains("server is not running", Assert.Single(hub.Subscriptions("test")).LastError ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_failed_registration_during_a_reconnect_is_not_counted_as_a_session()
     {
         var refuse = false;

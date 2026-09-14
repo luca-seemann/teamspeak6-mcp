@@ -242,6 +242,9 @@ A few things to know:
   and last until `ts_events_unsubscribe` or a restart.
 - **The buffer has a limit.** Each profile keeps the last `EventBufferSize` events. A reader that
   falls behind is told how many it missed.
+- **A restart of the virtual server is recovered on its own.** Stopping and starting it silently
+  drops the registrations; a watchdog re-registers within 30 seconds. `ts_events_status` reports each
+  subscription's `lastEventAt`, `lastError` and `healthy` flag, so a stalled one is visible.
 - **One instance only.** Subscriptions and buffers live in the process. Several replicas behind a
   load balancer need sticky routing.
 

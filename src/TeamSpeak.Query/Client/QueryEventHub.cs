@@ -71,11 +71,22 @@ public sealed class QueryEventHub : IAsyncDisposable
     private readonly ConcurrentDictionary<(string Profile, int VirtualServerId), EventSession> _sessions = new();
     private int _disposed;
 
+    private readonly TimeSpan _reRegisterInterval;
+
     /// <summary>Creates a hub.</summary>
     /// <param name="profiles">The configured servers.</param>
     /// <param name="capacity">How many events each profile's buffer keeps.</param>
     /// <param name="factory">Opens event sessions. Defaults to the SSH transport; tests substitute a fake.</param>
-    public QueryEventHub(ProfileRegistry profiles, int capacity = DefaultCapacity, EventSessionFactory? factory = null)
+    /// <param name="reRegisterInterval">
+    /// How often a live session re-sends its registrations, to recover the silent loss a virtual
+    /// server restart causes. Defaults to 30 seconds; a non-positive value turns the watchdog off,
+    /// which the unit tests use so they can drive it by hand.
+    /// </param>
+    public QueryEventHub(
+        ProfileRegistry profiles,
+        int capacity = DefaultCapacity,
+        EventSessionFactory? factory = null,
+        TimeSpan? reRegisterInterval = null)
     {
         ArgumentNullException.ThrowIfNull(profiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
@@ -83,6 +94,7 @@ public sealed class QueryEventHub : IAsyncDisposable
         Profiles = profiles;
         _capacity = capacity;
         _factory = factory ?? OpenAsync;
+        _reRegisterInterval = reRegisterInterval ?? TimeSpan.FromSeconds(30);
     }
 
     /// <summary>Gets the configured servers.</summary>
@@ -191,6 +203,7 @@ public sealed class QueryEventHub : IAsyncDisposable
 
                 session.Since = DateTimeOffset.UtcNow;
                 session.Pump = PumpAsync(session, session.Transport, buffer, session.Stop.Token);
+                session.Watchdog = WatchdogAsync(session, session.Stop.Token);
                 return session.Snapshot();
             }
 
@@ -310,22 +323,91 @@ public sealed class QueryEventHub : IAsyncDisposable
 
     private static async Task RegisterAllAsync(EventSession session, QuerySender send, CancellationToken cancellationToken)
     {
-        foreach (var category in session.Categories())
-        {
-            var command = Register(category, session.VirtualServerId, session.ChannelId);
-            var response = await send(command, cancellationToken).ConfigureAwait(false);
-            ThrowIfRefused(command, response);
-        }
-
-        // Private messages reach the event session only when sent to its client id, which changes with
-        // every session. Knowing it is not worth failing the subscription over.
-        var who = await send(new QueryCommand("whoami", VirtualServerId: session.VirtualServerId), cancellationToken).ConfigureAwait(false);
-        session.ClientId = who.Error.IsSuccess && who.Records.Count > 0 && who.Records[0].GetInt32("client_id") is > 0 and var clientId
-            ? clientId
-            : null;
+        await SendRegistrationsAsync(session, send, cancellationToken).ConfigureAwait(false);
 
         // Counted only once registered, so a failed reconnect attempt does not look like a replacement.
         session.CountOpened();
+    }
+
+    /// <summary>Registers every category and learns the session's client id, recording the outcome.</summary>
+    private static async Task SendRegistrationsAsync(EventSession session, QuerySender send, CancellationToken cancellationToken)
+    {
+        try
+        {
+            foreach (var category in session.Categories())
+            {
+                var command = Register(category, session.VirtualServerId, session.ChannelId);
+                var response = await send(command, cancellationToken).ConfigureAwait(false);
+                ThrowIfRefused(command, response);
+            }
+
+            // Private messages reach the event session only when sent to its client id, which changes
+            // with every session. Knowing it is not worth failing the subscription over.
+            var who = await send(new QueryCommand("whoami", VirtualServerId: session.VirtualServerId), cancellationToken).ConfigureAwait(false);
+            session.ClientId = who.Error.IsSuccess && who.Records.Count > 0 && who.Records[0].GetInt32("client_id") is > 0 and var clientId
+                ? clientId
+                : null;
+
+            session.RecordError(null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            session.RecordError(ex.Message);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Re-sends the registrations on a timer, so a subscription silently voided by a virtual server
+    /// restart comes back on its own.
+    /// </summary>
+    /// <remarks>
+    /// A stopped and restarted virtual server drops the registrations without closing the session or
+    /// raising an error, so nothing else would notice. Re-registering is idempotent; the transport
+    /// re-selects the virtual server first when its selection has gone stale (error 1024).
+    /// </remarks>
+    private async Task WatchdogAsync(EventSession session, CancellationToken stop)
+    {
+        if (_reRegisterInterval <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        try
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                await Task.Delay(_reRegisterInterval, stop).ConfigureAwait(false);
+                await ReRegisterOnceAsync(session, stop).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The subscription ended.
+        }
+    }
+
+    /// <summary>One watchdog pass: re-register under the session gate if it is still open.</summary>
+    private static async Task ReRegisterOnceAsync(EventSession session, CancellationToken cancellationToken)
+    {
+        await session.Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (session.Transport is not { } transport || session.Categories().Count == 0)
+            {
+                return;
+            }
+
+            await SendRegistrationsAsync(session, (command, token) => transport.SendAsync(command, token), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The failure is already recorded on the session; the next pass tries again.
+        }
+        finally
+        {
+            session.Gate.Release();
+        }
     }
 
     private static async Task PumpAsync(EventSession session, IQueryTransport transport, EventBuffer buffer, CancellationToken stop)
@@ -336,6 +418,7 @@ public sealed class QueryEventHub : IAsyncDisposable
         {
             await foreach (var notification in transport.GetEventsAsync(stop).ConfigureAwait(false))
             {
+                session.RecordEvent();
                 buffer.Append(session.VirtualServerId, notification);
             }
         }
@@ -355,15 +438,18 @@ public sealed class QueryEventHub : IAsyncDisposable
         await session.Stop.CancelAsync().ConfigureAwait(false);
         await transport.DisposeAsync().ConfigureAwait(false);
 
-        if (session.Pump is { } pump)
+        foreach (var task in new[] { session.Pump, session.Watchdog })
         {
-            try
+            if (task is not null)
             {
-                await pump.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when the subscription ends.
+                try
+                {
+                    await task.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when the subscription ends.
+                }
             }
         }
 
@@ -422,7 +508,10 @@ public sealed class QueryEventHub : IAsyncDisposable
     private sealed class EventSession(string profile, int virtualServerId)
     {
         private readonly HashSet<EventCategory> _categories = [];
+        private readonly Lock _health = new();
         private int _sessionsOpened;
+        private string? _lastError;
+        private DateTimeOffset? _lastEventAt;
 
         public string Profile { get; } = profile;
 
@@ -434,6 +523,8 @@ public sealed class QueryEventHub : IAsyncDisposable
         public IQueryTransport? Transport { get; set; }
 
         public Task? Pump { get; set; }
+
+        public Task? Watchdog { get; set; }
 
         public CancellationTokenSource Stop { get; private set; } = new();
 
@@ -484,19 +575,58 @@ public sealed class QueryEventHub : IAsyncDisposable
 
         public void CountOpened() => Interlocked.Increment(ref _sessionsOpened);
 
+        /// <summary>Records the last event's arrival, for the health view.</summary>
+        public void RecordEvent()
+        {
+            lock (_health)
+            {
+                _lastEventAt = DateTimeOffset.UtcNow;
+            }
+        }
+
+        /// <summary>Records the last registration outcome: a message when it failed, <see langword="null"/> when it succeeded.</summary>
+        public void RecordError(string? message)
+        {
+            lock (_health)
+            {
+                _lastError = message;
+            }
+        }
+
         public void Reset()
         {
             Replace([], 0);
             Transport = null;
             Pump = null;
+            Watchdog = null;
             ClientId = null;
             Stop.Dispose();
             Stop = new CancellationTokenSource();
             Interlocked.Exchange(ref _sessionsOpened, 0);
+
+            lock (_health)
+            {
+                _lastError = null;
+                _lastEventAt = null;
+            }
         }
 
-        public EventSubscription Snapshot() =>
-            new(Profile, VirtualServerId, [.. Categories().Order()], ChannelId, Since, Volatile.Read(ref _sessionsOpened), ClientId);
+        public EventSubscription Snapshot()
+        {
+            lock (_health)
+            {
+                return new EventSubscription(
+                    Profile,
+                    VirtualServerId,
+                    [.. Categories().Order()],
+                    ChannelId,
+                    Since,
+                    Volatile.Read(ref _sessionsOpened),
+                    ClientId,
+                    _lastEventAt,
+                    _lastError);
+            }
+        }
     }
 }
 
@@ -514,6 +644,12 @@ public sealed class QueryEventHub : IAsyncDisposable
 /// The event session's client id on the virtual server, where private messages to it must be sent;
 /// absent when it could not be read. It changes whenever the session is replaced.
 /// </param>
+/// <param name="LastEventAt">When the last event arrived on this session, or <see langword="null"/> if none has.</param>
+/// <param name="LastError">
+/// The last registration failure, or <see langword="null"/> when the last registration succeeded. A
+/// non-null value means the subscription is currently not delivering, for example because the virtual
+/// server is stopped.
+/// </param>
 public sealed record EventSubscription(
     string Profile,
     int VirtualServerId,
@@ -521,4 +657,6 @@ public sealed record EventSubscription(
     int ChannelId,
     DateTimeOffset Since,
     int SessionsOpened,
-    int? ClientId);
+    int? ClientId,
+    DateTimeOffset? LastEventAt,
+    string? LastError);

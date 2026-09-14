@@ -96,6 +96,15 @@ All notable changes to this project are documented here. The format follows
   - The keepalive now fires after 15 idle seconds (`KeepAliveSeconds`).
   - It reopens a session found disconnected within seconds.
 - Unregistering channel events sent no channel id, which the server refuses with `1539`.
+- An event subscription silently stopped delivering after its virtual server was stopped and started,
+  and `ts_events_status` still showed it as healthy.
+  - The SSH transport now recovers a stale selection: a scoped command refused with `1024 invalid
+    serverID` forgets the selection, re-selects and retries once. This also fixed ordinary tool calls
+    failing with 1024 right after a virtual server restart.
+  - `QueryEventHub` re-registers each subscription on a timer (30 seconds), so a subscription voided
+    by a restart comes back on its own.
+  - `ts_events_status` and `ts_events_poll` now report each subscription's `lastEventAt`, `lastError`
+    and a `healthy` flag, so a stalled subscription is visible.
 - A snapshot deploy was given up after the 30-second command timeout. It now waits up to ten minutes,
   and commands can carry their own timeout over SSH and the WebQuery.
 - `ts_perm_effective` counted a channel group's value for clients holding

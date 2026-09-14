@@ -267,7 +267,10 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
             subscription.ChannelId,
             subscription.Since,
             subscription.SessionsOpened,
-            subscription.ClientId);
+            subscription.ClientId,
+            subscription.LastEventAt,
+            subscription.LastError,
+            subscription.LastError is null);
 }
 
 /// <summary>One virtual server's event subscription.</summary>
@@ -277,13 +280,19 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
 /// <param name="Since">When its event session was opened.</param>
 /// <param name="SessionsOpened">How many sessions have carried it; above 1 means events may have been lost.</param>
 /// <param name="ClientId">The event session's client id: send private messages here to see them as textprivate events.</param>
+/// <param name="LastEventAt">When the last event arrived, or null if none has yet.</param>
+/// <param name="LastError">The last registration failure, or null when healthy; set for example while the virtual server is stopped.</param>
+/// <param name="Healthy">Whether the subscription is currently delivering, that is LastError is null.</param>
 public sealed record EventSubscriptionView(
     int VirtualServerId,
     IReadOnlyList<string> Categories,
     int ChannelId,
     DateTimeOffset Since,
     int SessionsOpened,
-    int? ClientId);
+    int? ClientId,
+    DateTimeOffset? LastEventAt,
+    string? LastError,
+    bool Healthy);
 
 /// <summary>The result of subscribing.</summary>
 /// <param name="Subscription">The subscription as it now stands.</param>

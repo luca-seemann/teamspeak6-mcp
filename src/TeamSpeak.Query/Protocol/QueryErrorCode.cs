@@ -23,6 +23,18 @@ public static class QueryErrorCode
     /// </remarks>
     public const int Flooding = 524;
 
+    /// <summary>
+    /// A scoped command named a virtual server the session is not validly on. Sent as
+    /// <c>invalid serverID</c>.
+    /// </summary>
+    /// <remarks>
+    /// Observed after a virtual server was stopped and started: a session that had selected it keeps a
+    /// stale selection, and its next scoped command is refused with this until a fresh <c>use</c> is
+    /// sent. The transport reacts by forgetting the selection, re-selecting and retrying the command
+    /// once.
+    /// </remarks>
+    public const int InvalidServerId = 1024;
+
     /// <summary>The command name is not known to the server. Sent as <c>invalid parameter</c>.</summary>
     public const int UnknownCommand = 1538;
 

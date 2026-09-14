@@ -484,27 +484,18 @@ public sealed class SshQueryTransport : IQueryTransport
 
         try
         {
-            if (!QueryCommandScope.IsInstanceWide(command.Name))
+            var scoped = !QueryCommandScope.IsInstanceWide(command.Name);
+            var response = await SelectAndExchangeAsync(command, scoped, cancellationToken).ConfigureAwait(false);
+
+            // A stopped and restarted virtual server leaves the old selection stale: the command is
+            // refused with 1024 without having run. Forget the selection, which forces a fresh use,
+            // and try the command once more. Safe because a rejected command did not take effect.
+            if (scoped && response.Error.Id == QueryErrorCode.InvalidServerId && _selectedVirtualServerId != 0)
             {
-                var target = command.VirtualServerId ?? _defaultVirtualServerId;
-
-                if (target != _selectedVirtualServerId)
-                {
-                    var use = await ExchangeAsync(UseCommand(target), cancellationToken).ConfigureAwait(false);
-
-                    if (!use.Error.IsSuccess)
-                    {
-                        // The failed selection is the answer: running the command anyway would
-                        // address whatever happened to be selected before.
-                        _selectedVirtualServerId = 0;
-                        return use;
-                    }
-
-                    _selectedVirtualServerId = target;
-                }
+                _selectedVirtualServerId = 0;
+                response = await SelectAndExchangeAsync(command, scoped, cancellationToken).ConfigureAwait(false);
             }
 
-            var response = await ExchangeAsync(command, cancellationToken).ConfigureAwait(false);
             TrackSelection(command, response);
             return response;
         }
@@ -515,6 +506,32 @@ public sealed class SshQueryTransport : IQueryTransport
             _selectedVirtualServerId = 0;
             throw;
         }
+    }
+
+    /// <summary>Selects the command's virtual server if needed, then sends the command.</summary>
+    private async Task<QueryResponse> SelectAndExchangeAsync(QueryCommand command, bool scoped, CancellationToken cancellationToken)
+    {
+        if (scoped)
+        {
+            var target = command.VirtualServerId ?? _defaultVirtualServerId;
+
+            if (target != _selectedVirtualServerId)
+            {
+                var use = await ExchangeAsync(UseCommand(target), cancellationToken).ConfigureAwait(false);
+
+                if (!use.Error.IsSuccess)
+                {
+                    // The failed selection is the answer: running the command anyway would
+                    // address whatever happened to be selected before.
+                    _selectedVirtualServerId = 0;
+                    return use;
+                }
+
+                _selectedVirtualServerId = target;
+            }
+        }
+
+        return await ExchangeAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
