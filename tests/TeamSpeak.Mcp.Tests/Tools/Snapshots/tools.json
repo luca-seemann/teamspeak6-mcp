@@ -5752,7 +5752,7 @@
   {
     "name": "ts_vserver_snapshot_deploy",
     "title": "Deploy a snapshot over a virtual server",
-    "description": "Replaces a virtual server\u0027s configuration, channels, groups and permissions with a snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. TeamSpeak does not check permissions while deploying, so a snapshot can grant any privilege: deploy only snapshots whose origin you trust. The virtual server shuts down for the deploy, disconnecting everyone on it, and stays unusable until it finishes; this tool waits up to 10 minutes. On TeamSpeak 6.0.0-beta12.1 a deploy was seen to hang in \u0027deploy running\u0027 and leave the virtual server impossible to start, select or delete, with a server reset as the only way back; the cause is not known. Deploy over a server you can afford to lose, and take ts_vserver_snapshot_create of it first. As a safeguard, confirmName must repeat the target virtual server\u0027s exact name. Needs Destructive.",
+    "description": "Replaces a virtual server\u0027s configuration, channels, groups and permissions with a snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. TeamSpeak does not check permissions while deploying, so a snapshot can grant any privilege: deploy only snapshots whose origin you trust. The virtual server shuts down for the deploy, disconnecting everyone on it, and stays unusable until it finishes; this tool waits up to 10 minutes; a normal deploy took about a second. Every channel, group and client database id changes, so ids read before are stale. Channel files are not kept: deploying with -keepfiles crashed TeamSpeak 6.0.0-beta12.1 and left the virtual server impossible to start, select or delete, so this server refuses it on every path. Take ts_vserver_snapshot_create of the target first. As a safeguard, confirmName must repeat the target virtual server\u0027s exact name. Needs Destructive.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -5783,11 +5783,6 @@
             "null"
           ],
           "default": null
-        },
-        "keepFiles": {
-          "description": "Keep the files of channels that exist both before and after.",
-          "type": "boolean",
-          "default": false
         },
         "virtualServerId": {
           "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",

@@ -77,6 +77,15 @@ All notable changes to this project are documented here. The format follows
   It now needs `Destructive`.
 - `ts_perm_set` read the permission catalog before checking the safety level.
 - Empty property values and an unreadable server name passed validation.
+- `ts_vserver_snapshot_deploy` could deploy with `-keepfiles`. On TeamSpeak 6.0.0-beta12.1 that crashed
+  the server, with and without files stored in channels, and left the virtual server impossible to
+  start, select or delete. The option is gone from the tool, and `serversnapshotdeploy -keepfiles` is
+  refused on every path, `ts_query_raw` included.
+- A snapshot deploy was given up after the 30-second command timeout. It now waits up to ten minutes,
+  and commands can carry their own timeout over SSH and the WebQuery.
+- `ts_perm_effective` counted a channel group's value for clients holding
+  `b_client_skip_channelgroup_permissions`, such as Server Admin. The server ignores it: 75 talk
+  power from Server Admin stays 75 against a channel group granting 62.
 
 ### Changed (review of phase 6)
 

@@ -153,10 +153,11 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
                  "TeamSpeak does not check permissions while deploying, so a snapshot can grant any " +
                  "privilege: deploy only snapshots whose origin you trust. The virtual server shuts down " +
                  "for the deploy, disconnecting everyone on it, and stays unusable until it finishes; this " +
-                 "tool waits up to 10 minutes. On TeamSpeak 6.0.0-beta12.1 a deploy was seen to hang in " +
-                 "'deploy running' and leave the virtual server impossible to start, select or delete, " +
-                 "with a server reset as the only way back; the cause is not known. Deploy over a server " +
-                 "you can afford to lose, and take ts_vserver_snapshot_create of it first. As a safeguard, " +
+                 "tool waits up to 10 minutes; a normal deploy took about a second. Every channel, group " +
+                 "and client database id changes, so ids read before are stale. Channel files are not " +
+                 "kept: deploying with -keepfiles crashed TeamSpeak 6.0.0-beta12.1 and left the virtual " +
+                 "server impossible to start, select or delete, so this server refuses it on every " +
+                 "path. Take ts_vserver_snapshot_create of the target first. As a safeguard, " +
                  "confirmName must repeat the target virtual server's exact name. Needs Destructive.")]
     public async Task<ActionResult> SnapshotDeployAsync(
         [Description("The snapshot's version field.")] string version,
@@ -164,7 +165,6 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
         [Description(ToolDescriptions.ConfirmVirtualServer)] string confirmName,
         [Description("The snapshot's salt field, present when it was created with a password.")] string? salt = null,
         [Description("The password the snapshot was created with.")] string? password = null,
-        [Description("Keep the files of channels that exist both before and after.")] bool keepFiles = false,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -191,7 +191,8 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
             parameters["password"] = password;
         }
 
-        var options = keepFiles ? new[] { "-mapping", "-keepfiles" } : ["-mapping"];
+        // Never -keepfiles: it crashed the whole server, see KnownCrashes.
+        string[] options = ["-mapping"];
 
         var records = await executor.RunCommandAsync(
             "ts_vserver_snapshot_deploy", profile, new QueryCommand("serversnapshotdeploy", parameters, options, virtualServerId, SnapshotDeployTimeout), cancellationToken)

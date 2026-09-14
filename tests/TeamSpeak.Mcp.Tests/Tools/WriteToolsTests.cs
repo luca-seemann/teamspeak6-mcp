@@ -124,13 +124,30 @@ public class WriteToolsTests
 
         await Assert.ThrowsAsync<McpException>(() => tools.SnapshotDeployAsync("3", "KLUv", "Other", cancellationToken: Ct));
 
-        var result = await tools.SnapshotDeployAsync("3", "KLUv", "Main", salt: "s", keepFiles: true, cancellationToken: Ct);
+        var result = await tools.SnapshotDeployAsync("3", "KLUv", "Main", salt: "s", cancellationToken: Ct);
 
         var deploy = harness.Transport.SentCommands.Single(command => command.Name == "serversnapshotdeploy");
-        Assert.Equal(["-mapping", "-keepfiles"], deploy.Options);
+        Assert.Equal(["-mapping"], deploy.Options);
         Assert.Equal(TimeSpan.FromMinutes(10), deploy.Timeout);
         Assert.Equal(("3", "KLUv", "s"), (deploy.Parameters!["version"], deploy.Parameters["data"], deploy.Parameters["salt"]));
         Assert.Equal(2, result.Records.Count);
+    }
+
+    [Theory]
+    [InlineData("-keepfiles")]
+    [InlineData("keepfiles")]
+    [InlineData(" -KEEPFILES ")]
+    public async Task A_deploy_with_keepfiles_is_refused_on_every_path_without_sending_anything(string option)
+    {
+        // On TeamSpeak 6.0.0-beta12.1 it hung once and crashed the server once, both times leaving the
+        // virtual server unrecoverable.
+        await using var harness = new ToolHarness(SafetyLevel.Destructive);
+
+        var raw = await Assert.ThrowsAsync<McpException>(() => new MetaTools(harness.Executor).QueryRawAsync(
+            "serversnapshotdeploy", new Dictionary<string, string> { ["version"] = "3", ["data"] = "KLUv" }, [option], 1, cancellationToken: Ct));
+
+        Assert.Contains("crashed", raw.Message, StringComparison.Ordinal);
+        Assert.Empty(harness.Transport.SentCommands);
     }
 
     [Fact]

@@ -72,6 +72,8 @@ public sealed class QueryExecutor
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(command);
 
+        KnownCrashes.Refuse(command);
+
         var resolved = ResolveProfile(profile);
         Safety.Demand(resolved, required, action);
 
@@ -138,6 +140,7 @@ public sealed class QueryExecutor
             return await transport.RunExclusiveAsync(
                 send => work(new SessionSequence(resolved, transport.HoldsSession, async command =>
                 {
+                    KnownCrashes.Refuse(command);
                     Safety.Demand(resolved, CommandCatalog.RequiredLevel(command.Name), action);
                     var response = await send(command, cancellationToken).ConfigureAwait(false);
                     return RecordsOf(resolved.Name, command.Name, response);

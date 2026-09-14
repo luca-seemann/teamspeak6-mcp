@@ -186,6 +186,12 @@ The three actions that cannot be undone and reach a whole virtual server — `ts
 exact name. `ts_vserver_create` needs `Destructive` because the key it returns grants full control
 of the new server.
 
+A snapshot deploy restarts the virtual server and gives every channel, group and client database id
+a new number, so ids read before it are stale. It also drops the files stored in channels. This
+server never deploys with `-keepfiles`, not even through `ts_query_raw`. On TeamSpeak 6.0.0-beta12.1
+that option crashed the server, and the virtual server could not be started, selected or deleted
+afterwards, until its database was wiped.
+
 `ts_client_kick` and `ts_ban_add` refuse to act on this server's own query session, which would
 cut off every tool call on the profile. A channel message has to move that session into the
 channel and back, so it runs as one uninterrupted sequence; this works over SSH and the WebQuery
@@ -204,8 +210,9 @@ a `virtualServerId`, optional except where the wrong server would be costly: `ts
 `ts_vserver_delete` require it.
 
 `ts_perm_effective` shows, for one client in one channel, the value the client ends up with and
-every assignment behind it, marking the one that decided and any skip flag that kept the channel
-layers out.
+every assignment behind it, marking the one that decided. It also shows when channel values did not
+count: a skip flag keeps both channel layers out, and `b_client_skip_channelgroup_permissions`, which
+Server Admin holds by default, keeps out the channel group.
 
 ### Resources
 
