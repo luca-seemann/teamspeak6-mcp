@@ -31,6 +31,32 @@ public sealed class RequiresTeamSpeakServerFactAttribute : FactAttribute
 }
 
 /// <summary>
+/// A fact that runs only against a live server, and only when disruptive tests are explicitly allowed.
+/// </summary>
+/// <remarks>
+/// These tests act on a real person connected to the server in ways a round trip cannot undo, such
+/// as kicking them off the server, so an ordinary run must never include them. Set
+/// <c>TSMCP_TEST_DISRUPTIVE=1</c> in addition to the SSH variables to run them.
+/// </remarks>
+public sealed class RequiresDisruptiveLiveTestFactAttribute : FactAttribute
+{
+    /// <summary>Initialises the attribute, skipping the test unless disruptive tests are allowed.</summary>
+    /// <param name="sourceFilePath">Supplied by the compiler; used for test source information.</param>
+    /// <param name="sourceLineNumber">Supplied by the compiler; used for test source information.</param>
+    public RequiresDisruptiveLiveTestFactAttribute(
+        [CallerFilePath] string? sourceFilePath = null,
+        [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
+    {
+        if (!LiveServer.CanUseSsh || !LiveServer.AllowsDisruptiveTests)
+        {
+            Skip = $"Disruptive live tests are off. Set {LiveServer.HostVariable}, {LiveServer.PasswordVariable} " +
+                   $"and {LiveServer.DisruptiveVariable}=1 to run this test; it disconnects a real client.";
+        }
+    }
+}
+
+/// <summary>
 /// A fact that runs only when a live server and a WebQuery API key are configured.
 /// </summary>
 /// <remarks>

@@ -18,6 +18,15 @@ internal static class LiveServer
     /// <summary>The variable holding an API key, needed for the WebQuery tests.</summary>
     public const string ApiKeyVariable = "TSMCP_TEST_APIKEY";
 
+    /// <summary>
+    /// The variable that allows tests which disturb a real person on the server, such as kicking a
+    /// connected client off it.
+    /// </summary>
+    public const string DisruptiveVariable = "TSMCP_TEST_DISRUPTIVE";
+
+    /// <summary>Gets a value indicating whether disruptive tests may run.</summary>
+    public static bool AllowsDisruptiveTests => Get(DisruptiveVariable) == "1";
+
     /// <summary>Gets the configured host, or an empty string when the suite is disabled.</summary>
     public static string Host => Get(HostVariable) ?? string.Empty;
 

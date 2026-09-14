@@ -377,6 +377,45 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         Assert.Equal(person.ChannelId, await ChannelOfPersonAsync());
     }
 
+    [RequiresDisruptiveLiveTestFact]
+    public async Task A_connected_client_receives_an_offline_message_and_can_be_kicked_off_the_server()
+    {
+        await using var connections = Connections();
+        var executor = Executor(connections);
+        var admin = new ClientAdminTools(executor);
+        var clients = new ClientTools(executor);
+
+        var people = (await clients.ListClientsAsync(virtualServerId: 1, cancellationToken: Ct)).Clients;
+        if (people.Count == 0)
+        {
+            Assert.Skip("No real client is connected to virtual server 1, so there is nobody to kick.");
+        }
+
+        var person = people[0];
+
+        // An offline message cannot be taken back from someone else's inbox, which is why it lives here
+        // rather than in the round-trip tests.
+        var message = await admin.OfflineMessageAsync(
+            "send", person.UniqueId, "tsmcp-live", "Offline message from the teamspeak6-mcp live tests; please ignore.",
+            virtualServerId: 1, cancellationToken: Ct);
+        Assert.Equal("Left the offline message.", message.Done);
+
+        // Disconnects the person; they have to reconnect themselves.
+        await admin.KickAsync(person.ClientId, "server", "tsmcp-live server kick", 1, cancellationToken: Ct);
+
+        var gone = false;
+        for (var attempt = 0; attempt < 10 && !gone; attempt++)
+        {
+            gone = (await clients.ListClientsAsync(virtualServerId: 1, cancellationToken: Ct)).Clients.All(client => client.ClientId != person.ClientId);
+            if (!gone)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(500), Ct);
+            }
+        }
+
+        Assert.True(gone, $"Client {person.ClientId} was still connected after the server kick.");
+    }
+
     [RequiresTeamSpeakServerFact]
     public async Task Server_and_instance_settings_can_be_changed_and_restored_and_a_snapshot_taken()
     {
