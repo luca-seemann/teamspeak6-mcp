@@ -76,6 +76,43 @@ public sealed class EventSessionIntegrationTests(LiveServerFixture server)
         Assert.True(await reading, $"The message '{message}' did not arrive on the replaced session within 15 seconds.");
     }
 
+    [RequiresTeamSpeakServerFact]
+    public async Task A_session_that_sends_nothing_itself_stays_connected_and_keeps_receiving()
+    {
+        // The server dropped sessions after 25 to 30 idle seconds; 45 seconds of silence proves the
+        // keepalive, and the session count proves it was not merely reconnected.
+        var ct = TestContext.Current.CancellationToken;
+        var opened = 0;
+
+        await using var events = await SshQueryTransport.ConnectAsync(
+            LiveServerFixture.Profile(),
+            async (send, token) =>
+            {
+                Interlocked.Increment(ref opened);
+                var registered = await send(
+                    new QueryCommand("servernotifyregister", new Dictionary<string, string> { ["event"] = "textserver" }, VirtualServerId: 1),
+                    token);
+
+                if (!registered.Error.IsSuccess)
+                {
+                    throw new QueryProtocolException($"servernotifyregister was refused: {registered.Error.Message}");
+                }
+            },
+            ct);
+
+        await Task.Delay(TimeSpan.FromSeconds(45), ct);
+
+        var message = $"mcp idle {Guid.NewGuid().ToString("N")[..8]}";
+        var reading = WaitForMessageAsync(events, message, ct);
+        var sent = await server.Ssh.SendAsync(
+            new QueryCommand("sendtextmessage", new Dictionary<string, string> { ["targetmode"] = "3", ["target"] = "1", ["msg"] = message }, VirtualServerId: 1),
+            ct);
+        Assert.True(sent.Error.IsSuccess, sent.Error.Message);
+
+        Assert.True(await reading, $"The message '{message}' did not arrive on a session left idle for 45 seconds.");
+        Assert.Equal(1, Volatile.Read(ref opened));
+    }
+
     private static async Task<bool> WaitForMessageAsync(SshQueryTransport events, string message, CancellationToken cancellationToken)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

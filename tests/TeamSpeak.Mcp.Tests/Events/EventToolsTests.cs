@@ -23,7 +23,8 @@ public class EventToolsTests
         {
             var transport = new FakeQueryTransport()
                 .Returns("servernotifyregister", ToolHarness.Records())
-                .Returns("servernotifyunregister", ToolHarness.Records());
+                .Returns("servernotifyunregister", ToolHarness.Records())
+                .Returns("whoami", ToolHarness.Records(new Dictionary<string, string> { ["client_id"] = "17" }));
             await onOpened(transport.SendAsync, cancellationToken);
             Opened.Add(transport);
             return transport;
@@ -44,8 +45,8 @@ public class EventToolsTests
         var result = await new EventTools(harness.Executor, hub).SubscribeAsync(cancellationToken: Ct);
 
         Assert.Equal(["server", "channel", "textserver", "textchannel", "textprivate", "bans"], result.Subscription.Categories);
-        Assert.Equal((1, 1L), (result.Subscription.VirtualServerId, result.Cursor));
-        Assert.Equal(6, Assert.Single(sessions.Opened).SentCommands.Count);
+        Assert.Equal((1, 1L, 17), (result.Subscription.VirtualServerId, result.Cursor, result.Subscription.ClientId));
+        Assert.Equal(6, Assert.Single(sessions.Opened).SentCommands.Count(command => command.Name == "servernotifyregister"));
     }
 
     [Fact]

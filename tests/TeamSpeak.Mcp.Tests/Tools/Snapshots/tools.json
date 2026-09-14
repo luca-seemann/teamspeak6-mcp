@@ -3033,6 +3033,12 @@
               },
               "sessionsOpened": {
                 "type": "integer"
+              },
+              "clientId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -3040,7 +3046,8 @@
               "categories",
               "channelId",
               "since",
-              "sessionsOpened"
+              "sessionsOpened",
+              "clientId"
             ]
           }
         },
@@ -3111,6 +3118,12 @@
               },
               "sessionsOpened": {
                 "type": "integer"
+              },
+              "clientId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -3118,7 +3131,8 @@
               "categories",
               "channelId",
               "since",
-              "sessionsOpened"
+              "sessionsOpened",
+              "clientId"
             ]
           }
         },
@@ -3150,7 +3164,7 @@
   {
     "name": "ts_events_subscribe",
     "title": "Subscribe to server events",
-    "description": "Starts collecting events from a virtual server, so ts_events_poll and ts_events_wait can return them. Categories: server (clients connecting and disconnecting, server settings changed), channel (channels created, edited or deleted, clients moving, connecting and disconnecting), textserver (server-wide messages), textchannel (messages in the channel the event session sits in, the default channel), textprivate (private messages to the event session) and bans (bans added or removed). Without categories, all of them. Adding categories keeps the ones already subscribed. Returns a cursor: pass it as \u0027after\u0027 to read only what arrives from now on. Events need the SSH query and use a query session of their own. Subscriptions are shared by everyone using this server, and last until ts_events_unsubscribe or a restart.",
+    "description": "Starts collecting events from a virtual server, so ts_events_poll and ts_events_wait can return them. Categories: server (clients connecting and disconnecting, server settings changed), channel (channels created, edited or deleted, clients moving, connecting and disconnecting), textserver (server-wide messages), textchannel (messages in the channel the event session sits in, the default channel), textprivate (private messages sent to the event session\u0027s clientId, which the subscription reports) and bans (bans added or removed). Without categories, all of them. Adding categories keeps the ones already subscribed. Returns a cursor: pass it as \u0027after\u0027 to read only what arrives from now on. Events need the SSH query and use a query session of their own. Subscriptions are shared by everyone using this server, and last until ts_events_unsubscribe or a restart.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3218,6 +3232,12 @@
             },
             "sessionsOpened": {
               "type": "integer"
+            },
+            "clientId": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -3225,7 +3245,8 @@
             "categories",
             "channelId",
             "since",
-            "sessionsOpened"
+            "sessionsOpened",
+            "clientId"
           ]
         },
         "cursor": {
@@ -3318,6 +3339,12 @@
             },
             "sessionsOpened": {
               "type": "integer"
+            },
+            "clientId": {
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [
@@ -3325,7 +3352,8 @@
             "categories",
             "channelId",
             "since",
-            "sessionsOpened"
+            "sessionsOpened",
+            "clientId"
           ]
         }
       },
@@ -3477,6 +3505,12 @@
               },
               "sessionsOpened": {
                 "type": "integer"
+              },
+              "clientId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -3484,7 +3518,8 @@
               "categories",
               "channelId",
               "since",
-              "sessionsOpened"
+              "sessionsOpened",
+              "clientId"
             ]
           }
         },

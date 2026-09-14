@@ -47,6 +47,7 @@ public sealed class SshQueryTransport : IQueryTransport
     private volatile ShellStream _shell;
     private Task _readerLoop;
     private Timer? _keepAlive;
+    private int _keepAliveRunning;
 
     private TaskCompletionSource<QueryResponse>? _pending;
     private StringBuilder _pendingText = new();
@@ -80,9 +81,9 @@ public sealed class SshQueryTransport : IQueryTransport
         _commandTimeout = profile.CommandTimeout;
         _defaultVirtualServerId = profile.DefaultVirtualServerId;
 
-        // Comfortably inside the server's 300 second query timeout, and rare enough that the
-        // keepalive traffic is irrelevant next to the flood budget.
-        _keepAliveInterval = TimeSpan.FromSeconds(120);
+        // The server drops a session after 25 to 30 seconds without a command (measured), so this
+        // stays below that. One cheap command every few seconds is nothing next to the flood budget.
+        _keepAliveInterval = profile.KeepAliveInterval;
 
         _readerLoop = Task.Run(() => ReadLoopAsync(_shutdown.Token));
     }
@@ -330,24 +331,44 @@ public sealed class SshQueryTransport : IQueryTransport
         }
     }
 
-    private void StartKeepAlive() =>
+    private void StartKeepAlive()
+    {
+        // Checked several times per interval, so a dropped session is noticed within seconds
+        // rather than a whole interval later.
+        var check = TimeSpan.FromSeconds(Math.Clamp(_keepAliveInterval.TotalSeconds / 3, 1, 5));
+
         _keepAlive = new Timer(
             _ => _ = KeepAliveTickAsync(),
             state: null,
-            _keepAliveInterval,
-            _keepAliveInterval);
+            check,
+            check);
+    }
 
     /// <summary>
     /// Sends a cheap command when the session has been idle, so the server does not reap it.
     /// </summary>
     /// <remarks>
-    /// The server closes idle query sessions after <c>--query-timeout</c>, 300 seconds by default.
-    /// SSH-level keepalives do not count as query activity, so this has to be a real command.
+    /// <para>
+    /// Measured on 6.0.0-beta12.1: the server closed a query session after 25 to 30 seconds without a
+    /// command, although its documentation speaks of 300. SSH-level keepalive packets did not stop
+    /// it, so this has to be a real command.
+    /// </para>
+    /// <para>
+    /// A session found disconnected is reopened here at once instead of on the next command. For a
+    /// session that only receives events there is no next command, and every event in between would
+    /// be lost.
+    /// </para>
     /// </remarks>
     private async Task KeepAliveTickAsync()
     {
         if (_shutdown.IsCancellationRequested
-            || DateTimeOffset.UtcNow - _lastActivity < _keepAliveInterval)
+            || (_client.IsConnected && !_desynchronized && DateTimeOffset.UtcNow - _lastActivity < _keepAliveInterval))
+        {
+            return;
+        }
+
+        // A reconnect with backoff can outlast several ticks; one at a time is enough.
+        if (Interlocked.Exchange(ref _keepAliveRunning, 1) != 0)
         {
             return;
         }
@@ -358,7 +379,11 @@ public sealed class SshQueryTransport : IQueryTransport
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // A failed keepalive is not worth surfacing; the next real command reconnects.
+            // A failed keepalive is not worth surfacing; the next tick or command tries again.
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _keepAliveRunning, 0);
         }
     }
 

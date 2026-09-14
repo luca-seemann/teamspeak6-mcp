@@ -200,7 +200,7 @@ public sealed class QueryEventHub : IAsyncDisposable
             // A channel subscription for a different channel replaces the old one.
             if (categories.Contains(EventCategory.Channel) && current.Contains(EventCategory.Channel) && session.ChannelId != channelId)
             {
-                await SendAsync(transport, Unregister(EventCategory.Channel, virtualServerId), cancellationToken).ConfigureAwait(false);
+                await SendAsync(transport, Unregister(EventCategory.Channel, virtualServerId, session.ChannelId), cancellationToken).ConfigureAwait(false);
                 session.Remove(EventCategory.Channel);
                 current = session.Categories();
             }
@@ -259,7 +259,7 @@ public sealed class QueryEventHub : IAsyncDisposable
 
             foreach (var category in ending)
             {
-                await SendAsync(transport, Unregister(category, virtualServerId), cancellationToken).ConfigureAwait(false);
+                await SendAsync(transport, Unregister(category, virtualServerId, session.ChannelId), cancellationToken).ConfigureAwait(false);
                 session.Remove(category);
             }
 
@@ -310,14 +310,22 @@ public sealed class QueryEventHub : IAsyncDisposable
 
     private static async Task RegisterAllAsync(EventSession session, QuerySender send, CancellationToken cancellationToken)
     {
-        session.CountOpened();
-
         foreach (var category in session.Categories())
         {
             var command = Register(category, session.VirtualServerId, session.ChannelId);
             var response = await send(command, cancellationToken).ConfigureAwait(false);
             ThrowIfRefused(command, response);
         }
+
+        // Private messages reach the event session only when sent to its client id, which changes with
+        // every session. Knowing it is not worth failing the subscription over.
+        var who = await send(new QueryCommand("whoami", VirtualServerId: session.VirtualServerId), cancellationToken).ConfigureAwait(false);
+        session.ClientId = who.Error.IsSuccess && who.Records.Count > 0 && who.Records[0].GetInt32("client_id") is > 0 and var clientId
+            ? clientId
+            : null;
+
+        // Counted only once registered, so a failed reconnect attempt does not look like a replacement.
+        session.CountOpened();
     }
 
     private static async Task PumpAsync(EventSession session, IQueryTransport transport, EventBuffer buffer, CancellationToken stop)
@@ -390,8 +398,20 @@ public sealed class QueryEventHub : IAsyncDisposable
         return new QueryCommand("servernotifyregister", parameters, VirtualServerId: virtualServerId);
     }
 
-    private static QueryCommand Unregister(EventCategory category, int virtualServerId) =>
-        new("servernotifyunregister", new Dictionary<string, string> { ["event"] = WireName(category) }, VirtualServerId: virtualServerId);
+    /// <remarks>
+    /// Measured live: <c>servernotifyunregister event=channel</c> without an id is refused with
+    /// <c>1539 parameter not found</c>, while the other categories take no id.
+    /// </remarks>
+    private static QueryCommand Unregister(EventCategory category, int virtualServerId, int channelId)
+    {
+        var parameters = new Dictionary<string, string> { ["event"] = WireName(category) };
+        if (category == EventCategory.Channel)
+        {
+            parameters["id"] = channelId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return new QueryCommand("servernotifyunregister", parameters, VirtualServerId: virtualServerId);
+    }
 
     private static async Task<IQueryTransport> OpenAsync(
         QueryProfile profile,
@@ -420,6 +440,8 @@ public sealed class QueryEventHub : IAsyncDisposable
         public int ChannelId { get; private set; }
 
         public DateTimeOffset Since { get; set; }
+
+        public int? ClientId { get; set; }
 
         // Copies taken under the lock: a reconnect reads the categories on the transport's own thread.
         public HashSet<EventCategory> Categories()
@@ -467,13 +489,14 @@ public sealed class QueryEventHub : IAsyncDisposable
             Replace([], 0);
             Transport = null;
             Pump = null;
+            ClientId = null;
             Stop.Dispose();
             Stop = new CancellationTokenSource();
             Interlocked.Exchange(ref _sessionsOpened, 0);
         }
 
         public EventSubscription Snapshot() =>
-            new(Profile, VirtualServerId, [.. Categories().Order()], ChannelId, Since, Volatile.Read(ref _sessionsOpened));
+            new(Profile, VirtualServerId, [.. Categories().Order()], ChannelId, Since, Volatile.Read(ref _sessionsOpened), ClientId);
     }
 }
 
@@ -487,10 +510,15 @@ public sealed class QueryEventHub : IAsyncDisposable
 /// How many sessions have carried the subscription. Anything above one means the connection was
 /// replaced, and events that arrived in between were lost.
 /// </param>
+/// <param name="ClientId">
+/// The event session's client id on the virtual server, where private messages to it must be sent;
+/// absent when it could not be read. It changes whenever the session is replaced.
+/// </param>
 public sealed record EventSubscription(
     string Profile,
     int VirtualServerId,
     IReadOnlyList<EventCategory> Categories,
     int ChannelId,
     DateTimeOffset Since,
-    int SessionsOpened);
+    int SessionsOpened,
+    int? ClientId);

@@ -89,6 +89,13 @@ All notable changes to this project are documented here. The format follows
   the server, with and without files stored in channels, and left the virtual server impossible to
   start, select or delete. The option is gone from the tool, and `serversnapshotdeploy -keepfiles` is
   refused on every path, `ts_query_raw` included.
+- SSH sessions were dropped by the server after about 30 idle seconds, because the keepalive only
+  fired after 120, based on a documented 300-second timeout that did not hold on 6.0.0-beta12.1.
+  - Event sessions lost their events.
+  - The shared tool session reconnected after every longer pause.
+  - The keepalive now fires after 15 idle seconds (`KeepAliveSeconds`).
+  - It reopens a session found disconnected within seconds.
+- Unregistering channel events sent no channel id, which the server refuses with `1539`.
 - A snapshot deploy was given up after the 30-second command timeout. It now waits up to ten minutes,
   and commands can carry their own timeout over SSH and the WebQuery.
 - `ts_perm_effective` counted a channel group's value for clients holding

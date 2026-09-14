@@ -143,6 +143,7 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Profiles:<name>:Transport` | `TSMCP_TeamSpeak__Profiles__<name>__Transport` | `Auto` (SSH when a password is set) |
 | `TeamSpeak:Profiles:<name>:DefaultVirtualServerId` | `TSMCP_TeamSpeak__Profiles__<name>__DefaultVirtualServerId` | `1` |
 | `TeamSpeak:Profiles:<name>:Safety` | `TSMCP_TeamSpeak__Profiles__<name>__Safety` | the global level |
+| `TeamSpeak:Profiles:<name>:KeepAliveSeconds` | `TSMCP_TeamSpeak__Profiles__<name>__KeepAliveSeconds` | `15`; keep it below the server's idle timeout, about 30 seconds on 6.0.0-beta12.1 |
 
 Each profile keeps one long-lived connection, opened on the first tool call that needs it.
 
@@ -231,7 +232,10 @@ reading needs no session and works behind the stateless HTTP transport. Every ev
 TeamSpeak's notification name (for example `notifytextmessage`) and its fields.
 
 A few things to know:
-- **SSH only.** Events need the SSH query; the WebQuery refuses `servernotifyregister`.
+- **SSH only.** Events need the SSH query; the WebQuery refuses `servernotifyregister`. A profile
+  with a password uses SSH for events even when its tools are set to the WebQuery.
+- **Private messages need the event session's id.** `textprivate` covers messages sent to the event
+  session's own client, whose `clientId` each subscription reports.
 - **A session of its own.** Each subscribed virtual server gets its own query session, so tool calls
   moving the shared session cannot disturb it. That costs one more connection.
 - **Shared by everyone.** Subscriptions belong to the profile, not to the MCP client that made them,

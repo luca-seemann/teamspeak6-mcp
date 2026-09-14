@@ -23,7 +23,8 @@ public class QueryEventHubTests
         {
             var transport = new FakeQueryTransport()
                 .Returns("servernotifyregister", Ok)
-                .Returns("servernotifyunregister", Ok);
+                .Returns("servernotifyunregister", Ok)
+                .Returns("whoami", new QueryResponse([new QueryRecord(new Dictionary<string, string> { ["client_id"] = (40 + Opened.Count).ToString(System.Globalization.CultureInfo.InvariantCulture) })], new QueryError(0, "ok")));
 
             // As the real transport does: register on the fresh session before handing it out.
             await onOpened(transport.SendAsync, cancellationToken);
@@ -35,6 +36,10 @@ public class QueryEventHubTests
     private static string Registration(QueryCommand command) =>
         command.Parameters!["event"] + (command.Parameters.TryGetValue("id", out var id) ? $" id={id}" : string.Empty);
 
+    /// <summary>The (un)registrations a session was sent, leaving out the whoami that follows them.</summary>
+    private static IEnumerable<QueryCommand> Notifies(FakeQueryTransport transport) =>
+        transport.SentCommands.Where(command => command.Name.StartsWith("servernotify", StringComparison.Ordinal));
+
     [Fact]
     public async Task Opens_one_session_per_virtual_server_and_registers_every_category_on_it()
     {
@@ -44,10 +49,10 @@ public class QueryEventHubTests
         var subscription = await hub.SubscribeAsync("test", 1, [EventCategory.TextServer, EventCategory.Channel], channelId: 0, Ct);
 
         var (transport, _) = Assert.Single(sessions.Opened);
-        Assert.Equal(["textserver", "channel id=0"], transport.SentCommands.Select(Registration));
+        Assert.Equal(["textserver", "channel id=0"], Notifies(transport).Select(Registration));
         Assert.All(transport.SentCommands, command => Assert.Equal(1, command.VirtualServerId));
         Assert.Equal([EventCategory.Channel, EventCategory.TextServer], subscription.Categories);
-        Assert.Equal(1, subscription.SessionsOpened);
+        Assert.Equal((1, 40), (subscription.SessionsOpened, subscription.ClientId));
     }
 
     [Fact]
@@ -60,7 +65,7 @@ public class QueryEventHubTests
         var subscription = await hub.SubscribeAsync("test", 1, [EventCategory.TextServer, EventCategory.Bans], cancellationToken: Ct);
 
         var (transport, _) = Assert.Single(sessions.Opened);
-        Assert.Equal(["textserver", "bans"], transport.SentCommands.Select(Registration));
+        Assert.Equal(["textserver", "bans"], Notifies(transport).Select(Registration));
         Assert.Equal([EventCategory.TextServer, EventCategory.Bans], subscription.Categories);
     }
 
@@ -77,7 +82,7 @@ public class QueryEventHubTests
         // What the SSH transport does after replacing a dropped session.
         await onOpened(transport.SendAsync, Ct);
 
-        Assert.Equal(["bans", "textserver"], transport.SentCommands.Skip(before).Select(Registration).Order());
+        Assert.Equal(["bans", "textserver"], transport.SentCommands.Skip(before).Where(command => command.Name == "servernotifyregister").Select(Registration).Order());
         Assert.Equal(2, Assert.Single(hub.Subscriptions("test")).SessionsOpened);
     }
 
@@ -127,8 +132,9 @@ public class QueryEventHubTests
 
         var (transport, _) = Assert.Single(sessions.Opened);
         Assert.Equal(
-            ["servernotifyregister channel id=0", "servernotifyunregister channel", "servernotifyregister channel id=7"],
-            transport.SentCommands.Select(command => $"{command.Name} {Registration(command)}"));
+            // The server refuses to unregister the channel category without its id (1539), so it is sent.
+            ["servernotifyregister channel id=0", "servernotifyunregister channel id=0", "servernotifyregister channel id=7"],
+            Notifies(transport).Select(command => $"{command.Name} {Registration(command)}"));
         Assert.Equal(7, subscription.ChannelId);
     }
 
@@ -146,6 +152,32 @@ public class QueryEventHubTests
 
         Assert.Contains("insufficient client permissions", refused.Message, StringComparison.Ordinal);
         Assert.Empty(hub.Subscriptions("test"));
+    }
+
+    [Fact]
+    public async Task A_failed_registration_during_a_reconnect_is_not_counted_as_a_session()
+    {
+        var refuse = false;
+        FakeQueryTransport? transport = null;
+        Func<QuerySender, CancellationToken, Task>? onOpened = null;
+
+        await using var hub = new QueryEventHub(Registry(), 100, async (profile, opened, token) =>
+        {
+            transport = new FakeQueryTransport()
+                .Returns("servernotifyregister", _ => refuse ? new QueryResponse([], new QueryError(1024, "invalid serverID")) : Ok)
+                .Returns("whoami", Ok);
+            onOpened = opened;
+            await opened(transport.SendAsync, token);
+            return transport;
+        });
+        await hub.SubscribeAsync("test", 1, [EventCategory.Server], cancellationToken: Ct);
+
+        refuse = true;
+        await Assert.ThrowsAsync<QueryProtocolException>(() => onOpened!(transport!.SendAsync, Ct));
+
+        var subscription = Assert.Single(hub.Subscriptions("test"));
+        Assert.Equal(1, subscription.SessionsOpened);
+        Assert.Null(subscription.ClientId);
     }
 
     [Fact]

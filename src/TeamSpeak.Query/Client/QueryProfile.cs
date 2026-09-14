@@ -70,6 +70,14 @@ public sealed class QueryProfile
     /// <summary>Gets or sets how long to wait for a single command to answer.</summary>
     public TimeSpan CommandTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>Gets or sets how long an SSH session may sit without a command before one is sent to keep it.</summary>
+    /// <remarks>
+    /// Measured on 6.0.0-beta12.1: the server cut off a query session after 25 to 30 seconds without a
+    /// command. SSH-level keepalive packets did not prevent that; a <c>version</c> every 20 seconds did.
+    /// The documented 300 seconds did not hold there, so the default stays well below 25 seconds.
+    /// </remarks>
+    public TimeSpan KeepAliveInterval { get; set; } = TimeSpan.FromSeconds(15);
+
     /// <summary>Gets a value indicating whether this profile can use the SSH interface.</summary>
     public bool CanUseSsh => !string.IsNullOrEmpty(Password);
 
@@ -92,6 +100,12 @@ public sealed class QueryProfile
         if (string.IsNullOrWhiteSpace(Host))
         {
             throw new InvalidOperationException($"Profile '{Name}' has no host.");
+        }
+
+        if (KeepAliveInterval <= TimeSpan.Zero)
+        {
+            throw new InvalidOperationException(
+                $"Profile '{Name}' needs a keepalive interval above zero; the server drops a session after about 30 seconds without a command.");
         }
 
         switch (Transport)

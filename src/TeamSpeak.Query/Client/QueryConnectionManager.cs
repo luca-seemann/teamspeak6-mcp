@@ -130,7 +130,7 @@ public sealed class QueryConnectionManager : IAsyncDisposable
     /// <inheritdoc />
     /// <remarks>
     /// Closing each session properly matters: an abandoned SSH session occupies a query slot until
-    /// the server's 300-second timeout reaps it.
+    /// the server's idle timeout reaps it, which was about 30 seconds on the test server.
     /// </remarks>
     public async ValueTask DisposeAsync()
     {

@@ -36,7 +36,8 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
                  "settings changed), channel (channels created, edited or deleted, clients moving, " +
                  "connecting and disconnecting), textserver (server-wide messages), textchannel " +
                  "(messages in the channel the event session sits in, the default channel), textprivate " +
-                 "(private messages to the event session) and bans (bans added or removed). Without " +
+                 "(private messages sent to the event session's clientId, which the subscription reports) " +
+                 "and bans (bans added or removed). Without " +
                  "categories, all of them. Adding categories keeps the ones already subscribed. " +
                  "Returns a cursor: pass it as 'after' to read only what arrives from now on. Events " +
                  "need the SSH query and use a query session of their own. Subscriptions are shared by " +
@@ -265,7 +266,8 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
             subscription.Categories.Select(QueryEventHub.WireName).ToList(),
             subscription.ChannelId,
             subscription.Since,
-            subscription.SessionsOpened);
+            subscription.SessionsOpened,
+            subscription.ClientId);
 }
 
 /// <summary>One virtual server's event subscription.</summary>
@@ -274,12 +276,14 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
 /// <param name="ChannelId">The one channel the channel category covers; 0 for every channel.</param>
 /// <param name="Since">When its event session was opened.</param>
 /// <param name="SessionsOpened">How many sessions have carried it; above 1 means events may have been lost.</param>
+/// <param name="ClientId">The event session's client id: send private messages here to see them as textprivate events.</param>
 public sealed record EventSubscriptionView(
     int VirtualServerId,
     IReadOnlyList<string> Categories,
     int ChannelId,
     DateTimeOffset Since,
-    int SessionsOpened);
+    int SessionsOpened,
+    int? ClientId);
 
 /// <summary>The result of subscribing.</summary>
 /// <param name="Subscription">The subscription as it now stands.</param>

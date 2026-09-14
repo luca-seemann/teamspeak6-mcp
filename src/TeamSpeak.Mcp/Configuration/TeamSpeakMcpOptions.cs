@@ -92,6 +92,12 @@ public sealed class QueryProfileOptions
     public int CommandTimeoutSeconds { get; set; } = 30;
 
     /// <summary>
+    /// Gets or sets after how many idle seconds an SSH session sends a command to stay connected.
+    /// </summary>
+    /// <remarks>The test server dropped sessions after 25 to 30 idle seconds, so keep this below that.</remarks>
+    public int KeepAliveSeconds { get; set; } = 15;
+
+    /// <summary>
     /// Gets or sets how much damage tools may do on this profile, overriding the global level.
     /// </summary>
     /// <remarks>
@@ -141,6 +147,7 @@ public sealed class QueryProfileOptions
             DefaultVirtualServerId = DefaultVirtualServerId,
             CommandInterval = TimeSpan.FromMilliseconds(CommandIntervalMs),
             CommandTimeout = TimeSpan.FromSeconds(CommandTimeoutSeconds),
+            KeepAliveInterval = TimeSpan.FromSeconds(KeepAliveSeconds),
         };
 
         profile.Validate();
