@@ -40,6 +40,11 @@ All notable changes to this project are documented here. The format follows
 
 - `docker/docker-compose.yml` configured the MCP container with setting names that do not bind, so
   the container started without a profile.
+- After a reconnect, the SSH server's greeting was read as the first lines of the next command's
+  response. The greeting is now read and discarded while the session is being opened.
+- A command abandoned after it was sent, by a timeout or a cancellation, could have its late answer
+  taken for the next command's. Such a session is now replaced before anything else is sent on it,
+  and a replaced session's reader stops at once instead of passing on buffered lines.
 
 ### Changed
 

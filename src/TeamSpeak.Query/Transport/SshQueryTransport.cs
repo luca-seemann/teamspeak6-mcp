@@ -43,7 +43,8 @@ public sealed class SshQueryTransport : IQueryTransport
     private readonly CancellationTokenSource _shutdown = new();
 
     private SshClient _client;
-    private ShellStream _shell;
+    // Volatile because the reader loop compares against it to notice it has been replaced.
+    private volatile ShellStream _shell;
     private Task _readerLoop;
     private Timer? _keepAlive;
 
@@ -54,6 +55,11 @@ public sealed class SshQueryTransport : IQueryTransport
     // What the server session currently has selected, zero for nothing. Only read or written while
     // holding _pendingSlot, so it always describes the session the next command will run on.
     private int _selectedVirtualServerId;
+
+    // Set when a command was abandoned after it went out. The protocol carries no request ids, so a
+    // late answer to it would be indistinguishable from the next command's; the session is replaced
+    // before anything else is sent on it.
+    private volatile bool _desynchronized;
 
     private SshQueryTransport(QueryProfile profile, SshClient client, ShellStream shell)
     {
@@ -175,21 +181,81 @@ public sealed class SshQueryTransport : IQueryTransport
         var client = new SshClient(connectionInfo);
         await client.ConnectAsync(cancellationToken).ConfigureAwait(false);
 
+        ShellStream? shell = null;
         try
         {
             // The server rejects a PTY request, so the terminal-less channel is mandatory.
-            var shell = client.CreateShellStreamNoTerminal(bufferSize: 256 * 1024);
+            shell = client.CreateShellStreamNoTerminal(bufferSize: 256 * 1024);
 
-            // The greeting is two lines and carries no status line, so it cannot be framed like a
-            // response; give it a moment and let the reader discard it.
-            await Task.Delay(TimeSpan.FromMilliseconds(400), cancellationToken).ConfigureAwait(false);
+            await DiscardGreetingAsync(shell, cancellationToken).ConfigureAwait(false);
 
             return (client, shell);
         }
         catch
         {
+            shell?.Dispose();
             client.Dispose();
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Reads the greeting off a fresh session before any reader or command can see it.
+    /// </summary>
+    /// <remarks>
+    /// The greeting is a <c>TS3</c> line and a <c>Welcome to the TeamSpeak ServerQuery interface</c>
+    /// line, with no status line to frame on. Merely waiting for it and leaving it to the reader was
+    /// wrong after a reconnect: the next command is sent at once, so the greeting was taken as the
+    /// first lines of its response.
+    /// </remarks>
+    private static async Task DiscardGreetingAsync(ShellStream shell, CancellationToken cancellationToken)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(10));
+
+        var received = new StringBuilder();
+        var buffer = new byte[4096];
+
+        try
+        {
+            while (true)
+            {
+                var text = received.ToString();
+
+                var welcome = text.IndexOf("Welcome", StringComparison.Ordinal);
+                if (welcome >= 0 && text.IndexOf('\n', welcome) >= 0)
+                {
+                    return;
+                }
+
+                // A server that refuses the session, for example after a flood block, says so with a
+                // status line instead of greeting.
+                var refusal = text.IndexOf("error id=", StringComparison.Ordinal);
+                if (refusal >= 0 && text.IndexOf('\n', refusal) >= 0)
+                {
+                    throw new QueryProtocolException(
+                        $"The server refused the query session: {text[refusal..].Trim()}");
+                }
+
+                // As in the reader: zero bytes means nothing has arrived yet, not end-of-stream.
+                if (!shell.DataAvailable)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(20), deadline.Token).ConfigureAwait(false);
+                    continue;
+                }
+
+                var read = shell.Read(buffer, 0, buffer.Length);
+                if (read > 0)
+                {
+                    received.Append(Encoding.UTF8.GetString(buffer, 0, read));
+                }
+            }
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new QueryProtocolException(
+                "The server accepted the SSH connection but sent no ServerQuery greeting within 10 seconds. " +
+                "Check that the SSH query interface is enabled.");
         }
     }
 
@@ -231,11 +297,12 @@ public sealed class SshQueryTransport : IQueryTransport
     /// <remarks>
     /// A reconnect loop without backoff is itself what the flood protection punishes, so attempts
     /// are spaced and capped. A fresh session has nothing selected, so the selection is forgotten
-    /// and the next scoped command selects its virtual server again.
+    /// and the next scoped command selects its virtual server again. A session that is still
+    /// connected but out of step with its responses is replaced the same way.
     /// </remarks>
     private async Task EnsureConnectedAsync(CancellationToken cancellationToken)
     {
-        if (_client.IsConnected)
+        if (_client.IsConnected && !_desynchronized)
         {
             return;
         }
@@ -243,7 +310,7 @@ public sealed class SshQueryTransport : IQueryTransport
         await _pendingSlot.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_client.IsConnected)
+            if (_client.IsConnected && !_desynchronized)
             {
                 return;
             }
@@ -268,6 +335,7 @@ public sealed class SshQueryTransport : IQueryTransport
                     _client = client;
                     _shell = shell;
                     _selectedVirtualServerId = 0;
+                    _desynchronized = false;
                     _readerLoop = Task.Run(() => ReadLoopAsync(_shutdown.Token), CancellationToken.None);
                     break;
                 }
@@ -384,9 +452,12 @@ public sealed class SshQueryTransport : IQueryTransport
         _pendingText = new StringBuilder();
         _pending = completion;
 
+        var line = Encoding.UTF8.GetBytes(QueryCommandSerializer.ToWireLine(command) + '\n');
+        var sending = false;
+
         try
         {
-            var line = Encoding.UTF8.GetBytes(QueryCommandSerializer.ToWireLine(command) + '\n');
+            sending = true;
             await _shell.WriteAsync(line, cancellationToken).ConfigureAwait(false);
             await _shell.FlushAsync(cancellationToken).ConfigureAwait(false);
 
@@ -402,6 +473,13 @@ public sealed class SshQueryTransport : IQueryTransport
             _lastActivity = DateTimeOffset.UtcNow;
             return response;
         }
+        catch when (sending)
+        {
+            // Timed out, cancelled or broken after at least part of the line went out. The server may
+            // still answer, and that answer would complete whichever command is sent next.
+            _desynchronized = true;
+            throw;
+        }
         finally
         {
             _pending = null;
@@ -414,7 +492,10 @@ public sealed class SshQueryTransport : IQueryTransport
         var carry = new StringBuilder();
         var shell = _shell;
 
-        while (!cancellationToken.IsCancellationRequested)
+        // A reconnect replaces the shell and starts a new reader. This one must stop at once: a
+        // disposed ShellStream can still hand out buffered bytes, and those belong to the abandoned
+        // session, not to whatever command is pending on the new one.
+        while (!cancellationToken.IsCancellationRequested && ReferenceEquals(shell, _shell))
         {
             int read;
             try
@@ -440,16 +521,17 @@ public sealed class SshQueryTransport : IQueryTransport
             }
 
             carry.Append(Encoding.UTF8.GetString(buffer, 0, read));
-            DrainLines(carry);
+            DrainLines(carry, shell);
         }
     }
 
-    private void DrainLines(StringBuilder carry)
+    private void DrainLines(StringBuilder carry, ShellStream shell)
     {
         var text = carry.ToString();
         int newline;
 
-        while ((newline = text.IndexOf('\n', StringComparison.Ordinal)) >= 0)
+        while ((newline = text.IndexOf('\n', StringComparison.Ordinal)) >= 0
+               && ReferenceEquals(shell, _shell))
         {
             var line = text[..newline].Trim('\r', ' ');
             text = text[(newline + 1)..];

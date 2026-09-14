@@ -120,6 +120,43 @@ public sealed class TransportIntegrationTests(LiveServerFixture server)
         Assert.Equal("1", Assert.Single(responses[0].Records).GetRequired("virtualserver_id"));
     }
 
+    [RequiresTeamSpeakServerFact]
+    public async Task A_command_abandoned_after_sending_does_not_leak_its_answer_into_the_next()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        // A session of its own, so replacing it after the abandoned command leaves the shared one alone.
+        await using var ssh = await SshQueryTransport.ConnectAsync(LiveServerFixture.Profile(), ct);
+
+        // permissionlist answers with tens of kilobytes, which gives the cancellation a window to land
+        // after the line was sent and before the answer is complete. Timing decides whether the window
+        // is hit, so this can pass without exercising the path, but it cannot pass with the bug present
+        // and the window hit.
+        using (var abandon = CancellationTokenSource.CreateLinkedTokenSource(ct))
+        {
+            abandon.CancelAfter(TimeSpan.FromMilliseconds(15));
+            try
+            {
+                await ssh.SendAsync(new QueryCommand("permissionlist"), abandon.Token);
+            }
+            catch (OperationCanceledException) when (abandon.IsCancellationRequested)
+            {
+                // Expected when the window was hit.
+            }
+        }
+
+        var whoami = await ssh.SendAsync(new QueryCommand("whoami"), ct);
+
+        Assert.True(whoami.Error.IsSuccess, whoami.Error.Message);
+
+        // Name the stray records' fields on failure: they say where a leaked line came from.
+        Assert.True(
+            whoami.Records.Count == 1,
+            "whoami returned records with fields: " +
+            string.Join(" | ", whoami.Records.Select(record => string.Join(",", record.Keys))));
+        Assert.Equal("serveradmin", whoami.Records[0].GetRequired("client_login_name"));
+    }
+
     [RequiresWebQueryFact]
     public async Task Both_transports_return_the_same_channel_list()
     {
