@@ -75,16 +75,7 @@ public sealed class QueryExecutor
         var resolved = ResolveProfile(profile);
         Safety.Demand(resolved, required, action);
 
-        IQueryTransport transport;
-        try
-        {
-            transport = await Connections.GetTransportAsync(resolved.Name, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            throw new McpException(
-                $"Could not connect to profile '{resolved.Name}' at {resolved.Host}: {ex.Message}", ex);
-        }
+        var transport = await TransportForAsync(resolved, cancellationToken).ConfigureAwait(false);
 
         QueryResponse response;
         try
@@ -97,6 +88,83 @@ public sealed class QueryExecutor
                 $"'{command.Name}' did not complete on profile '{resolved.Name}': {ex.Message}", ex);
         }
 
+        return RecordsOf(resolved.Name, command.Name, response);
+    }
+
+    /// <summary>
+    /// Runs a sequence of commands that must not be interleaved with other calls on the same session.
+    /// </summary>
+    /// <typeparam name="T">What the sequence produces.</typeparam>
+    /// <param name="action">What is being attempted, usually the tool name.</param>
+    /// <param name="required">The highest level any command of the sequence needs; checked before anything is sent.</param>
+    /// <param name="profile">The profile name, or <see langword="null"/> when only one is configured.</param>
+    /// <param name="requireSession">Refuse profiles whose interface holds no session, for sequences that act as this server's own client.</param>
+    /// <param name="work">The sequence.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>What <paramref name="work"/> returns.</returns>
+    /// <exception cref="McpException">
+    /// Thrown when the call is not allowed, cannot reach the server, needs a session the profile lacks,
+    /// or the server refuses one of the commands.
+    /// </exception>
+    /// <remarks>
+    /// Each command in the sequence is still checked against the command catalog, so a sequence can
+    /// never send more than its profile allows even if <paramref name="required"/> was set too low.
+    /// </remarks>
+    public async Task<T> RunExclusiveAsync<T>(
+        string action,
+        SafetyLevel required,
+        string? profile,
+        bool requireSession,
+        Func<SessionSequence, Task<T>> work,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(work);
+
+        var resolved = ResolveProfile(profile);
+        Safety.Demand(resolved, required, action);
+
+        var transport = await TransportForAsync(resolved, cancellationToken).ConfigureAwait(false);
+
+        if (requireSession && !transport.HoldsSession)
+        {
+            throw new McpException(
+                $"{action} has to act as this server's own query client, which needs the SSH interface. " +
+                $"Profile '{resolved.Name}' uses the WebQuery, where every request stands on its own. Nothing was sent.");
+        }
+
+        try
+        {
+            return await transport.RunExclusiveAsync(
+                send => work(new SessionSequence(resolved, transport.HoldsSession, async command =>
+                {
+                    Safety.Demand(resolved, CommandCatalog.RequiredLevel(command.Name), action);
+                    var response = await send(command, cancellationToken).ConfigureAwait(false);
+                    return RecordsOf(resolved.Name, command.Name, response);
+                })),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException and not McpException)
+        {
+            throw new McpException($"{action} did not complete on profile '{resolved.Name}': {ex.Message}", ex);
+        }
+    }
+
+    private async Task<IQueryTransport> TransportForAsync(QueryProfile profile, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Connections.GetTransportAsync(profile.Name, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new McpException(
+                $"Could not connect to profile '{profile.Name}' at {profile.Host}: {ex.Message}", ex);
+        }
+    }
+
+    private static IReadOnlyList<QueryRecord> RecordsOf(string profileName, string commandName, QueryResponse response)
+    {
         if (response.Error.IsEmptyResult)
         {
             return [];
@@ -104,11 +172,39 @@ public sealed class QueryExecutor
 
         if (!response.Error.IsSuccess)
         {
-            throw new McpException(DescribeRefusal(resolved.Name, command.Name, response.Error));
+            throw new McpException(DescribeRefusal(profileName, commandName, response.Error));
         }
 
         return response.Records;
     }
+
+    /// <summary>Sends one command at the safety level the command catalog gives it.</summary>
+    /// <param name="action">What is being attempted, used in refusal messages, usually the tool name.</param>
+    /// <param name="profile">The profile name, or <see langword="null"/> when only one is configured.</param>
+    /// <param name="command">The command to send.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The records; empty when the server reports an empty result set.</returns>
+    /// <remarks>
+    /// Every changing tool goes through here, so a tool can never ask for less than the catalog
+    /// demands for the command it actually sends.
+    /// </remarks>
+    public Task<IReadOnlyList<QueryRecord>> RunCommandAsync(
+        string action,
+        string? profile,
+        QueryCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        return RunAsync(action, CommandCatalog.RequiredLevel(command.Name), profile, command, cancellationToken);
+    }
+
+    /// <summary>Refuses a multi-step action up front, before its first command changes anything.</summary>
+    /// <param name="action">What is being attempted.</param>
+    /// <param name="required">The highest level any of its commands needs.</param>
+    /// <param name="profile">The profile name.</param>
+    /// <exception cref="McpException">Thrown when the profile does not allow the action.</exception>
+    public void Demand(string action, SafetyLevel required, string? profile) =>
+        Safety.Demand(ResolveProfile(profile), required, action);
 
     /// <summary>Explains a server-side refusal, with a hint where the cause is known.</summary>
     /// <param name="profileName">The profile the command ran on.</param>
@@ -133,6 +229,9 @@ public sealed class QueryExecutor
                 " The server does not recognise the command or one of its parameters.",
             QueryErrorCode.ParameterNotFound =>
                 " A required parameter is missing.",
+            QueryErrorCode.InvalidParameterSize =>
+                " A value is too long for the server, for example a group name over 30 characters or a " +
+                "long query login name. Shorten it and try again.",
             QueryErrorCode.MissingRequiredParameter =>
                 " A required parameter is missing or empty; TeamSpeak treats an empty value as absent.",
             QueryErrorCode.Flooding =>
@@ -145,6 +244,7 @@ public sealed class QueryExecutor
     }
 
     /// <summary>Copies a record into a plain dictionary for structured tool output.</summary>
+    /// <remarks>Kept next to <see cref="SessionSequence"/>'s users for discoverability.</remarks>
     /// <param name="record">The record.</param>
     /// <returns>The fields.</returns>
     public static IReadOnlyDictionary<string, string> ToFields(QueryRecord record)

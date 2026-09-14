@@ -11,7 +11,7 @@ namespace TeamSpeak.Query.FakeServer;
 /// </summary>
 public sealed class FakeQueryTransport : IQueryTransport
 {
-    private readonly Dictionary<string, QueryResponse> _responses = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Func<QueryCommand, QueryResponse>> _responses = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<QueryCommand> _sent = [];
 
     /// <summary>Initialises a fake that reports the given event support.</summary>
@@ -20,6 +20,21 @@ public sealed class FakeQueryTransport : IQueryTransport
 
     /// <inheritdoc />
     public bool SupportsEvents { get; }
+
+    /// <inheritdoc />
+    /// <remarks>Follows <see cref="SupportsEvents"/>: a fake SSH session has both, a fake WebQuery neither.</remarks>
+    public bool HoldsSession => SupportsEvents;
+
+    /// <summary>Gets how many exclusive sequences have run.</summary>
+    public int ExclusiveSequences { get; private set; }
+
+    /// <inheritdoc />
+    public Task<T> RunExclusiveAsync<T>(Func<QuerySender, Task<T>> work, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+        ExclusiveSequences++;
+        return work(SendAsync);
+    }
 
     /// <summary>Gets a value indicating whether <see cref="DisposeAsync"/> has been called.</summary>
     public bool IsDisposed { get; private set; }
@@ -31,9 +46,16 @@ public sealed class FakeQueryTransport : IQueryTransport
     /// <param name="commandName">The command to answer, for example <c>whoami</c>.</param>
     /// <param name="response">The response to return.</param>
     /// <returns>This instance, so registrations can be chained.</returns>
-    public FakeQueryTransport Returns(string commandName, QueryResponse response)
+    public FakeQueryTransport Returns(string commandName, QueryResponse response) =>
+        Returns(commandName, _ => response);
+
+    /// <summary>Registers a response that depends on the command's parameters.</summary>
+    /// <param name="commandName">The command to answer.</param>
+    /// <param name="respond">Builds the response for each command sent.</param>
+    /// <returns>This instance, so registrations can be chained.</returns>
+    public FakeQueryTransport Returns(string commandName, Func<QueryCommand, QueryResponse> respond)
     {
-        _responses[commandName] = response;
+        _responses[commandName] = respond;
         return this;
     }
 
@@ -43,8 +65,8 @@ public sealed class FakeQueryTransport : IQueryTransport
         ArgumentNullException.ThrowIfNull(command);
         _sent.Add(command);
 
-        return Task.FromResult(_responses.TryGetValue(command.Name, out var response)
-            ? response
+        return Task.FromResult(_responses.TryGetValue(command.Name, out var respond)
+            ? respond(command)
             : new QueryResponse([], new QueryError(256, "command not found")));
     }
 

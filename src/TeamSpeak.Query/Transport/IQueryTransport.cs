@@ -2,6 +2,12 @@ using TeamSpeak.Query.Protocol;
 
 namespace TeamSpeak.Query.Transport;
 
+/// <summary>Sends one command inside an exclusive sequence.</summary>
+/// <param name="command">The command.</param>
+/// <param name="cancellationToken">Cancels the command.</param>
+/// <returns>The response.</returns>
+public delegate Task<QueryResponse> QuerySender(QueryCommand command, CancellationToken cancellationToken);
+
 /// <summary>
 /// A connection to the ServerQuery interface of a TeamSpeak 6 server.
 /// </summary>
@@ -17,6 +23,31 @@ public interface IQueryTransport : IAsyncDisposable
     /// Gets a value indicating whether this transport can deliver events via <see cref="GetEventsAsync"/>.
     /// </summary>
     bool SupportsEvents { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the transport speaks for one server-side query client whose
+    /// state — selected virtual server, current channel — lasts between commands.
+    /// </summary>
+    /// <remarks>
+    /// True for SSH. The WebQuery answers each request on its own, so there is no client to move
+    /// into a channel and nothing to protect from being kicked.
+    /// </remarks>
+    bool HoldsSession { get; }
+
+    /// <summary>
+    /// Runs several commands as one uninterrupted sequence on the session.
+    /// </summary>
+    /// <typeparam name="T">What the sequence produces.</typeparam>
+    /// <param name="work">The sequence, given a sender for its commands.</param>
+    /// <param name="cancellationToken">Cancels waiting for the session.</param>
+    /// <returns>What <paramref name="work"/> returns.</returns>
+    /// <remarks>
+    /// No other caller's command can run between the commands of <paramref name="work"/>, so a
+    /// sequence that depends on session state — which client this session is, which channel it is in —
+    /// cannot have that state changed underneath it. Keep sequences short: every other caller on the
+    /// connection waits for them. A transport without a session runs the commands as they come.
+    /// </remarks>
+    Task<T> RunExclusiveAsync<T>(Func<QuerySender, Task<T>> work, CancellationToken cancellationToken = default);
 
     /// <summary>Sends a command and waits for its complete response.</summary>
     /// <param name="command">The command to send.</param>

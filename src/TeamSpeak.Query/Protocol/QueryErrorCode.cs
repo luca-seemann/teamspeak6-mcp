@@ -30,6 +30,15 @@ public static class QueryErrorCode
     public const int ParameterNotFound = 1539;
 
     /// <summary>
+    /// A value is longer than the server accepts. Sent as <c>invalid parameter size</c>.
+    /// </summary>
+    /// <remarks>
+    /// Observed for a 31-character channel group name, where 29 characters were accepted, and for
+    /// a 23-character query login name. The exact limits are not documented.
+    /// </remarks>
+    public const int InvalidParameterSize = 1541;
+
+    /// <summary>
     /// A required parameter was missing or empty. Sent as <c>missing required parameter</c>.
     /// </summary>
     /// <remarks>

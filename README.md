@@ -147,8 +147,11 @@ Each profile keeps one long-lived connection, opened on the first tool call that
 
 ## Tools
 
-All tools so far only read. The one exception to `ReadOnly` is `ts_token_list`, which needs `Write`
-because privilege keys are live credentials.
+71 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
+because privilege keys are live credentials. The changing tools are listed further down with the
+level each needs.
+
+### Reading
 
 | Area | Tools | What they answer |
 |---|---|---|
@@ -163,8 +166,39 @@ because privilege keys are live credentials.
 | Access and logs | `ts_apikey_list`, `ts_querylogin_list`, `ts_message_list`, `ts_message_get`, `ts_log_view`, `ts_custom_info`, `ts_custom_search` | API keys and query logins, the query inbox, the server log, custom client properties. |
 | Anything else | `ts_query_raw` | Any other ServerQuery command, at the safety level of that command. |
 
-Every tool except `ts_profiles_list` takes an optional `profile`, and every tool below the instance
-level an optional `virtualServerId`.
+### Changing
+
+Each tool needs the level of what it actually sends; a tool with several actions checks each
+action separately. Tools that can need `Destructive` carry the MCP `destructiveHint`.
+
+| Area | `Write` | `Destructive` |
+|---|---|---|
+| Virtual servers | `ts_vserver_edit`, `ts_vserver_snapshot_create`, `ts_vserver_power` (start) | `ts_vserver_create`, `ts_vserver_power` (stop), `ts_vserver_delete`, `ts_vserver_snapshot_deploy`, `ts_instance_edit` |
+| Channels | `ts_channel_create`, `ts_channel_edit`, `ts_channel_move` | `ts_channel_delete` |
+| People | `ts_client_move`, `ts_client_poke`, `ts_client_edit`, `ts_message_send`, `ts_offline_message` | `ts_client_kick`, `ts_clientdb_delete` |
+| Groups | `ts_servergroup_manage`, `ts_channelgroup_manage`, `ts_servergroup_membership`, `ts_client_channelgroup_set` | `ts_servergroup_delete`, `ts_channelgroup_delete` |
+| Permissions | `ts_perm_set` | `ts_perm_reset` |
+| Moderation | `ts_ban_delete`, `ts_complaint_delete`, `ts_token_manage` (delete) | `ts_ban_add`, `ts_token_manage` (add) |
+| Access and settings | `ts_temp_password` (list, delete), `ts_custom_property`, `ts_log_add` | `ts_temp_password` (add), `ts_apikey_manage`, `ts_querylogin_manage` |
+
+The three actions that cannot be undone and reach a whole virtual server — `ts_vserver_delete`,
+`ts_vserver_snapshot_deploy` and `ts_perm_reset` — also require `confirmName`, the virtual server's
+exact name. `ts_vserver_create` needs `Destructive` because the key it returns grants full control
+of the new server.
+
+`ts_client_kick` and `ts_ban_add` refuse to act on this server's own query session, which would
+cut off every tool call on the profile. A channel message has to move that session into the
+channel and back, so it runs as one uninterrupted sequence and needs a profile that uses SSH.
+`ts_client_edit` changes descriptions only: TeamSpeak 6 refuses to set talker status that way, so
+grant `i_client_talk_power` with `ts_perm_set` instead.
+
+A few commands stay reachable only through `ts_query_raw`, because a dedicated tool
+would make them too easy to call: stopping the whole instance (`serverprocessstop`), deleting every
+ban or complaint at once, overwriting an existing group with a copy, and the global auto-permissions.
+
+Every tool except `ts_profiles_list` takes an optional `profile`. Tools below the instance level take
+a `virtualServerId`, optional except where the wrong server would be costly: `ts_vserver_power` and
+`ts_vserver_delete` require it.
 
 `ts_perm_effective` shows, for one client in one channel, the value the client ends up with and
 every assignment behind it, marking the one that decided and any skip flag that kept the channel

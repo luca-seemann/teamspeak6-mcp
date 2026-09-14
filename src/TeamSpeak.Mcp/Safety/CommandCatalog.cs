@@ -47,7 +47,7 @@ public static class CommandCatalog
         "clientdelperm", "clientedit", "clientmove", "clientpoke", "clientupdate", "complainadd",
         "complaindel", "customdelete", "customset", "ftcreatedir", "ftinitdownload", "ftinitupload",
         "ftrenamefile", "ftstop", "gm", "logadd", "messageadd", "messagedel", "messageupdateflag",
-        "privilegekeydelete", "sendtextmessage", "servercreate", "serveredit", "servergroupadd",
+        "privilegekeydelete", "sendtextmessage", "serveredit", "servergroupadd",
         "servergroupaddclient", "servergroupaddperm", "servergroupcopy", "servergroupdelclient",
         "servergroupdelperm", "servergrouprename", "serverstart", "servertemppassworddel",
         "setclientchannelgroup", "tokendelete",
@@ -72,8 +72,9 @@ public static class CommandCatalog
         // Cut people off, or stop the service.
         "banadd", "banclient", "clientkick", "serverprocessstop", "serverstop", "instanceedit",
 
-        // Mint, change or remove access.
-        "apikeyadd", "apikeydel", "authenticationtoken", "chatlogintoken", "clientsetserverquerylogin",
+        // Mint, change or remove access. servercreate belongs here because its answer is a privilege
+        // key with full control of the new server.
+        "servercreate", "apikeyadd", "apikeydel", "authenticationtoken", "chatlogintoken", "clientsetserverquerylogin",
         "licensesignmessage", "privilegekeyadd", "privilegekeyuse", "queryloginadd", "querylogindel",
         "servertemppasswordadd", "tokenadd", "tokenuse",
     ];

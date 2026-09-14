@@ -121,6 +121,18 @@ public class MetaToolsTests
     }
 
     [Fact]
+    public void Explains_that_a_value_was_too_long()
+    {
+        var message = QueryExecutor.DescribeRefusal(
+            "test",
+            "channelgroupadd",
+            new QueryError(QueryErrorCode.InvalidParameterSize, "invalid parameter size"));
+
+        Assert.Contains("1541", message, StringComparison.Ordinal);
+        Assert.Contains("too long", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Reports_a_connection_failure_as_a_tool_error_naming_the_profile()
     {
         await using var connections = new QueryConnectionManager(

@@ -15,8 +15,13 @@ internal sealed class ToolHarness : IAsyncDisposable
 {
     private readonly QueryConnectionManager _connections;
 
-    public ToolHarness(SafetyLevel safety = SafetyLevel.ReadOnly, QueryProfile? profile = null)
+    /// <param name="safety">The level the profile allows.</param>
+    /// <param name="profile">The profile, or a default SSH-style one.</param>
+    /// <param name="holdsSession">Whether the fake behaves like SSH (a session) or like the WebQuery (none).</param>
+    public ToolHarness(SafetyLevel safety = SafetyLevel.ReadOnly, QueryProfile? profile = null, bool holdsSession = true)
     {
+        Transport = new FakeQueryTransport(holdsSession);
+
         _connections = new QueryConnectionManager(
             new ProfileRegistry([profile ?? new QueryProfile { Name = "test", Host = "ts.example.com", Password = "secret" }]),
             (_, _, _) => Task.FromResult<IQueryTransport>(Transport));
@@ -24,7 +29,7 @@ internal sealed class ToolHarness : IAsyncDisposable
         Executor = new QueryExecutor(_connections, new SafetyPolicy(safety));
     }
 
-    public FakeQueryTransport Transport { get; } = new();
+    public FakeQueryTransport Transport { get; }
 
     public QueryExecutor Executor { get; }
 

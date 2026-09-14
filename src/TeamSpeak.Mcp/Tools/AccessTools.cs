@@ -15,6 +15,7 @@ namespace TeamSpeak.Mcp.Tools;
 public sealed class AccessTools(QueryExecutor executor)
 {
     /// <summary>Lists WebQuery API keys.</summary>
+    /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The keys, without their secret values.</returns>
@@ -24,6 +25,7 @@ public sealed class AccessTools(QueryExecutor executor)
                  "(read, write or manage), and when each expires. The secret key values are never " +
                  "shown; the server does not reveal them after creation.")]
     public async Task<ApiKeyList> ListApiKeysAsync(
+        [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
@@ -31,7 +33,7 @@ public sealed class AccessTools(QueryExecutor executor)
             "ts_apikey_list",
             SafetyLevel.ReadOnly,
             profile,
-            new QueryCommand("apikeylist", new Dictionary<string, string> { ["cldbid"] = "*" }),
+            new QueryCommand("apikeylist", new Dictionary<string, string> { ["cldbid"] = "*" }, VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
         return new ApiKeyList(records

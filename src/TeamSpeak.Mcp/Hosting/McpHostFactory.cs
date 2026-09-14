@@ -111,7 +111,6 @@ public static class McpHostFactory
         services.AddSingleton(provider => new QueryConnectionManager(provider.GetRequiredService<ProfileRegistry>()));
         services.AddSingleton<QueryExecutor>();
         services.AddSingleton<PermissionNameCache>();
-
         return services;
 
         static TeamSpeakMcpOptions Options(IServiceProvider provider) =>

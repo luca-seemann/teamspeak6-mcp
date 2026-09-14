@@ -82,6 +82,21 @@ public sealed class HttpQueryTransport : IQueryTransport
     public bool SupportsEvents => false;
 
     /// <inheritdoc />
+    /// <remarks>Always <see langword="false"/>: every request stands on its own.</remarks>
+    public bool HoldsSession => false;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// With no session there is no state for another caller to change, so the commands simply run as
+    /// ordinary requests.
+    /// </remarks>
+    public Task<T> RunExclusiveAsync<T>(Func<QuerySender, Task<T>> work, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+        return work(SendAsync);
+    }
+
+    /// <inheritdoc />
     /// <remarks>
     /// The WebQuery has no <c>use</c> command and holds no state; the virtual server goes into each
     /// request's URL, so concurrent callers cannot interfere with one another.

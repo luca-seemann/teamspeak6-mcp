@@ -266,9 +266,14 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
     }
 
     /// <summary>Lends the fixture's session to a connection manager without letting it close it.</summary>
-    private sealed class BorrowedTransport(IQueryTransport inner) : IQueryTransport
+    internal sealed class BorrowedTransport(IQueryTransport inner) : IQueryTransport
     {
         public bool SupportsEvents => inner.SupportsEvents;
+
+        public bool HoldsSession => inner.HoldsSession;
+
+        public Task<T> RunExclusiveAsync<T>(Func<QuerySender, Task<T>> work, CancellationToken cancellationToken = default) =>
+            inner.RunExclusiveAsync(work, cancellationToken);
 
         public Task<QueryResponse> SendAsync(QueryCommand command, CancellationToken cancellationToken = default) =>
             inner.SendAsync(command, cancellationToken);

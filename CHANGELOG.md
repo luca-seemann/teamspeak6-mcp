@@ -42,6 +42,17 @@ All notable changes to this project are documented here. The format follows
   logins, offline messages, custom properties and the server log complete the set.
 - MCP resources for profiles, the permission catalog, and each virtual server's info, channels,
   clients and groups.
+- The write and destructive surface, 35 tools, for 71 in all. The tools cover virtual servers and
+  instance settings, channels, moving, kicking, poking and messaging people, groups and memberships,
+  granting and revoking permissions, bans, privilege keys, temporary passwords, custom properties,
+  API keys, query logins and log entries. Each action takes its safety level from the command
+  catalog. Deleting a virtual server, deploying a snapshot and resetting permissions also require the
+  virtual server's exact name. Channel messages move the query session into the channel and back as
+  one uninterrupted sequence on the session, which needs a profile that uses SSH.
+- `IQueryTransport.RunExclusiveAsync`, which runs several commands without any other caller's
+  command in between, and `HoldsSession`, which says whether the interface has a session to protect.
+- A readable explanation for `1541 invalid parameter size`, which the server returns for names that
+  are too long.
 
 ### Fixed
 
@@ -52,6 +63,27 @@ All notable changes to this project are documented here. The format follows
 - A command abandoned after it was sent, by a timeout or a cancellation, could have its late answer
   taken for the next command's. Such a session is now replaced before anything else is sent on it,
   and a replaced session's reader stops at once instead of passing on buffered lines.
+- A channel message moved the session and sent the message as separate commands. Another call
+  could select a different virtual server in between, so the message could land in the wrong
+  channel while the tool reported success.
+- `gm` was treated as belonging to a virtual server, so a message to every server failed when the
+  default virtual server could not be selected.
+- The API key commands used whatever virtual server an earlier command had left selected. They now
+  address the virtual server given, or the profile's default.
+- The SSH transport assumed its virtual server was still selected after stopping or deleting it,
+  after a permission reset and after a snapshot deployment.
+- Kicking or banning a client did not check whether it was this server's own query session.
+- `servercreate` needed only `Write`, although it returns a key with full control of the new server.
+  It now needs `Destructive`.
+- `ts_perm_set` read the permission catalog before checking the safety level.
+- Empty property values and an unreadable server name passed validation.
+
+### Changed (review of phase 6)
+
+- `ts_client_edit` no longer offers `isTalker`: TeamSpeak 6 refuses `client_is_talker=1` with
+  `1538 invalid parameter`, even in a channel that needs talk power.
+- `ts_message_send` takes a `channelPassword` for password-protected channels.
+- `ts_apikey_list` and `ts_apikey_manage` take a `virtualServerId`.
 
 ### Changed
 

@@ -6,6 +6,14 @@
     "inputSchema": {
       "type": "object",
       "properties": {
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
         "profile": {
           "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
           "type": [
@@ -76,6 +84,288 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_apikey_manage",
+    "title": "Create or delete a WebQuery API key",
+    "description": "add creates a WebQuery API key with a scope (read, write or manage) and a lifetime in days, for this query login or another identity; the key itself is returned once and never shown again. delete removes a key by the id ts_apikey_list shows; deleting the key a profile of this server uses cuts that profile off. Both need Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "add or delete.",
+          "type": "string"
+        },
+        "scope": {
+          "description": "For add: read, write, or manage.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "lifetimeDays": {
+          "description": "For add: lifetime in days. 0 means the key never expires. Omitted, the server\u0027s default of 14 days.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "databaseId": {
+          "description": "For add: the identity to own the key. Omit for this query login.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "keyId": {
+          "description": "For delete: the key id.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server the key belongs to. The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Create or delete a WebQuery API key",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_ban_add",
+    "title": "Ban someone",
+    "description": "Bans someone. Pass clientId to ban a connected client, which disconnects them and bans their IP address and identity. Or add a rule matching an ip, a nickname pattern (name), a uniqueId or a myTeamSpeakId, which also works for people who are offline. durationSeconds 0 or omitted bans permanently. Returns the new ban ids; ts_ban_delete lifts a ban. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "description": "A connected client\u0027s session id. Cannot be combined with the rule fields.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "ip": {
+          "description": "An IP address, or a regular expression matching addresses.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "name": {
+          "description": "A regular expression matching nicknames.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "uniqueId": {
+          "description": "A unique identity.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "myTeamSpeakId": {
+          "description": "A myTeamSpeak id.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "durationSeconds": {
+          "description": "How long the ban lasts, in seconds. 0 or omitted means permanently.",
+          "type": "integer",
+          "default": 0
+        },
+        "reason": {
+          "description": "The reason, shown to the banned client.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Ban someone",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_ban_delete",
+    "title": "Lift a ban",
+    "description": "Lifts one ban rule by its id from ts_ban_list. Banning a client creates several rules, one each for the IP address and the identity; lift all of them to let the person back. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "banId": {
+          "description": "The ban id, from ts_ban_list.",
+          "type": "integer"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "banId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Lift a ban",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -219,6 +509,245 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_channel_create",
+    "title": "Create a channel",
+    "description": "Creates a channel, at the top level or under a parent, and returns its id. Properties set anything else at creation, such as channel_topic, channel_password, channel_maxclients, or channel_flag_permanent=1; without a permanence flag TeamSpeak creates a temporary channel that disappears when it empties. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The channel name.",
+          "type": "string"
+        },
+        "parentId": {
+          "description": "The parent channel. Omit for the top level.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "properties": {
+          "description": "Properties by their ServerQuery names, as ts_channel_info shows them, for example {\u0022channel_topic\u0022: \u0022Raid night\u0022, \u0022channel_maxclients\u0022: \u002210\u0022, \u0022channel_flag_permanent\u0022: \u00221\u0022}.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Create a channel",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_channel_delete",
+    "title": "Delete a channel",
+    "description": "Deletes a channel with all its sub-channels and files. Without force it refuses while anyone is inside; with force the people inside are moved to the default channel. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel to delete.",
+          "type": "integer"
+        },
+        "force": {
+          "description": "Delete even if clients are inside, moving them to the default channel.",
+          "type": "boolean",
+          "default": false
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Delete a channel",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_channel_edit",
+    "title": "Change a channel",
+    "description": "Changes one or more properties of a channel at once, such as its name, topic, description, password, slot limit, needed talk power or permanence, using the channel_* names ts_channel_info shows. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel to change.",
+          "type": "integer"
+        },
+        "properties": {
+          "description": "Properties by their ServerQuery names, as ts_channel_info shows them, for example {\u0022channel_topic\u0022: \u0022Raid night\u0022, \u0022channel_maxclients\u0022: \u002210\u0022, \u0022channel_flag_permanent\u0022: \u00221\u0022}.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId",
+        "properties"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Change a channel",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -447,6 +976,160 @@
     }
   },
   {
+    "name": "ts_channel_move",
+    "title": "Move a channel",
+    "description": "Moves a channel, with its sub-channels, under a new parent, or to the top level with parentId 0, optionally placing it directly below a given sibling. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "channelId": {
+          "description": "The channel to move.",
+          "type": "integer"
+        },
+        "parentId": {
+          "description": "The new parent channel, or 0 for the top level.",
+          "type": "integer"
+        },
+        "belowChannelId": {
+          "description": "The sibling to place it directly below. Omit or 0 to place it first under the parent.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "channelId",
+        "parentId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Move a channel",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_channelgroup_delete",
+    "title": "Delete a channel group",
+    "description": "Deletes a channel group with its permissions. Without force it refuses while anyone holds it in a channel. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "description": "The channel group to delete.",
+          "type": "integer"
+        },
+        "force": {
+          "description": "Delete even though clients hold it.",
+          "type": "boolean",
+          "default": false
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "groupId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Delete a channel group",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_channelgroup_list",
     "title": "List channel groups",
     "description": "Lists the channel groups of a virtual server with their id, name, kind (regular, template or query), icon, sort order and the powers needed to modify the group or add and remove its members.",
@@ -534,6 +1217,95 @@
     }
   },
   {
+    "name": "ts_channelgroup_manage",
+    "title": "Create, copy or rename a channel group",
+    "description": "create makes a new, empty channel group. copy makes a new group with all the permissions of an existing one. rename changes a group\u0027s name. Returns the new group\u0027s id for create and copy. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "create, copy, or rename.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the new group, or the new name.",
+          "type": "string"
+        },
+        "groupId": {
+          "description": "For copy: the group to copy. For rename: the group to rename.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "type": {
+          "description": "For create and copy: regular (the default), template, or query.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action",
+        "name"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Create, copy or rename a channel group",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_channelgroup_members",
     "title": "List channel group assignments",
     "description": "Lists which client holds which channel group in which channel. Filter by any combination of channelId, databaseId and groupId. Clients who only have the default channel group are not stored as assignments and do not appear.",
@@ -618,6 +1390,169 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_client_channelgroup_set",
+    "title": "Set a client\u0027s channel group",
+    "description": "Sets which channel group a client identity holds in one channel, such as making someone channel admin of their team\u0027s channel. Each identity holds exactly one channel group per channel, so this replaces the previous one; set the server\u0027s default channel group to take a role away. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "description": "The client\u0027s database id; see ts_client_resolve.",
+          "type": "integer"
+        },
+        "channelId": {
+          "description": "The channel.",
+          "type": "integer"
+        },
+        "groupId": {
+          "description": "The channel group to hold there.",
+          "type": "integer"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "databaseId",
+        "channelId",
+        "groupId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Set a client\u0027s channel group",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_client_edit",
+    "title": "Change a client\u0027s description",
+    "description": "Changes a client\u0027s description, which others see in their client info, for a connected client by clientId or for any known identity by databaseId. A description cannot be cleared to empty; TeamSpeak treats an empty value as missing. To let someone talk in a moderated channel, grant i_client_talk_power with ts_perm_set instead. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "description": "A connected client\u0027s session id.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "databaseId": {
+          "description": "A known identity\u0027s database id, whether or not it is online.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "description": {
+          "description": "The new description. It cannot be empty.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Change a client\u0027s description",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -834,6 +1769,87 @@
     }
   },
   {
+    "name": "ts_client_kick",
+    "title": "Kick a client",
+    "description": "Kicks a connected client out of their channel, into the default channel, or off the server entirely. The optional reason, at most 40 characters, is shown to them. A server kick does not stop them reconnecting; use ts_ban_add for that. Refuses to kick this server\u0027s own query session. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "description": "The client\u0027s session id, from ts_client_list.",
+          "type": "integer"
+        },
+        "from": {
+          "description": "channel to kick into the default channel, or server to disconnect them.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "A reason shown to the client, at most 40 characters.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "clientId",
+        "from"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Kick a client",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_client_list",
     "title": "List online clients",
     "description": "Lists the clients currently connected to a virtual server: nickname, the channel they are in, their session client id and permanent database id, unique identity, server groups, channel group and away status. Query clients, including this MCP server\u0027s own session, are left out unless includeQueryClients is true.",
@@ -936,6 +1952,160 @@
     }
   },
   {
+    "name": "ts_client_move",
+    "title": "Move a client to a channel",
+    "description": "Moves a connected client into a channel. A password-protected channel needs its password. Takes the session id from ts_client_list. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "description": "The client\u0027s session id, from ts_client_list.",
+          "type": "integer"
+        },
+        "channelId": {
+          "description": "The channel to move the client into.",
+          "type": "integer"
+        },
+        "channelPassword": {
+          "description": "The channel\u0027s password, if it has one.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "clientId",
+        "channelId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Move a client to a channel",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_client_poke",
+    "title": "Poke a client",
+    "description": "Pokes a connected client: a message that pops up in their TeamSpeak client and usually plays a sound. Use it sparingly. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "description": "The client\u0027s session id, from ts_client_list.",
+          "type": "integer"
+        },
+        "message": {
+          "description": "The message to show.",
+          "type": "string"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "clientId",
+        "message"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Poke a client",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_client_resolve",
     "title": "Resolve a client identity",
     "description": "Resolves any one of the ids TeamSpeak uses for a client into all of them: the permanent database id (what permissions and groups use), the unique identity, the last nickname, and the session ids of any current connections (what moving, kicking and messaging use). Pass exactly one of clientId, databaseId or uniqueId. To search by nickname, use ts_clientdb_find.",
@@ -1016,6 +2186,74 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_clientdb_delete",
+    "title": "Delete a known client identity",
+    "description": "Deletes a client identity from the virtual server\u0027s database, with its group memberships, permissions and custom properties. If the person connects again they come back as a new, ungrouped identity. It does not ban them. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "databaseId": {
+          "description": "The identity\u0027s database id.",
+          "type": "integer"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "databaseId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Delete a known client identity",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -1281,6 +2519,79 @@
     }
   },
   {
+    "name": "ts_complaint_delete",
+    "title": "Delete a complaint",
+    "description": "Deletes one complaint, identified by who it is about and who filed it, as ts_complaint_list shows. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "targetDatabaseId": {
+          "description": "The database id of the client the complaint is about.",
+          "type": "integer"
+        },
+        "fromDatabaseId": {
+          "description": "The database id of the client who filed it.",
+          "type": "integer"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "targetDatabaseId",
+        "fromDatabaseId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Delete a complaint",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_complaint_list",
     "title": "List complaints",
     "description": "Lists the complaints users filed against other users on a virtual server: who complained about whom, the message, and when. Pass databaseId to see only complaints about one client.",
@@ -1423,6 +2734,92 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_custom_property",
+    "title": "Set or delete a custom property",
+    "description": "Sets a custom property on a client identity, such as a linked forum account, or deletes one. Integrations use these to tie TeamSpeak identities to other systems; ts_custom_search finds them again. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "set or delete.",
+          "type": "string"
+        },
+        "databaseId": {
+          "description": "The client\u0027s database id.",
+          "type": "integer"
+        },
+        "ident": {
+          "description": "The property identifier, for example \u0027forum_account\u0027.",
+          "type": "string"
+        },
+        "value": {
+          "description": "For set: the value.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action",
+        "databaseId",
+        "ident"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Set or delete a custom property",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -1604,6 +3001,69 @@
     }
   },
   {
+    "name": "ts_instance_edit",
+    "title": "Change instance settings",
+    "description": "Changes settings of the whole TeamSpeak instance, such as the file transfer port or the ServerQuery flood limits, using the serverinstance_* names ts_instance_info shows. A wrong value can lock every query client out, including this server, so it needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "description": "Properties by their ServerQuery names, as ts_instance_info shows them, for example {\u0022serverinstance_serverquery_flood_commands\u0022: \u002220\u0022}.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "properties"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Change instance settings",
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_instance_info",
     "title": "Show the server instance",
     "description": "Summarises a TeamSpeak server instance in one call: the server version and platform, uptime and totals across all virtual servers, instance-wide settings such as the file transfer port and query flood limits, and the IP addresses it listens on.",
@@ -1661,6 +3121,82 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_log_add",
+    "title": "Write to the server log",
+    "description": "Writes an entry into a virtual server\u0027s log, for example to record why an administrative change was made. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "description": "The entry text.",
+          "type": "string"
+        },
+        "level": {
+          "description": "info (the default), warning, error, or debug.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "message"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Write to the server log",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -1887,6 +3423,203 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_message_send",
+    "title": "Send a text message",
+    "description": "Sends a text chat message: privately to one connected client, into a channel\u0027s chat, into the whole virtual server\u0027s chat, or to everyone on every virtual server of the instance. A channel message moves this server\u0027s own query session into the channel and back as one uninterrupted step, because TeamSpeak delivers channel messages only to the channel the sender is in; that needs a profile using the SSH interface. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "description": "client, channel, server, or instance.",
+          "type": "string"
+        },
+        "message": {
+          "description": "The message text.",
+          "type": "string"
+        },
+        "clientId": {
+          "description": "For client: the recipient\u0027s session id.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "channelId": {
+          "description": "For channel: the channel.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "channelPassword": {
+          "description": "For channel: the channel\u0027s password, if it has one.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "target",
+        "message"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Send a text message",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_offline_message",
+    "title": "Send or delete an offline message",
+    "description": "send leaves an offline message for a client identity, which they see the next time they connect; it needs a real client\u0027s unique identity, not a query login. delete removes a message from this server\u0027s own inbox, as listed by ts_message_list. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "send or delete.",
+          "type": "string"
+        },
+        "uniqueId": {
+          "description": "For send: the recipient\u0027s unique identity, from ts_client_resolve.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "subject": {
+          "description": "For send: the subject.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "message": {
+          "description": "For send: the message text.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "messageId": {
+          "description": "For delete: the message id.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Send or delete an offline message",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -2337,6 +4070,203 @@
     }
   },
   {
+    "name": "ts_perm_reset",
+    "title": "Reset all permissions of a virtual server",
+    "description": "Deletes every server group and channel group of a virtual server and restores TeamSpeak\u0027s default permissions, then returns a new administrator privilege key. Every role and custom permission is lost. TeamSpeak warns that if the reset fails part-way, the virtual server is deleted. As a safeguard, confirmName must repeat the virtual server\u0027s exact name. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "confirmName": {
+          "description": "The virtual server\u0027s exact name, as a safeguard against acting on the wrong one.",
+          "type": "string"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "confirmName"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Reset all permissions of a virtual server",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_perm_set",
+    "title": "Grant or revoke a permission",
+    "description": "Grants a permission with a value to one target, or revokes the assignment again. The target is a serverGroupId, a channelGroupId, a channelId alone (channel requirements such as needed join power), a databaseId alone (the identity itself), or channelId with databaseId (the identity in that channel). negated applies only to server groups; skip only to server groups and identities. Check the result with ts_perm_effective. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "grant or revoke.",
+          "type": "string"
+        },
+        "permission": {
+          "description": "The permission name, for example \u0027i_client_talk_power\u0027. See ts_perm_list.",
+          "type": "string"
+        },
+        "value": {
+          "description": "For grant: the value. Booleans use 1 and 0.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "negated": {
+          "description": "For grant on a server group: use the lowest rather than highest value across groups.",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null
+        },
+        "skip": {
+          "description": "For grant on a server group or identity: keep channel group and channel values from overriding it.",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null
+        },
+        "serverGroupId": {
+          "description": "A server group id.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "channelGroupId": {
+          "description": "A channel group id.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "channelId": {
+          "description": "A channel id; with databaseId, the channel of a channel-client pair.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "databaseId": {
+          "description": "A client database id; with channelId, the client of a channel-client pair.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action",
+        "permission"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Grant or revoke a permission",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_profiles_list",
     "title": "List TeamSpeak profiles",
     "description": "Lists the TeamSpeak servers this MCP server is configured to administer, with the interface and safety level each uses. Does not contact any server. Call this first when several profiles exist and a tool needs a profile name.",
@@ -2551,6 +4481,160 @@
     }
   },
   {
+    "name": "ts_querylogin_manage",
+    "title": "Create or delete a query login",
+    "description": "add enables ServerQuery login for an existing client identity on this virtual server, under a login name, and returns its generated password once. delete removes an identity\u0027s query login. Query logins act with that identity\u0027s permissions, so both need Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "add or delete.",
+          "type": "string"
+        },
+        "databaseId": {
+          "description": "The identity\u0027s database id.",
+          "type": "integer"
+        },
+        "loginName": {
+          "description": "For add: the login name.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action",
+        "databaseId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Create or delete a query login",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_servergroup_delete",
+    "title": "Delete a server group",
+    "description": "Deletes a server group with its permissions. Without force it refuses while the group has members; with force the members simply lose it. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "description": "The server group to delete.",
+          "type": "integer"
+        },
+        "force": {
+          "description": "Delete even though it has members.",
+          "type": "boolean",
+          "default": false
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "groupId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Delete a server group",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_servergroup_list",
     "title": "List server groups",
     "description": "Lists the server groups of a virtual server with their id, name, kind (regular, template or query), icon, sort order and the powers needed to modify the group or add and remove its members.",
@@ -2638,6 +4722,95 @@
     }
   },
   {
+    "name": "ts_servergroup_manage",
+    "title": "Create, copy or rename a server group",
+    "description": "create makes a new, empty server group. copy makes a new group with all the permissions of an existing one, the usual way to start a similar role. rename changes a group\u0027s name. Returns the new group\u0027s id for create and copy. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "create, copy, or rename.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the new group, or the new name.",
+          "type": "string"
+        },
+        "groupId": {
+          "description": "For copy: the group to copy. For rename: the group to rename.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "type": {
+          "description": "For create and copy: regular (the default), template, or query.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action",
+        "name"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Create, copy or rename a server group",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "ts_servergroup_members",
     "title": "List server group members",
     "description": "Lists the client identities in one server group, online or not, with database id, last nickname and unique identity.",
@@ -2709,6 +4882,192 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_servergroup_membership",
+    "title": "Add to or remove from a server group",
+    "description": "Adds a client identity to a server group, or removes it, by database id, whether or not the person is online. Default groups and templates cannot be assigned. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "add or remove.",
+          "type": "string"
+        },
+        "groupId": {
+          "description": "The server group.",
+          "type": "integer"
+        },
+        "databaseId": {
+          "description": "The client\u0027s database id; see ts_client_resolve.",
+          "type": "integer"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action",
+        "groupId",
+        "databaseId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Add to or remove from a server group",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_temp_password",
+    "title": "Manage temporary server passwords",
+    "description": "Manages temporary server passwords, which let someone join a password-protected server for a limited time, optionally straight into a channel. list shows them in clear text and needs Write; delete removes one by its password and needs Write; add creates one and needs Destructive, because it hands out access.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "list, add or delete.",
+          "type": "string"
+        },
+        "password": {
+          "description": "For add and delete: the password.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "durationSeconds": {
+          "description": "For add: how many seconds it stays valid.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "description": {
+          "description": "For add: what it is for.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "channelId": {
+          "description": "For add: a channel to put people who use it into. Omit for the default channel.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "channelPassword": {
+          "description": "For add: that channel\u0027s password, if it has one.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Manage temporary server passwords",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -2794,6 +5153,324 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_token_manage",
+    "title": "Create or delete a privilege key",
+    "description": "add creates a privilege key: a one-time code that puts whoever redeems it into a server group, or into a channel group in one channel. Hand it only to the intended person. add needs Destructive, because it hands out access. delete invalidates an unused key and needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "add or delete.",
+          "type": "string"
+        },
+        "serverGroupId": {
+          "description": "For add: the server group the key grants.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "channelGroupId": {
+          "description": "For add: the channel group the key grants, together with channelId.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "channelId": {
+          "description": "For add with channelGroupId: the channel.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "description": {
+          "description": "For add: what the key is for.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "token": {
+          "description": "For delete: the key.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Create or delete a privilege key",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_vserver_create",
+    "title": "Create a virtual server",
+    "description": "Creates a new virtual server with a name and optional virtualserver_* properties such as virtualserver_port or virtualserver_maxclients, and returns its id, port and initial administrator privilege key. That key grants full control of the new server; give it only to its future owner. The TeamSpeak license may limit how many virtual servers can exist. Needs Destructive, because it hands out full control of the new server.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the new virtual server.",
+          "type": "string"
+        },
+        "properties": {
+          "description": "Properties by their ServerQuery names, as ts_vserver_info shows them, for example {\u0022virtualserver_maxclients\u0022: \u002264\u0022, \u0022virtualserver_welcomemessage\u0022: \u0022Hi\u0022}.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Create a virtual server",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_vserver_delete",
+    "title": "Delete a virtual server",
+    "description": "Deletes a virtual server permanently, with all its channels, groups, permissions, bans and known identities. The server must be stopped first. As a safeguard, confirmName must repeat the virtual server\u0027s exact name. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "virtualServerId": {
+          "description": "The virtual server to delete.",
+          "type": "integer"
+        },
+        "confirmName": {
+          "description": "The virtual server\u0027s exact name, as a safeguard against acting on the wrong one.",
+          "type": "string"
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "virtualServerId",
+        "confirmName"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Delete a virtual server",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_vserver_edit",
+    "title": "Change a virtual server",
+    "description": "Changes one or more properties of a virtual server at once, such as its name, welcome message, password, slot limit or host message, using the virtualserver_* names ts_vserver_info shows. Needs Write.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "description": "Properties by their ServerQuery names, as ts_vserver_info shows them, for example {\u0022virtualserver_maxclients\u0022: \u002264\u0022, \u0022virtualserver_welcomemessage\u0022: \u0022Hi\u0022}.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "properties"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Change a virtual server",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {
@@ -2920,6 +5597,247 @@
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": true
+    }
+  },
+  {
+    "name": "ts_vserver_power",
+    "title": "Start or stop a virtual server",
+    "description": "Starts or stops a virtual server. Starting needs Write. Stopping disconnects everyone on it and needs Destructive; the optional reason is shown to them. The virtual server id is required here rather than defaulted, so the wrong server is not stopped by accident.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "start or stop.",
+          "type": "string"
+        },
+        "virtualServerId": {
+          "description": "The virtual server to start or stop.",
+          "type": "integer"
+        },
+        "reason": {
+          "description": "When stopping, a message shown to the clients being disconnected.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action",
+        "virtualServerId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Start or stop a virtual server",
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_vserver_snapshot_create",
+    "title": "Snapshot a virtual server",
+    "description": "Takes a snapshot of a virtual server\u0027s configuration, channels, groups, permissions and known identities, returned as version, data and, when a password was given, salt. Keep all three to deploy it later with ts_vserver_snapshot_deploy. The snapshot contains the server\u0027s whole configuration, so it needs Write even though nothing changes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "description": "A password to encrypt the snapshot with; the same one is needed to deploy it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Snapshot a virtual server",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "ts_vserver_snapshot_deploy",
+    "title": "Deploy a snapshot over a virtual server",
+    "description": "Replaces a virtual server\u0027s configuration, channels, groups and permissions with a snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. TeamSpeak does not check permissions while deploying, so a snapshot can grant any privilege: deploy only snapshots whose origin you trust. As a safeguard, confirmName must repeat the target virtual server\u0027s exact name. Needs Destructive.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "description": "The snapshot\u0027s version field.",
+          "type": "string"
+        },
+        "data": {
+          "description": "The snapshot\u0027s data field.",
+          "type": "string"
+        },
+        "confirmName": {
+          "description": "The virtual server\u0027s exact name, as a safeguard against acting on the wrong one.",
+          "type": "string"
+        },
+        "salt": {
+          "description": "The snapshot\u0027s salt field, present when it was created with a password.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "password": {
+          "description": "The password the snapshot was created with.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "keepFiles": {
+          "description": "Keep the files of channels that exist both before and after.",
+          "type": "boolean",
+          "default": false
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "version",
+        "data",
+        "confirmName"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "done": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "done",
+        "details",
+        "records"
+      ]
+    },
+    "annotations": {
+      "title": "Deploy a snapshot over a virtual server",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
     }
   },
   {

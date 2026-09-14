@@ -28,6 +28,9 @@ public static class QueryCommandScope
         "instanceedit",
         "bindinglist",
 
+        // Reaches every client on every virtual server, so it must not depend on one being selectable.
+        "gm",
+
         // Virtual server lifecycle, which takes the server id as a parameter.
         "serverlist",
         "servercreate",
@@ -45,10 +48,8 @@ public static class QueryCommandScope
         "whoami",
         "help",
 
-        // API keys belong to the query login, not to a virtual server.
-        "apikeylist",
-        "apikeyadd",
-        "apikeydel",
+        // Not the API key commands: a key carries the virtual server it was created on, so they need
+        // that server selected rather than whatever an earlier command happened to leave selected.
     };
 
     /// <summary>Gets a value indicating whether a command addresses the whole instance.</summary>

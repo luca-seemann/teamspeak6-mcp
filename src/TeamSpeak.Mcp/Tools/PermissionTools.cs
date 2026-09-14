@@ -74,22 +74,13 @@ public sealed partial class PermissionTools(QueryExecutor executor, PermissionNa
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var (target, command, parameters) = (serverGroupId, channelGroupId, channelId, databaseId) switch
-        {
-            ({ } sgid, null, null, null) => ($"server group {sgid}", "servergrouppermlist", new Dictionary<string, string> { ["sgid"] = Text(sgid) }),
-            (null, { } cgid, null, null) => ($"channel group {cgid}", "channelgrouppermlist", new Dictionary<string, string> { ["cgid"] = Text(cgid) }),
-            (null, null, { } cid, null) => ($"channel {cid}", "channelpermlist", new Dictionary<string, string> { ["cid"] = Text(cid) }),
-            (null, null, null, { } cldbid) => ($"client {cldbid}", "clientpermlist", new Dictionary<string, string> { ["cldbid"] = Text(cldbid) }),
-            (null, null, { } cid, { } cldbid) => ($"client {cldbid} in channel {cid}", "channelclientpermlist", new Dictionary<string, string> { ["cid"] = Text(cid), ["cldbid"] = Text(cldbid) }),
-            _ => throw new McpException(
-                "Pass exactly one target: serverGroupId, channelGroupId, channelId, databaseId, or channelId together with databaseId."),
-        };
+        var target = PermissionTarget.From(serverGroupId, channelGroupId, channelId, databaseId);
 
         var records = await executor.RunAsync(
             "ts_perm_assigned",
             SafetyLevel.ReadOnly,
             profile,
-            new QueryCommand(command, parameters, VirtualServerId: virtualServerId),
+            new QueryCommand(target.ListCommand, target.Parameters, VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
         var names = records.Count == 0
@@ -97,7 +88,7 @@ public sealed partial class PermissionTools(QueryExecutor executor, PermissionNa
             : await permissionNames.GetAsync(executor, profile, cancellationToken).ConfigureAwait(false);
 
         return new AssignedPermissions(
-            target,
+            target.Label,
             records
                 .Select(record => new PermissionValue(
                     record.GetInt32("permid"),

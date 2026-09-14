@@ -82,6 +82,32 @@ public sealed class SshQueryTransport : IQueryTransport
     /// <remarks>Always <see langword="true"/>: SSH is the only interface that delivers events.</remarks>
     public bool SupportsEvents => true;
 
+    /// <inheritdoc />
+    public bool HoldsSession => true;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The sequence holds the session slot throughout, which is what keeps other callers' commands
+    /// — including a <c>use</c> for another virtual server — out of it. A session that falls out of
+    /// step during the sequence fails the rest of it; the next ordinary command replaces the session.
+    /// </remarks>
+    public async Task<T> RunExclusiveAsync<T>(Func<QuerySender, Task<T>> work, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+
+        await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
+
+        await _pendingSlot.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await work(SendHoldingSlotAsync).ConfigureAwait(false);
+        }
+        finally
+        {
+            _pendingSlot.Release();
+        }
+    }
+
     /// <summary>Opens a session against a profile.</summary>
     /// <param name="profile">The server to connect to. Must have a password.</param>
     /// <param name="cancellationToken">Abandons the connection attempt.</param>
@@ -358,6 +384,29 @@ public sealed class SshQueryTransport : IQueryTransport
         await _pendingSlot.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            return await SendHoldingSlotAsync(command, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _pendingSlot.Release();
+        }
+    }
+
+    /// <summary>Selects the command's virtual server if needed and sends it. The caller holds the slot.</summary>
+    private async Task<QueryResponse> SendHoldingSlotAsync(QueryCommand command, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        // Only reachable inside an exclusive sequence: outside one, EnsureConnectedAsync has already
+        // replaced a session in this state.
+        if (_desynchronized)
+        {
+            throw new QueryProtocolException(
+                "The query session fell out of step with its responses; it is replaced before the next command.");
+        }
+
+        try
+        {
             if (!QueryCommandScope.IsInstanceWide(command.Name))
             {
                 var target = command.VirtualServerId ?? _defaultVirtualServerId;
@@ -389,10 +438,6 @@ public sealed class SshQueryTransport : IQueryTransport
             _selectedVirtualServerId = 0;
             throw;
         }
-        finally
-        {
-            _pendingSlot.Release();
-        }
     }
 
     /// <summary>
@@ -414,8 +459,19 @@ public sealed class SshQueryTransport : IQueryTransport
                     ? id
                     : 0;
         }
-        else if (string.Equals(command.Name, "logout", StringComparison.OrdinalIgnoreCase))
+        else if (command.Name.ToLowerInvariant() is "logout" or "permreset" or "serversnapshotdeploy")
         {
+            // A reset or a deployment rebuilds the virtual server underneath the session, which may
+            // no longer be where it was. Selecting again costs one command and is always correct.
+            _selectedVirtualServerId = 0;
+        }
+        else if (command.Name.ToLowerInvariant() is "serverstop" or "serverdelete"
+                 && command.Parameters is not null
+                 && command.Parameters.TryGetValue("sid", out var stopped)
+                 && int.TryParse(stopped, System.Globalization.CultureInfo.InvariantCulture, out var stoppedId)
+                 && stoppedId == _selectedVirtualServerId)
+        {
+            // Stopping or deleting the selected virtual server drops the session from it.
             _selectedVirtualServerId = 0;
         }
     }

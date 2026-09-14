@@ -8,7 +8,7 @@ public class QueryCommandScopeTests
     [InlineData("version")]
     [InlineData("serverlist")]
     [InlineData("whoami")]
-    [InlineData("apikeyadd")]
+    [InlineData("gm")]
     public void Treats_instance_commands_as_instance_wide(string name) =>
         Assert.True(QueryCommandScope.IsInstanceWide(name));
 
@@ -26,6 +26,8 @@ public class QueryCommandScopeTests
     [InlineData("channellist")]
     [InlineData("clientinfo")]
     [InlineData("serverinfo")]
+    [InlineData("apikeyadd")]
+    [InlineData("apikeydel")]
     [InlineData("some-future-command")]
     public void Treats_everything_else_as_scoped(string name) =>
         Assert.False(QueryCommandScope.IsInstanceWide(name));
