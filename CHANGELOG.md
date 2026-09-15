@@ -101,6 +101,10 @@ All notable changes to this project are documented here. The format follows
   as a binary, in a container or from source.
 - A live test that breaks an SSH session in the middle of a command through a local relay, once by
   resetting the connection and once by silencing it, and checks that the next command reconnects.
+- Parser fixtures for 14 more commands, among them `permoverview`, `permfind`, `servergrouppermlist`,
+  `clientdbinfo` and `logview`. Each was captured over SSH and the WebQuery within the same minute,
+  and the SSH captures keep the `\n\r` line ending the server really sends. Tests check that both
+  transports decode each one to the same records.
 
 ### Fixed
 
@@ -158,6 +162,13 @@ All notable changes to this project are documented here. The format follows
   in step, and the session leaves at once.
 - `SshQueryTransport` could never reconnect again after a reconnect gave up, and disposing it could
   throw: a failed attempt left a disposed SSH client in place, whose `IsConnected` throws.
+- Every refused tool call was logged as an unhandled exception with a full stack trace: a safety level
+  too low, a bad argument, a refusal from the server. A call-tool filter now answers these with an error
+  result directly, and protocol errors and unexpected exceptions are still logged in full. The message
+  the model sees no longer carries the SDK's `An error occurred invoking '…':` prefix.
+- One transport failing to close stopped `QueryConnectionManager` and `QueryEventHub` from closing the
+  others, and left that event session half-closed. Both now close everything and report the failures
+  afterwards.
 
 ### Changed (review of phase 6)
 

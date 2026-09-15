@@ -1,0 +1,3 @@
+cldbid=3 client_nickname=Alice client_unique_identifier=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ=
+error id=0 msg=ok
+
