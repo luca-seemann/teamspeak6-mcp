@@ -38,6 +38,21 @@ public class QueryEventHubTests
     private static string Registration(QueryCommand command) =>
         command.Parameters!["event"] + (command.Parameters.TryGetValue("id", out var id) ? $" id={id}" : string.Empty);
 
+    [Fact]
+    public async Task Disposing_closes_every_event_session_even_when_one_fails_to_close()
+    {
+        var sessions = new Sessions();
+        var hub = new QueryEventHub(Registry(), 100, sessions.OpenAsync);
+        await hub.SubscribeAsync("test", 1, [EventCategory.TextServer], cancellationToken: Ct);
+        await hub.SubscribeAsync("test", 2, [EventCategory.TextServer], cancellationToken: Ct);
+        sessions.Opened[0].Transport.DisposeException = new InvalidOperationException("close failed");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => hub.DisposeAsync().AsTask());
+
+        Assert.Equal(2, sessions.Opened.Count);
+        Assert.All(sessions.Opened, opened => Assert.True(opened.Transport.IsDisposed));
+    }
+
     /// <summary>The (un)registrations a session was sent, leaving out the whoami that follows them.</summary>
     private static IEnumerable<QueryCommand> Notifies(FakeQueryTransport transport) =>
         transport.SentCommands.Where(command => command.Name.StartsWith("servernotify", StringComparison.Ordinal));

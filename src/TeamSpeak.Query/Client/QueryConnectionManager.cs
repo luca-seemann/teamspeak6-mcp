@@ -139,13 +139,25 @@ public sealed class QueryConnectionManager : IAsyncDisposable
             return;
         }
 
+        List<Exception>? failures = null;
+
         foreach (var connection in _connections.Values)
         {
             if (connection.Transport is { } transport)
             {
-                await transport.DisposeAsync().ConfigureAwait(false);
+                try
+                {
+                    await transport.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // One connection failing to close must not leave the others open, each holding a query slot.
+                    (failures ??= []).Add(ex);
+                }
             }
         }
+
+        DisposalFailures.ThrowIfAny(failures, "Some query connections could not be closed cleanly.");
     }
 
     private static async Task<IQueryTransport> OpenAsync(

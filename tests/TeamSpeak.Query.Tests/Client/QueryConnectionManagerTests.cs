@@ -134,6 +134,25 @@ public class QueryConnectionManagerTests
     }
 
     [Fact]
+    public async Task Closes_every_connection_even_when_one_fails_to_close()
+    {
+        var failing = new FakeQueryTransport { DisposeException = new InvalidOperationException("close failed") };
+        var healthy = new FakeQueryTransport();
+        var manager = new QueryConnectionManager(
+            new ProfileRegistry([SshProfile("a"), SshProfile("b")]),
+            (profile, _, _) => Task.FromResult<IQueryTransport>(profile.Name == "a" ? failing : healthy));
+
+        await manager.GetTransportAsync("a", TestContext.Current.CancellationToken);
+        await manager.GetTransportAsync("b", TestContext.Current.CancellationToken);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => manager.DisposeAsync().AsTask());
+
+        Assert.Equal("close failed", ex.Message);
+        Assert.True(failing.IsDisposed);
+        Assert.True(healthy.IsDisposed);
+    }
+
+    [Fact]
     public async Task Reports_an_unknown_profile_by_name()
     {
         await using var manager = new QueryConnectionManager(

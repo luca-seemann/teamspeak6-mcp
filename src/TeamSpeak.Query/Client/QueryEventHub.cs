@@ -340,6 +340,8 @@ public sealed class QueryEventHub : IAsyncDisposable
             return;
         }
 
+        List<Exception>? failures = null;
+
         foreach (var session in _sessions.Values)
         {
             await session.Gate.WaitAsync().ConfigureAwait(false);
@@ -347,11 +349,18 @@ public sealed class QueryEventHub : IAsyncDisposable
             {
                 await CloseAsync(session).ConfigureAwait(false);
             }
+            catch (Exception ex)
+            {
+                // One event session failing to close must not leave the others open.
+                (failures ??= []).Add(ex);
+            }
             finally
             {
                 session.Gate.Release();
             }
         }
+
+        DisposalFailures.ThrowIfAny(failures, "Some event sessions could not be closed cleanly.");
     }
 
     private static async Task RegisterAllAsync(EventSession session, QuerySender send, CancellationToken cancellationToken)
@@ -512,24 +521,32 @@ public sealed class QueryEventHub : IAsyncDisposable
         }
 
         await session.Stop.CancelAsync().ConfigureAwait(false);
-        await transport.DisposeAsync().ConfigureAwait(false);
 
-        foreach (var task in new[] { session.Pump, session.Watchdog })
+        try
         {
-            if (task is not null)
+            await transport.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            // Even when the transport fails to close, the pump and watchdog were told to stop and the
+            // session must be left empty, or a later subscribe would find a half-closed one.
+            foreach (var task in new[] { session.Pump, session.Watchdog })
             {
-                try
+                if (task is not null)
                 {
-                    await task.ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Expected when the subscription ends.
+                    try
+                    {
+                        await task.ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when the subscription ends.
+                    }
                 }
             }
-        }
 
-        session.Reset();
+            session.Reset();
+        }
     }
 
     private static async Task SendAsync(IQueryTransport transport, QueryCommand command, CancellationToken cancellationToken)

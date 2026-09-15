@@ -85,11 +85,17 @@ public sealed class FakeQueryTransport : IQueryTransport
         }
     }
 
+    /// <summary>
+    /// Gets or sets an exception <see cref="DisposeAsync"/> throws after marking itself disposed, standing
+    /// in for a transport that fails to close.
+    /// </summary>
+    public Exception? DisposeException { get; set; }
+
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         IsDisposed = true;
         _events.Writer.TryComplete();
-        return ValueTask.CompletedTask;
+        return DisposeException is { } failure ? ValueTask.FromException(failure) : ValueTask.CompletedTask;
     }
 }
