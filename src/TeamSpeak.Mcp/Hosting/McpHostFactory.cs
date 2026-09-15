@@ -49,6 +49,7 @@ public static class McpHostFactory
         builder.Services
             .AddMcpServer()
             .WithStdioServerTransport()
+            .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
             .WithToolsFromAssembly()
             .WithPromptsFromAssembly()
             .WithResourcesFromAssembly();
@@ -73,6 +74,7 @@ public static class McpHostFactory
         builder.Services
             .AddMcpServer()
             .WithHttpTransport()
+            .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
             .WithToolsFromAssembly()
             .WithPromptsFromAssembly()
             .WithResourcesFromAssembly();
