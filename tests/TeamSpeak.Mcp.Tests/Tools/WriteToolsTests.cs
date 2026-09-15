@@ -29,6 +29,7 @@ public class WriteToolsTests
             () => new VirtualServerAdminTools(harness.Executor).SnapshotDeployAsync("3", "data", "x", cancellationToken: Ct),
             () => new VirtualServerAdminTools(harness.Executor).TempPasswordAsync("list", cancellationToken: Ct),
             () => new ChannelAdminTools(harness.Executor).CreateAsync("x", cancellationToken: Ct),
+            () => new ChannelAdminTools(harness.Executor).MoveAsync(1, 0, cancellationToken: Ct),
             () => new ChannelAdminTools(harness.Executor).DeleteAsync(1, cancellationToken: Ct),
             () => new ClientAdminTools(harness.Executor).MoveAsync(1, 2, cancellationToken: Ct),
             () => new ClientAdminTools(harness.Executor).KickAsync(1, "server", cancellationToken: Ct),
@@ -185,11 +186,32 @@ public class WriteToolsTests
     public async Task Moves_a_channel_first_under_its_parent_by_default()
     {
         await using var harness = new ToolHarness(SafetyLevel.Write);
-        harness.Transport.Returns("channelmove", ToolHarness.Records());
+        harness.Transport
+            .Returns("channelinfo", ToolHarness.Records(Fields(("pid", "0"))))
+            .Returns("channelmove", ToolHarness.Records());
 
         await new ChannelAdminTools(harness.Executor).MoveAsync(5, 2, cancellationToken: Ct);
 
-        Assert.Equal("0", Assert.Single(harness.Transport.SentCommands).Parameters!["order"]);
+        var move = harness.Transport.SentCommands[^1];
+        Assert.Equal(("channelmove", "2", "0"), (move.Name, move.Parameters!["cpid"], move.Parameters["order"]));
+    }
+
+    [Fact]
+    public async Task Reorders_a_channel_within_its_parent_by_setting_its_order()
+    {
+        // Measured live: channelmove to the parent a channel already has is 770, whatever the order.
+        await using var harness = new ToolHarness(SafetyLevel.Write);
+        harness.Transport
+            .Returns("channelinfo", ToolHarness.Records(Fields(("pid", "2"))))
+            .Returns("channeledit", ToolHarness.Records())
+            .Returns("channelmove", ToolHarness.Error(QueryErrorCode.AlreadyMemberOfChannel, "already member of channel"));
+
+        var result = await new ChannelAdminTools(harness.Executor).MoveAsync(5, 2, belowChannelId: 7, cancellationToken: Ct);
+
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name == "channelmove");
+        var edit = harness.Transport.SentCommands[^1];
+        Assert.Equal(("channeledit", "5", "7"), (edit.Name, edit.Parameters!["cid"], edit.Parameters["channel_order"]));
+        Assert.Contains("below channel 7", result.Done, StringComparison.Ordinal);
     }
 
     private static ToolHarness KickHarness(int ownClientId, bool holdsSession = true)

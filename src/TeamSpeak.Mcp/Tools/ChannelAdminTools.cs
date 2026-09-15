@@ -2,6 +2,7 @@ using System.ComponentModel;
 
 using ModelContextProtocol.Server;
 
+using TeamSpeak.Mcp.Configuration;
 using TeamSpeak.Query.Protocol;
 
 using static TeamSpeak.Mcp.Tools.ToolArguments;
@@ -79,18 +80,46 @@ public sealed class ChannelAdminTools(QueryExecutor executor)
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var parameters = new Dictionary<string, string>
+        // The current parent is read first, so refuse before that read rather than after it.
+        executor.Demand("ts_channel_move", SafetyLevel.Write, profile);
+
+        var order = Text(belowChannelId ?? 0);
+        var parent = parentId == 0 ? "the top level" : $"channel {parentId}";
+
+        var info = await executor.RunAsync(
+            "ts_channel_move",
+            SafetyLevel.ReadOnly,
+            profile,
+            new QueryCommand("channelinfo", new Dictionary<string, string> { ["cid"] = Text(channelId) }, VirtualServerId: virtualServerId),
+            cancellationToken).ConfigureAwait(false);
+
+        // channelmove refuses a channel's own parent with 770 "already member of channel", even when the
+        // position should change, so a move within the same parent only sets the order.
+        if (info.Count > 0 && info[0].GetInt32("pid") == parentId)
         {
-            ["cid"] = Text(channelId),
-            ["cpid"] = Text(parentId),
-            ["order"] = Text(belowChannelId ?? 0),
-        };
+            var edited = await executor.RunCommandAsync(
+                "ts_channel_move",
+                profile,
+                new QueryCommand(
+                    "channeledit",
+                    new Dictionary<string, string> { ["cid"] = Text(channelId), ["channel_order"] = order },
+                    VirtualServerId: virtualServerId),
+                cancellationToken).ConfigureAwait(false);
+
+            var place = belowChannelId is > 0 ? $"below channel {belowChannelId}" : "first";
+            return ActionResult.From($"Channel {channelId} was already under {parent}; placed it {place}.", edited);
+        }
 
         var records = await executor.RunCommandAsync(
-            "ts_channel_move", profile, new QueryCommand("channelmove", parameters, VirtualServerId: virtualServerId), cancellationToken)
-            .ConfigureAwait(false);
+            "ts_channel_move",
+            profile,
+            new QueryCommand(
+                "channelmove",
+                new Dictionary<string, string> { ["cid"] = Text(channelId), ["cpid"] = Text(parentId), ["order"] = order },
+                VirtualServerId: virtualServerId),
+            cancellationToken).ConfigureAwait(false);
 
-        return ActionResult.From($"Moved channel {channelId} under {(parentId == 0 ? "the top level" : $"channel {parentId}")}.", records);
+        return ActionResult.From($"Moved channel {channelId} under {parent}.", records);
     }
 
     /// <summary>Deletes a channel.</summary>

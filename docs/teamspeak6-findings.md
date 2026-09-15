@@ -181,6 +181,13 @@ every channel, group and client database id. The option is refused on every path
 was posted to the TeamSpeak community forum on 14 September 2026:
 [`-keepfiles` crashes the server and leaves the virtual server unrecoverable](https://community.teamspeak.com/t/keepfiles-crashes-the-server-and-leaves-the-virtual-server-unrecoverable/65326).
 
+**`channelmove` cannot reorder a channel within its parent.** Sent with the parent a channel already
+has, it is refused with `770 already member of channel`, whatever `order` says: a move meant to put
+a channel below a different sibling failed the same way as a move to the place it already held, and
+its `channel_order` stayed unchanged. `channeledit channel_order=` does reorder within the parent, and
+answers ok for an unchanged position too. `ts_channel_move` found this while arranging the test
+server's channels; it now reads the channel's parent first and sets the order when the parent stays.
+
 **Server Admin ignores channel groups.** It holds `b_client_skip_channelgroup_permissions`, a
 permission rather than the `permskip` flag, and with it the server computed 75 talk power from
 Server Admin against a channel group granting 62. `ts_perm_effective` had missed it, because the

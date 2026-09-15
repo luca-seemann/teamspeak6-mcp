@@ -108,6 +108,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `ts_channel_move` could not reorder a channel within its parent. The server refuses `channelmove`
+  to a channel's own parent with `770 already member of channel`, whatever the order, so the tool
+  now reads the parent first and sets `channel_order` when it stays the same.
 - `docker/docker-compose.yml` configured the MCP container with setting names that do not bind, so
   the container started without a profile.
 - After a reconnect, the SSH server's greeting was read as the first lines of the next command's

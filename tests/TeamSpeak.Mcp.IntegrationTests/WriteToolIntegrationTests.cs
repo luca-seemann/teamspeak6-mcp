@@ -72,6 +72,11 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
             await admin.MoveAsync(channelId, parent, virtualServerId: 1, cancellationToken: Ct);
             var moved = (await channels.ListChannelsAsync(virtualServerId: 1, cancellationToken: Ct)).Channels.Single(channel => channel.Id == channelId);
             Assert.Equal(parent, moved.ParentId);
+
+            // Within the same parent the server refuses channelmove with 770, so this takes channel_order.
+            await admin.MoveAsync(channelId, parent, belowChannelId: 0, virtualServerId: 1, cancellationToken: Ct);
+            var reordered = (await channels.ChannelInfoAsync(channelId, 1, cancellationToken: Ct)).Fields;
+            Assert.Equal((parent.ToString(System.Globalization.CultureInfo.InvariantCulture), "0"), (reordered["pid"], reordered["channel_order"]));
         }
         finally
         {
