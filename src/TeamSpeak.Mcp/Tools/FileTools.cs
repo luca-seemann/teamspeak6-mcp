@@ -60,7 +60,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
                     var name = record.GetString("name");
                     return new FileEntry(
                         name,
-                        Join(directory, name),
+                        ListedPath(channelId, directory, name),
                         record.GetInt32("type", 1) == 0 ? "directory" : "file",
                         record.GetInt64("size"),
                         record.GetUnixTimeOfAnyPrecision("datetime"),
@@ -82,7 +82,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var name = ServerPath(path, nameof(path), allowRoot: false);
+        var name = EntryPath(channelId, path, nameof(path));
         var parameters = ChannelParameters(channelId, channelPassword);
         parameters["name"] = name;
 
@@ -152,7 +152,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var name = ServerPath(path, nameof(path), allowRoot: false);
+        var name = EntryPath(channelId, path, nameof(path));
 
         if (resume && localPath is null)
         {

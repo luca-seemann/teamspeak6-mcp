@@ -49,7 +49,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var name = ServerPath(path, nameof(path), allowRoot: false);
+        var name = EntryPath(channelId, path, nameof(path));
 
         if (new[] { content, contentBase64, localPath }.Count(source => source is not null) != 1)
         {
@@ -223,8 +223,8 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
             default:
                 {
                     var channel = channelId ?? throw new McpException("rename needs channelId.");
-                    var from = ServerPath(path, nameof(path), allowRoot: false);
-                    var to = ServerPath(newPath, nameof(newPath), allowRoot: false);
+                    var from = EntryPath(channel, path, nameof(path));
+                    var to = EntryPath(targetChannelId ?? channel, newPath, nameof(newPath));
                     var parameters = ChannelParameters(channel, channelPassword);
 
                     var target = targetChannelId is { } other && other != channel ? other : (int?)null;
@@ -267,7 +267,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
             throw new McpException("Name at least one path to delete.");
         }
 
-        var names = paths.Select(path => ServerPath(path, nameof(paths), allowRoot: false)).Distinct(StringComparer.Ordinal).ToList();
+        var names = paths.Select(path => EntryPath(channelId, path, nameof(paths))).Distinct(StringComparer.Ordinal).ToList();
         executor.Demand("ts_file_delete", SafetyLevel.Destructive, profile);
 
         var deleted = new List<string>();

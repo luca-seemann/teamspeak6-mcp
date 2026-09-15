@@ -103,6 +103,11 @@ connection with an unknown key at once. Probed in three rounds:
   `incompletesize`. `resume=1` continues from the stored size. `ftstop delete=1` removes the file and
   closes the socket, and `ftlist` shows the transfer with its progress while it runs. An unused ticket
   creates a 0-byte placeholder at once, and it was gone about two minutes later.
+- **Icons are listed under one path and addressed under another.** An upload to `/icon_<crc32>` in
+  channel 0 appears in `ftgetfilelist path=/icons` as `icon_<crc32>`. Addressed as
+  `/icons/icon_<crc32>`, the listed form, `ftgetfileinfo`, `ftinitdownload` and `ftdeletefile` all
+  answer `1538 invalid parameter`; as `/icon_<crc32>` all three work. `ts_file_delete` ran into this
+  while replacing the test server's role icons.
 - **Deletion is generous.** A directory is deleted with its contents. A multi-name `ftdeletefile`
   deletes every name that exists and still reports `2054` for a missing one.
 - **Channel passwords bind ordinary logins only.** For `serveradmin`, a wrong `cpw` was accepted. A

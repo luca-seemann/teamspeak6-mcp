@@ -49,6 +49,34 @@ internal static class FileTransferSupport
     public static string Join(string directory, string entry) =>
         directory.EndsWith('/') ? directory + entry : $"{directory}/{entry}";
 
+    /// <summary>The directory channel 0 lists the virtual server's icons in.</summary>
+    private const string IconDirectory = "/icons";
+
+    /// <summary>
+    /// Normalises the path of one file or directory, turning channel 0's listed icon form into the one the
+    /// server takes.
+    /// </summary>
+    /// <param name="channelId">The channel the path is in.</param>
+    /// <param name="value">The path as given.</param>
+    /// <param name="name">The argument name, for messages.</param>
+    /// <returns>The path the server takes.</returns>
+    /// <remarks>
+    /// Measured on 6.0.0-beta12.1: an upload to <c>/icon_123</c> in channel 0 is listed as
+    /// <c>/icons/icon_123</c>, but <c>ftgetfileinfo</c>, <c>ftinitdownload</c> and <c>ftdeletefile</c> refuse
+    /// that form with <c>1538 invalid parameter</c> and take only <c>/icon_123</c>.
+    /// </remarks>
+    public static string EntryPath(int channelId, string? value, string name)
+    {
+        var path = ServerPath(value, name, allowRoot: false);
+        return channelId == 0 && path.StartsWith(IconDirectory + "/", StringComparison.Ordinal) && path.LastIndexOf('/') == IconDirectory.Length
+            ? path[IconDirectory.Length..]
+            : path;
+    }
+
+    /// <summary>The path of an entry from a listing, in the form the server and the other file tools take.</summary>
+    public static string ListedPath(int channelId, string directory, string entry) =>
+        channelId == 0 && directory == IconDirectory ? "/" + entry : Join(directory, entry);
+
     /// <summary>The parameters every channel file command starts with.</summary>
     public static Dictionary<string, string> ChannelParameters(int channelId, string? password) =>
         new(StringComparer.Ordinal)

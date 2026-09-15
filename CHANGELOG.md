@@ -111,6 +111,9 @@ All notable changes to this project are documented here. The format follows
 - `ts_channel_move` could not reorder a channel within its parent. The server refuses `channelmove`
   to a channel's own parent with `770 already member of channel`, whatever the order, so the tool
   now reads the parent first and sets `channel_order` when it stays the same.
+- `ts_file_list` listed channel 0's icons as `/icons/icon_<id>`, a path the server refuses with
+  `1538 invalid parameter` for info, download and delete. Listings now give `/icon_<id>`, and the
+  file tools also accept the listed form and translate it.
 - `docker/docker-compose.yml` configured the MCP container with setting names that do not bind, so
   the container started without a profile.
 - After a reconnect, the SSH server's greeting was read as the first lines of the next command's

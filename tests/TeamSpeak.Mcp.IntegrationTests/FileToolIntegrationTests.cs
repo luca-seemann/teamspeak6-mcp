@@ -141,6 +141,37 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
     }
 
     [RequiresTeamSpeakServerFact]
+    public async Task An_icon_is_addressed_by_the_path_its_listing_shows()
+    {
+        await using var connections = Connections();
+        var executor = new QueryExecutor(connections, new SafetyPolicy(SafetyLevel.Destructive));
+        var files = new FileTools(executor, Options());
+        var admin = new FileAdminTools(executor, Options());
+
+        // Not a real image: the server stores whatever arrives under an icon name.
+        var name = "/icon_" + Random.Shared.Next(1_000_000, int.MaxValue).ToString(CultureInfo.InvariantCulture);
+
+        try
+        {
+            await admin.UploadAsync(0, name, content: "icon", virtualServerId: 1, cancellationToken: Ct);
+
+            var listed = Assert.Single((await files.ListFilesAsync(0, "/icons", virtualServerId: 1, cancellationToken: Ct)).Entries, entry => entry.Name == name[1..]);
+            Assert.Equal(name, listed.Path);
+
+            // The server refuses the /icons/... form, so the tools translate it.
+            Assert.Equal(4, (await files.FileInfoAsync(0, "/icons" + name, virtualServerId: 1, cancellationToken: Ct)).Size);
+            Assert.Equal("icon", (await files.DownloadAsync(0, listed.Path, virtualServerId: 1, cancellationToken: Ct)).Content);
+
+            await admin.DeleteAsync(0, ["/icons" + name], virtualServerId: 1, cancellationToken: Ct);
+            Assert.DoesNotContain((await files.ListFilesAsync(0, "/icons", virtualServerId: 1, cancellationToken: Ct)).Entries, entry => entry.Name == name[1..]);
+        }
+        finally
+        {
+            await DeleteQuietlyAsync(0, name);
+        }
+    }
+
+    [RequiresTeamSpeakServerFact]
     public async Task An_unfinished_upload_is_listed_and_stopping_it_removes_the_partial_file()
     {
         await using var connections = Connections();

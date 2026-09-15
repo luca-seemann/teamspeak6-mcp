@@ -278,6 +278,29 @@ public sealed class FileToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task Icons_in_channel_0_are_listed_and_addressed_as_the_server_takes_them()
+    {
+        // Measured: the server lists /icon_123 under /icons, but refuses /icons/icon_123 with 1538.
+        await using var harness = new ToolHarness(SafetyLevel.Destructive);
+        harness.Transport
+            .Returns("ftgetfilelist", ToolHarness.Records(Fields(("name", "icon_123"), ("type", "1"), ("size", "5"))))
+            .Returns("ftgetfileinfo", ToolHarness.Records(Fields(("size", "5"))))
+            .Returns("ftdeletefile", ToolHarness.Records());
+        var files = new FileTools(harness.Executor, Options());
+        var admin = new FileAdminTools(harness.Executor, Options());
+
+        var listed = Assert.Single((await files.ListFilesAsync(0, "/icons", cancellationToken: Ct)).Entries);
+        await files.FileInfoAsync(0, "/icons/icon_123", cancellationToken: Ct);
+        await admin.DeleteAsync(0, ["/icons/icon_123"], cancellationToken: Ct);
+        await files.FileInfoAsync(4, "/icons/icon_123", cancellationToken: Ct);
+
+        Assert.Equal("/icon_123", listed.Path);
+        Assert.Equal(
+            ["/icon_123", "/icon_123", "/icons/icon_123"],
+            harness.Transport.SentCommands.Where(command => command.Name != "ftgetfilelist").Select(command => command.Parameters!["name"]));
+    }
+
+    [Fact]
     public async Task A_download_returns_text_as_text_and_anything_else_as_base64()
     {
         await using var harness = new ToolHarness(SafetyLevel.ReadOnly, Loopback());
