@@ -1,32 +1,36 @@
-# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Build stage. It runs on the build machine's own architecture and cross-publishes for the target, so
+# an arm64 image needs no emulation:
+#
+#   docker buildx build --platform linux/amd64,linux/arm64 -f docker/Dockerfile .
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG TARGETARCH
 WORKDIR /src
 
 # Restore against the manifests alone so the layer caches across source changes.
-COPY global.json Directory.Build.props Directory.Packages.props TeamSpeakMcp.slnx ./
+COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/TeamSpeak.Query/TeamSpeak.Query.csproj src/TeamSpeak.Query/
 COPY src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj src/TeamSpeak.Mcp/
-COPY tests/TeamSpeak.Query.FakeServer/TeamSpeak.Query.FakeServer.csproj tests/TeamSpeak.Query.FakeServer/
-COPY tests/TeamSpeak.Query.Tests/TeamSpeak.Query.Tests.csproj tests/TeamSpeak.Query.Tests/
-COPY tests/TeamSpeak.Mcp.Tests/TeamSpeak.Mcp.Tests.csproj tests/TeamSpeak.Mcp.Tests/
-COPY tests/TeamSpeak.Mcp.IntegrationTests/TeamSpeak.Mcp.IntegrationTests.csproj tests/TeamSpeak.Mcp.IntegrationTests/
-RUN dotnet restore src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj
+RUN case "$TARGETARCH" in \
+      amd64) echo linux-x64 ;; \
+      arm64) echo linux-arm64 ;; \
+      *) echo "Unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac > /tmp/rid \
+ && dotnet restore src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj --runtime "$(cat /tmp/rid)"
 
-COPY . .
+COPY src/ src/
 RUN dotnet publish src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj \
       --no-restore \
       --configuration Release \
+      --runtime "$(cat /tmp/rid)" \
       --output /app
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# Runtime stage. The binary is self-contained, so the image needs only the native libraries .NET
+# depends on, not a .NET runtime.
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app .
+COPY --from=build /app/teamspeak6-mcp .
 
 # The container serves remote clients, so HTTP is the only transport that makes sense here.
 EXPOSE 7801
-ENV DOTNET_NOLOGO=1 \
-    DOTNET_CLI_TELEMETRY_OPTOUT=1
-
 USER $APP_UID
 ENTRYPOINT ["./teamspeak6-mcp", "--transport", "http", "--url", "http://0.0.0.0:7801"]

@@ -3,8 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -38,3 +40,30 @@ jobs:
       # dotnet test forwards unknown flags to the test app, so pass MSBuild-level options only.
       - name: Test
         run: dotnet test --no-build --configuration Release
+
+  # Self-contained single-file binaries and the NuGet tool packages, for tags or when run by hand.
+  # Every runtime identifier is cross-compiled on Linux, ReadyToRun included.
+  package:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Publish binaries
+        run: |
+          for rid in win-x64 linux-x64 linux-arm64; do
+            dotnet publish src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj --configuration Release --runtime "$rid" --output "publish/$rid"
+          done
+
+      - name: Pack
+        run: dotnet pack src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj --configuration Release --output publish/nuget
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: teamspeak6-mcp
+          path: publish/

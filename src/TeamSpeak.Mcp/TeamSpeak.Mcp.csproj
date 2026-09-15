@@ -7,6 +7,45 @@
     <RootNamespace>TeamSpeak.Mcp</RootNamespace>
   </PropertyGroup>
 
+  <!--
+    dotnet publish -r <rid> produces one self-contained, ReadyToRun-compiled executable and nothing
+    beside it. Self-contained only applies with a runtime identifier, so a plain build, and the test
+    projects referencing this one, stay framework-dependent.
+  -->
+  <PropertyGroup Label="Publishing">
+    <RuntimeIdentifiers>win-x64;linux-x64;linux-arm64</RuntimeIdentifiers>
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
+    <AllowedReferenceRelatedFileExtensions>none</AllowedReferenceRelatedFileExtensions>
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
+  <!--
+    dotnet pack produces a tool package per runtime identifier plus a small package pointing at them,
+    which is what dnx resolves.
+  -->
+  <PropertyGroup Label="Package">
+    <IsPackable>true</IsPackable>
+    <PackageId>TeamSpeak6.Mcp</PackageId>
+    <Version>0.1.0-beta</Version>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>teamspeak6-mcp</ToolCommandName>
+    <PackageType>McpServer</PackageType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>teamspeak;teamspeak6;mcp;model-context-protocol;serverquery</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include=".mcp/server.json" Pack="true" PackagePath="/.mcp/" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" Link="README.md" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" />
