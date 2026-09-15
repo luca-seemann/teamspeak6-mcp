@@ -49,7 +49,8 @@ public sealed class SshQueryTransport : IQueryTransport
     private Timer? _keepAlive;
     private int _keepAliveRunning;
 
-    private TaskCompletionSource<QueryResponse>? _pending;
+    // Volatile because OnSessionLost reads it from SSH.NET's event thread; see ExchangeOnceAsync.
+    private volatile TaskCompletionSource<QueryResponse>? _pending;
     private StringBuilder _pendingText = new();
     private DateTimeOffset _lastActivity = DateTimeOffset.UtcNow;
 
@@ -361,13 +362,14 @@ public sealed class SshQueryTransport : IQueryTransport
 
         _desynchronized = true;
 
-        const string message = "The connection to the TeamSpeak server was lost before it answered. " +
-                               "It is reopened on the next command; whether this one took effect is unknown.";
-
         _pending?.TrySetException(cause is null
-            ? new QueryProtocolException(message)
-            : new QueryProtocolException(message, cause));
+            ? new QueryProtocolException(SessionLostMessage)
+            : new QueryProtocolException(SessionLostMessage, cause));
     }
+
+    private const string SessionLostMessage =
+        "The connection to the TeamSpeak server was lost before it answered. " +
+        "It is reopened on the next command; whether this one took effect is unknown.";
 
     /// <summary>
     /// Ends the session with <c>quit</c>, so the server lets go of it at once.
@@ -696,6 +698,15 @@ public sealed class SshQueryTransport : IQueryTransport
 
         _pendingText = new StringBuilder();
         _pending = completion;
+
+        // OnSessionLost marks the session and then fails whatever is pending; this publishes the
+        // pending command and then checks the mark. Whichever runs second sees the other, so a session
+        // lost just before this command cannot leave it waiting out the whole timeout.
+        if (_desynchronized)
+        {
+            _pending = null;
+            throw new QueryProtocolException(SessionLostMessage);
+        }
 
         var line = Encoding.UTF8.GetBytes(QueryCommandSerializer.ToWireLine(command) + '\n');
         var sending = false;

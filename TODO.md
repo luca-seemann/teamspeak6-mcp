@@ -7,7 +7,8 @@ Things decided or announced but deliberately not built yet: the list of work wai
   stateless Streamable HTTP, and how Claude Code shows such notifications is undocumented.
 - **Build and run the container image.** Waiting for a Docker host.
   `docker/Dockerfile` publishes the same self-contained single-file binary that
-  was verified locally for linux-x64 and linux-arm64, but the image itself has never been built.
+  was run locally for linux-x64 (the linux-arm64 one was only built), but the image itself has never
+  been built.
   Build it for both architectures, start it with `docker/docker-compose.yml` against the test server,
   and call a tool over Streamable HTTP.
 - **ServerQuery guest login.** The next TeamSpeak 6 beta reportedly adds a way to log in to the
