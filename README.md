@@ -5,8 +5,9 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server for administe
 tidy up channel trees, explain why a user lacks a permission, work through bans and complaints,
 manage groups, and watch what is happening on the server.
 
-> **Status: pre-release.** Reading, changing, events and file transfer are complete and verified
-> against a live TeamSpeak 6 server; packaging and prompts are still to come.
+> **Status: pre-release, 0.1.0-beta.** Reading, changing, events, file transfer and prompts are
+> complete and verified against a live TeamSpeak 6 server, and the server builds as a NuGet tool
+> package and as self-contained binaries. Nothing is published yet.
 
 ## Why this exists
 
@@ -151,7 +152,11 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Profiles:<name>:Safety` | `TSMCP_TeamSpeak__Profiles__<name>__Safety` | the global level |
 | `TeamSpeak:Profiles:<name>:KeepAliveSeconds` | `TSMCP_TeamSpeak__Profiles__<name>__KeepAliveSeconds` | `15`; keep it below the server's idle timeout, about 30 seconds on 6.0.0-beta12.1 |
 
-Each profile keeps one long-lived connection, opened on the first tool call that needs it.
+Each profile keeps one long-lived connection, opened on the first tool call that needs it. If that
+connection breaks, the tool call waiting on it fails at once and says that it is unknown whether its
+command took effect; the next call reconnects. A connection that goes silent without breaking, such as
+a dead network route, is only noticed when the command times out after 30 seconds. On shutdown each
+session ends with `quit`, so the server lets go of it at once instead of holding it for 30 seconds.
 
 ## Tools
 
@@ -312,35 +317,133 @@ The same data is available as resources, for clients that attach context instead
 `ts://profiles`, `ts://{profile}/permissions`, and `ts://{profile}/{virtualServerId}/` followed by
 `info`, `channels`, `clients` or `groups`.
 
-## Requirements
+### Prompts
 
-- [.NET SDK 10.0.400](https://dotnet.microsoft.com/download) or newer
-- A TeamSpeak 6 server with the SSH and/or HTTP query interface enabled
+Four prompts start the jobs this server was built for. Clients offer them by name; Claude Code, for
+example, lists them as slash commands such as `/mcp__teamspeak__server-audit`.
 
-## Building
+| Prompt | Arguments | What it does |
+|---|---|---|
+| `server-audit` | `profile`, `virtualServerId` | Reviews health, who holds power, bans, complaints, keys and the log, and reports findings by severity. Read-only. |
+| `explain-user-permissions` | `client`, `action`, `channel`, `profile`, `virtualServerId` | Traces why someone can or cannot do something through every group and assignment, and suggests the smallest fix. Read-only. |
+| `cleanup-channel-tree` | `goal`, `profile`, `virtualServerId` | Proposes a tidier channel tree as a table of changes, and makes only the ones you confirm. |
+| `onboard-new-member` | `member`, `role`, `channel`, `profile`, `virtualServerId` | Adds a new member to their server group and channel group, or offers a privilege key if they never connected, asking before every change. |
+
+Only `client`, `action` and `member` are required. The prompts only instruct the model; what it may
+actually change is still decided by the safety level.
+
+## Setting up
+
+### Preparing the TeamSpeak server
+
+1. **Enable the SSH query.** Both query interfaces are off by default. Set
+   `TSSERVER_QUERY_SSH_ENABLED=1`, and `TSSERVER_QUERY_HTTP_ENABLED=1` if you also want the
+   WebQuery. A port that accepts connections but never greets is the symptom of an interface that is
+   published but not enabled.
+2. **Know the `serveradmin` password.** Set it with `TSSERVER_QUERY_ADMIN_PASSWORD`; otherwise the
+   server generates one on first start and prints it to its log once.
+3. **Make the ports reachable** from where this server runs: 10022 for the SSH query, and 30033 for
+   file transfer. 10080 only if you use the WebQuery.
+4. **Optionally mint a WebQuery key**, over SSH: `apikeyadd scope=manage lifetime=0`. SSH is still
+   needed for events and file transfer, so a password is the better choice whenever you have one.
+5. **Start read-only.** Leave `TeamSpeak:Safety` at `ReadOnly` until you have seen what the tools do,
+   then raise it per profile.
+
+`docker/docker-compose.yml` shows all of this for a TeamSpeak container.
+
+### Installing
+
+There are three ways to run the server, and only building from source needs .NET installed.
+
+#### As a NuGet tool, through `dnx`
+
+`dnx` comes with the .NET 10 SDK. It fetches the package for the machine it runs on and starts it
+without installing anything. The package holds the same self-contained binary as below, for
+win-x64, linux-x64 and linux-arm64.
+
+The package is not on nuget.org yet. Build it and point `dnx` at the folder:
 
 ```bash
-dotnet build
-dotnet test
+dotnet pack src/TeamSpeak.Mcp -c Release -o artifacts/nuget
+
+claude mcp add teamspeak \
+  -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com \
+  -e TSMCP_TeamSpeak__Profiles__home__Password=<query admin password> \
+  -- dnx TeamSpeak6.Mcp --version 0.1.0-beta --yes --add-source /path/to/artifacts/nuget
 ```
 
-## Running
+#### As a single-file binary
 
 ```bash
-# Local client over stdin/stdout (the default)
-dotnet run --project src/TeamSpeak.Mcp
-
-# Remote clients over Streamable HTTP
-dotnet run --project src/TeamSpeak.Mcp -- --transport http --url http://127.0.0.1:7801
+dotnet publish src/TeamSpeak.Mcp -c Release -r linux-x64 -o publish/linux-x64   # or win-x64, linux-arm64
 ```
 
-To register it with Claude Code:
+The result is one executable, `teamspeak6-mcp` (`teamspeak6-mcp.exe` on Windows), with the .NET runtime
+inside and compiled ahead of time with ReadyToRun. It needs nothing installed.
+- **Size:** about 150 MB, and 170 MB for linux-arm64.
+- **Start-up:** it answers an MCP client about 0.15 seconds after starting, measured on win-x64.
+- **Smaller:** `-p:EnableCompressionInSingleFile=true` brings it to about 70 MB, at about 0.3 seconds to
+  the first answer.
+
+The CI workflow builds all three binaries and the packages for tags.
 
 ```bash
 claude mcp add teamspeak \
   -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com \
   -e TSMCP_TeamSpeak__Profiles__home__Password=<query admin password> \
-  -- dotnet run --project /path/to/teamspeak6-mcp/src/TeamSpeak.Mcp
+  -- /opt/teamspeak6-mcp/teamspeak6-mcp
+```
+
+Other clients take the same command and environment in their JSON configuration, for example a
+project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "teamspeak": {
+      "command": "/opt/teamspeak6-mcp/teamspeak6-mcp",
+      "env": {
+        "TSMCP_TeamSpeak__Profiles__home__Host": "ts.example.com",
+        "TSMCP_TeamSpeak__Profiles__home__Password": "<query admin password>"
+      }
+    }
+  }
+}
+```
+
+#### As a container, over Streamable HTTP
+
+`docker/Dockerfile` builds an image for linux/amd64 and linux/arm64 that serves Streamable HTTP on
+port 7801, and `docker/docker-compose.yml` starts it next to a TeamSpeak server. The endpoint is the
+root path:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+claude mcp add --transport http teamspeak http://localhost:7801/
+```
+
+The image has not been built yet; see [TODO.md](TODO.md). Anyone who can reach the port can use every
+tool the safety level allows, so keep it on a private network.
+
+#### From source
+
+With the [.NET SDK 10.0.400](https://dotnet.microsoft.com/download) or newer:
+
+```bash
+dotnet run --project src/TeamSpeak.Mcp                                                     # stdio
+dotnet run --project src/TeamSpeak.Mcp -- --transport http --url http://127.0.0.1:7801     # Streamable HTTP
+```
+
+On Windows, a start-up failure with `An attempt was made to access a socket in a way forbidden by its
+access permissions` (socket error 10013) means the port lies in a range Windows has reserved, often
+for Hyper-V or WSL. `netsh interface ipv4 show excludedportrange protocol=tcp` lists the ranges;
+pick a port outside them.
+
+## Building and testing
+
+```bash
+dotnet build
+dotnet test
 ```
 
 ## Repository layout

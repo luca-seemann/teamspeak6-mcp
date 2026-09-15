@@ -88,6 +88,19 @@ All notable changes to this project are documented here. The format follows
   and `ftgetfileinfo` in nanoseconds.
 - Explanations for the status codes `781`, `2048`, `2050`, `2051`, `2054`, `2056` and `2568`. For a file command over the
   WebQuery, `5120` is now explained as a limit of the WebQuery rather than of the key's scope.
+- Prompts: `server-audit`, `explain-user-permissions`, `cleanup-channel-tree` and
+  `onboard-new-member`. The audit and the permission explanation are read-only; the cleanup and the
+  onboarding present a plan and wait for confirmation before changing anything.
+- Packaging.
+  - `dotnet publish -r <rid>` produces one self-contained, ReadyToRun-compiled executable for win-x64,
+    linux-x64 or linux-arm64, with nothing beside it.
+  - `dotnet pack` produces the `TeamSpeak6.Mcp` tool package, of type `McpServer` and with
+    `.mcp/server.json`, for `dnx`.
+  - The CI workflow builds the binaries and packages for tags.
+- The README explains how to prepare the TeamSpeak server and how to run this server through `dnx`,
+  as a binary, in a container or from source.
+- A live test that breaks an SSH session in the middle of a command through a local relay, once by
+  resetting the connection and once by silencing it, and checks that the next command reconnects.
 
 ### Fixed
 
@@ -137,6 +150,12 @@ All notable changes to this project are documented here. The format follows
 - `ts_perm_effective` counted a channel group's value for clients holding
   `b_client_skip_channelgroup_permissions`, such as Server Admin. The server ignores it: 75 talk
   power from Server Admin stays 75 against a channel group granting 62.
+- A connection reset in the middle of a command surfaced only after the whole 30-second command
+  timeout. The SSH transport now fails the waiting command as soon as SSH.NET reports the session
+  lost, and the next command reconnects, in about 4 seconds altogether.
+- A session closed without `quit` stayed on the virtual server as a query client for 30 seconds and
+  then left with `connection lost`. Disposing a transport now sends `quit`, and the session leaves at
+  once.
 
 ### Changed (review of phase 6)
 
@@ -152,6 +171,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The container image carries the self-contained binary on `runtime-deps` instead of a
+  framework-dependent build on the ASP.NET image, and builds for linux/amd64 and linux/arm64 without
+  emulation.
 - `ftinitdownload` needs `ReadOnly` instead of `Write`, through `ts_query_raw` as well. It changes
   nothing on the server: the key it returns opens that one download, and lapses unused.
 - The virtual server now travels with each `QueryCommand` instead of being selected on the
