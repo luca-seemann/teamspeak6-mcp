@@ -3757,7 +3757,7 @@
   {
     "name": "ts_file_download",
     "title": "Download a stored file",
-    "description": "Downloads a file from a channel\u0027s file repository. Without localPath the content comes back in the answer, as text when it is valid UTF-8 and as base64 otherwise, for files up to TeamSpeak:FileTransfer:MaxInlineBytes (1 MiB unless configured). With localPath it is saved inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory, and an existing local file is never replaced. Needs ReadOnly, since nothing changes on the server. The bytes travel over the server\u0027s file transfer port, 30033 by default, which must be reachable from this machine. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "description": "Downloads a file from a channel\u0027s file repository. Without localPath the content comes back in the answer, as text when it is valid UTF-8 and as base64 otherwise, for files up to TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured); this needs ReadOnly. With localPath it is saved inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory, which needs Write, and an existing local file is never replaced. The bytes travel over the server\u0027s file transfer port, 30033 by default, which must be reachable from this machine. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -4276,7 +4276,7 @@
   {
     "name": "ts_file_upload",
     "title": "Upload a file",
-    "description": "Uploads a file into a channel\u0027s file repository. Give exactly one of content (text, stored as UTF-8), contentBase64, or localPath, a file inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory. Inline content is limited to TeamSpeak:FileTransfer:MaxInlineBytes (1 MiB unless configured). The directory it goes into must exist; ts_file_manage createdir makes one. The stored size is checked afterwards, so a transfer that broke off is reported, not taken for success. Needs Write; replacing an existing file with overwrite=true needs Destructive. The bytes travel over the server\u0027s file transfer port, 30033 by default, which must be reachable from this machine. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "description": "Uploads a file into a channel\u0027s file repository. Give exactly one of content (text, stored as UTF-8), contentBase64, or localPath, a file inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory. Inline content is limited to TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured). The directory it goes into must exist; ts_file_manage createdir makes one. The stored size is checked afterwards, so a transfer that broke off is reported, not taken for success, and its partial file stays so that resume=true can continue it with the same content. Needs Write; replacing an existing file with overwrite=true needs Destructive. The bytes travel over the server\u0027s file transfer port, 30033 by default, which must be reachable from this machine. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -4314,6 +4314,11 @@
         },
         "overwrite": {
           "description": "Replace a file that already exists at path. Needs Destructive.",
+          "type": "boolean",
+          "default": false
+        },
+        "resume": {
+          "description": "Continue an upload that broke off: only the bytes the partial file at path lacks are sent. Give the same, complete content as before. Cannot be combined with overwrite.",
           "type": "boolean",
           "default": false
         },

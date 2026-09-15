@@ -233,6 +233,12 @@ public sealed class QueryExecutor
                 " Something by that name already exists. An upload replaces a file only with overwrite=true.",
             QueryErrorCode.FileNotFound =>
                 " There is no file by that name; ts_file_list shows what is there.",
+            QueryErrorCode.InvalidChannelPassword =>
+                " The channel has a password; pass it as channelPassword.",
+            QueryErrorCode.OverwriteExcludesResume =>
+                " An upload either replaces a file (overwrite) or continues one (resume), not both.",
+            QueryErrorCode.InsufficientPermissions =>
+                " The profile's query login lacks the permission the message names.",
             QueryErrorCode.InvalidFilePath =>
                 " The path does not exist, or a directory on the way to it is missing; ts_file_manage " +
                 "createdir creates directories.",

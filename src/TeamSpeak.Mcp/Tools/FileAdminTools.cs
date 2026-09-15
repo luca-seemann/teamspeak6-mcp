@@ -29,11 +29,12 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
     [Description("Uploads a file into a channel's file repository. Give exactly one of content (text, stored " +
                  "as UTF-8), contentBase64, or localPath, a file inside the directory configured as " +
                  "TeamSpeak:FileTransfer:LocalDirectory. Inline content is limited to " +
-                 "TeamSpeak:FileTransfer:MaxInlineBytes (1 MiB unless configured). The directory it goes into " +
+                 "TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured). The directory it goes into " +
                  "must exist; ts_file_manage createdir makes one. The stored size is checked afterwards, so a " +
-                 "transfer that broke off is reported, not taken for success. Needs Write; replacing an " +
-                 "existing file with overwrite=true needs Destructive. The bytes travel over the server's file " +
-                 "transfer port, 30033 by default, which must be reachable from this machine." + SshOnly)]
+                 "transfer that broke off is reported, not taken for success, and its partial file stays so " +
+                 "that resume=true can continue it with the same content. Needs Write; replacing an existing " +
+                 "file with overwrite=true needs Destructive. The bytes travel over the server's file transfer " +
+                 "port, 30033 by default, which must be reachable from this machine." + SshOnly)]
     public async Task<FileUpload> UploadAsync(
         [Description("The channel to store the file in; 0 for icons and avatars.")] int channelId,
         [Description("Where to store it, such as /docs/readme.txt.")] string path,
@@ -41,6 +42,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         [Description("The file's content, base64-encoded, for binary files.")] string? contentBase64 = null,
         [Description("A local file to upload: a path relative to, or inside, the configured local directory.")] string? localPath = null,
         [Description("Replace a file that already exists at path. Needs Destructive.")] bool overwrite = false,
+        [Description("Continue an upload that broke off: only the bytes the partial file at path lacks are sent. Give the same, complete content as before. Cannot be combined with overwrite.")] bool resume = false,
         [Description(ToolDescriptions.ChannelPassword)] string? channelPassword = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -51,6 +53,12 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         if (new[] { content, contentBase64, localPath }.Count(source => source is not null) != 1)
         {
             throw new McpException("Pass exactly one of content, contentBase64 and localPath.");
+        }
+
+        if (overwrite && resume)
+        {
+            // The server refuses the pair with 2056 "overwrite excludes resume".
+            throw new McpException("Pass overwrite to replace a file or resume to continue one, not both.");
         }
 
         executor.Demand("ts_file_upload", overwrite ? SafetyLevel.Destructive : SafetyLevel.Write, profile);
@@ -66,12 +74,22 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
 
         parameters["size"] = length.ToString(CultureInfo.InvariantCulture);
         parameters["overwrite"] = overwrite ? "1" : "0";
-        parameters["resume"] = "0";
+        parameters["resume"] = resume ? "1" : "0";
 
         var records = await executor.RunCommandAsync(
             "ts_file_upload", profile, new QueryCommand("ftinitupload", parameters, VirtualServerId: virtualServerId), cancellationToken)
             .ConfigureAwait(false);
         var ticket = Ticket(resolved.Name, "ftinitupload", records);
+
+        // Measured: resume answers with the stored size as seekpos, and the bytes from there on complete
+        // the file byte for byte. A fresh upload answers 0.
+        var offset = ticket.SeekPosition;
+        if (offset > length)
+        {
+            throw new McpException(
+                $"Nothing was sent: {name} in channel {channelId} already holds {offset} bytes, more than the {length} " +
+                "given, so it is not an unfinished upload of this content. Replace it with overwrite=true instead.");
+        }
 
         try
         {
@@ -81,7 +99,8 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
 
             await using (source.ConfigureAwait(false))
             {
-                await FileTransferClient.UploadAsync(ticket, resolved.Host, source, length, cancellationToken).ConfigureAwait(false);
+                source.Position = offset;
+                await FileTransferClient.UploadAsync(ticket, resolved.Host, source, length - offset, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException)
@@ -99,11 +118,16 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
             stored = await StoredSizeAsync(channelId, channelPassword, name, virtualServerId, profile, cancellationToken).ConfigureAwait(false);
         }
 
+        var done = offset > 0
+            ? $"Continued {name} in channel {channelId} from byte {offset}; it now holds all {length} bytes."
+            : $"Uploaded {length} bytes to {name} in channel {channelId}.";
+
         return stored == length
-            ? new FileUpload($"Uploaded {length} bytes to {name} in channel {channelId}.", channelId, name, length)
+            ? new FileUpload(done, channelId, name, length)
             : throw new McpException(
                 $"The upload of {name} did not arrive whole: channel {channelId} holds {Math.Max(stored, 0)} of {length} bytes. " +
-                "The incomplete file is still there; delete it with ts_file_delete, or upload again with overwrite=true.");
+                "The partial file is still there. Upload the same content again with resume=true to continue it, " +
+                "or delete it with ts_file_delete.");
     }
 
     /// <summary>Creates a directory, renames or moves a file, or stops a transfer.</summary>
@@ -271,16 +295,18 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
     {
         try
         {
+            // The partial file is kept, so that resume=true can continue it.
             await executor.RunCommandAsync(
                 "ts_file_upload",
                 profile,
                 new QueryCommand(
                     "ftstop",
-                    new Dictionary<string, string> { ["serverftfid"] = Text(ticket.ServerTransferId), ["delete"] = "1" },
+                    new Dictionary<string, string> { ["serverftfid"] = Text(ticket.ServerTransferId), ["delete"] = "0" },
                     VirtualServerId: virtualServerId),
                 CancellationToken.None).ConfigureAwait(false);
 
-            return " The transfer was stopped and what had arrived was removed.";
+            return " The transfer was stopped. What arrived stays as a partial file; upload the same content with " +
+                   "resume=true to continue it, or delete it with ts_file_delete.";
         }
         catch (McpException)
         {

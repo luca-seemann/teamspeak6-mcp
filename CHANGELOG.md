@@ -68,10 +68,12 @@ All notable changes to this project are documented here. The format follows
   `textchannel` events are that channel's chat, re-applied after a reconnect.
 - File transfer: `ts_file_list`, `ts_file_info`, `ts_file_transfers`, `ts_file_download`,
   `ts_file_upload`, `ts_file_manage` and `ts_file_delete`, for 83 tools in all.
-  - Content travels inline (text or base64, up to `TeamSpeak:FileTransfer:MaxInlineBytes`), or as a
-    local file inside `TeamSpeak:FileTransfer:LocalDirectory`. Local files are off until that is set.
+  - Content travels inline (text or base64, up to `TeamSpeak:FileTransfer:MaxInlineBytes`, 100 KiB by
+    default), or as a local file inside `TeamSpeak:FileTransfer:LocalDirectory`. Local files are off
+    until that is set, and saving a download to one needs `Write`.
   - An upload's stored size is compared with what was sent, so a transfer that broke off is reported
-    rather than taken for success.
+    rather than taken for success. Its partial file is kept, and `resume=true` sends only the missing
+    bytes.
   - `ts_file_manage` creates directories, renames or moves files into another channel, and stops a
     transfer, optionally removing its partial file.
 - `FileTransferClient` and `FileTransferTicket` in `TeamSpeak.Query`: the raw byte transfer over the
@@ -79,7 +81,7 @@ All notable changes to this project are documented here. The format follows
   record, with `error id=0`, into an exception.
 - `QueryRecord.GetUnixTimeOfAnyPrecision`, because `ftgetfilelist` writes file times in milliseconds
   and `ftgetfileinfo` in nanoseconds.
-- Explanations for the file status codes `2048`, `2050`, `2051` and `2054`. For a file command over the
+- Explanations for the status codes `781`, `2048`, `2050`, `2051`, `2054`, `2056` and `2568`. For a file command over the
   WebQuery, `5120` is now explained as a limit of the WebQuery rather than of the key's scope.
 
 ### Fixed

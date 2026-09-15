@@ -41,6 +41,16 @@ public static class QueryErrorCode
     /// </summary>
     public const int AlreadyMemberOfChannel = 770;
 
+    /// <summary>
+    /// The channel password was missing or wrong. Sent as <c>invalid channel password</c>.
+    /// </summary>
+    /// <remarks>
+    /// Observed for file commands by a query login without the permission to skip channel passwords;
+    /// <c>serveradmin</c> is let in with any password. <c>ftinitupload</c> and <c>ftinitdownload</c>
+    /// report it inside the record.
+    /// </remarks>
+    public const int InvalidChannelPassword = 781;
+
     /// <summary>The command name is not known to the server. Sent as <c>invalid parameter</c>.</summary>
     public const int UnknownCommand = 1538;
 
@@ -99,6 +109,20 @@ public static class QueryErrorCode
     /// directory, which reports it inside the record.
     /// </remarks>
     public const int InvalidFilePath = 2054;
+
+    /// <summary>
+    /// An upload asked to both replace and continue a file. Sent as <c>overwrite excludes resume</c>.
+    /// </summary>
+    public const int OverwriteExcludesResume = 2056;
+
+    /// <summary>
+    /// The query login lacks a permission. Sent as <c>insufficient client permissions</c>, naming it.
+    /// </summary>
+    /// <remarks>
+    /// Observed for <c>ftinitupload</c> by a login in the Guest group, inside the record with
+    /// <c>failed_permid</c>: <c>failed on i_ft_needed_file_upload_power</c>.
+    /// </remarks>
+    public const int InsufficientPermissions = 2568;
 
     /// <summary>
     /// The command is outside what the presented API key is allowed to do.

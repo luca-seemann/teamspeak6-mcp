@@ -9,8 +9,12 @@ namespace TeamSpeak.Mcp.Configuration;
 /// </remarks>
 public sealed class FileTransferOptions
 {
-    /// <summary>The default limit for content passed inline, 1 MiB.</summary>
-    public const int DefaultMaxInlineBytes = 1024 * 1024;
+    /// <summary>The default limit for content passed inline, 100 KiB.</summary>
+    /// <remarks>
+    /// Inline content lands in the model's context, and as base64 it grows by a third. A mebibyte
+    /// would be well over a million characters, more than a model can make use of.
+    /// </remarks>
+    public const int DefaultMaxInlineBytes = 100 * 1024;
 
     /// <summary>
     /// Gets or sets the directory <c>localPath</c> arguments are resolved in. Unset, local paths are

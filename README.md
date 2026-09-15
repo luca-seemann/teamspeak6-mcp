@@ -140,7 +140,7 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Safety` | `TSMCP_TeamSpeak__Safety` | `ReadOnly` |
 | `TeamSpeak:EventBufferSize` | `TSMCP_TeamSpeak__EventBufferSize` | `1000` events per profile |
 | `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | — (file tools pass content inline only) |
-| `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `1048576` |
+| `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `102400` (100 KiB) |
 | `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | — |
 | `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | — (enables SSH) |
 | `TeamSpeak:Profiles:<name>:SshPort` | `TSMCP_TeamSpeak__Profiles__<name>__SshPort` | `10022` |
@@ -190,7 +190,7 @@ action separately. Tools that can need `Destructive` carry the MCP `destructiveH
 | Permissions | `ts_perm_set` | `ts_perm_reset` |
 | Moderation | `ts_ban_delete`, `ts_complaint_delete`, `ts_token_manage` (delete) | `ts_ban_add`, `ts_token_manage` (add) |
 | Access and settings | `ts_temp_password` (list, delete), `ts_custom_property`, `ts_log_add` | `ts_temp_password` (add), `ts_apikey_manage`, `ts_querylogin_manage` |
-| Files | `ts_file_upload`, `ts_file_manage` | `ts_file_upload` (overwrite), `ts_file_delete` |
+| Files | `ts_file_upload`, `ts_file_manage`, `ts_file_download` (to a local file) | `ts_file_upload` (overwrite), `ts_file_delete` |
 
 The three actions that cannot be undone and reach a whole virtual server — `ts_vserver_delete`,
 `ts_vserver_snapshot_deploy` and `ts_perm_reset` — also require `confirmName`, the virtual server's
@@ -272,8 +272,9 @@ and out. `ts_file_manage` creates directories, renames or moves files between ch
 a transfer. `ts_file_delete` removes files, and a directory together with everything in it.
 
 The content comes in one of two ways:
-- **Inline**, up to `MaxInlineBytes` (1 MiB by default). A download comes back as text when it is
-  valid UTF-8 and as base64 otherwise. An upload takes `content` or `contentBase64`.
+- **Inline**, up to `MaxInlineBytes` (100 KiB by default). A download comes back as text when it is
+  valid UTF-8 and as base64 otherwise. An upload takes `content` or `contentBase64`. Inline content
+  lands in the model's context, which is why the default is small.
 - **As a local file**, through `localPath`, only once `TeamSpeak:FileTransfer:LocalDirectory` is set.
   Every local path is resolved inside that directory, and a path leading outside it is refused. The
   model chooses these paths, and over Streamable HTTP it does so from another machine. A download
@@ -283,15 +284,17 @@ A few things to know:
 - **SSH and port 30033.** The tickets come from the SSH query, and the bytes travel over the file
   transfer port, which must be reachable from this server just as the query port is. Publish it
   alongside the query ports when TeamSpeak runs in a container.
-- **Downloading needs only `ReadOnly`.** It changes nothing on the TeamSpeak server. The tool still
-  carries no `readOnlyHint`, because it can write a file on this machine. Uploading needs `Write`,
-  and replacing an existing file with `overwrite=true` needs `Destructive`.
-- **An upload is checked.** The protocol has no acknowledgement, so after sending, the tool compares
-  the size the server stored with the size it sent. A transfer that broke off is reported as such.
-  The partial file stays until it is deleted or overwritten, and `ts_file_list` shows it with
-  `incompleteSize`.
-- **Channel passwords.** The file tools take `channelPassword`. A query login with enough
-  permissions, such as `serveradmin`, is let in without it.
+- **Safety levels.** A download returned inline needs `ReadOnly`, because it changes nothing on the
+  TeamSpeak server. Saving it to a local file needs `Write`. Uploading needs `Write`, and replacing
+  an existing file with `overwrite=true` needs `Destructive`.
+- **An upload is checked, and can be resumed.** The protocol has no acknowledgement, so after
+  sending, the tool compares the size the server stored with the size it sent. A transfer that broke
+  off is reported, and its partial file stays; `ts_file_list` shows it with `incompleteSize`. Upload
+  the same content again with `resume=true`, and only the missing bytes are sent. On the test server a
+  resumed file was byte for byte identical.
+- **Channel passwords.** The file tools take `channelPassword`. Without it, or with a wrong one, a
+  login in the Guest group was refused with `781 invalid channel password`. `serveradmin` is let in
+  with any password.
 
 ### Resources
 

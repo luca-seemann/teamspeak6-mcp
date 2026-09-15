@@ -138,11 +138,10 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Downloads a file from a channel's file repository. Without localPath the content comes back " +
                  "in the answer, as text when it is valid UTF-8 and as base64 otherwise, for files up to " +
-                 "TeamSpeak:FileTransfer:MaxInlineBytes (1 MiB unless configured). With localPath it is saved " +
-                 "inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory, and an existing " +
-                 "local file is never replaced. Needs ReadOnly, since nothing changes on the server. The bytes " +
-                 "travel over the server's file transfer port, 30033 by default, which must be reachable from " +
-                 "this machine." + SshOnly)]
+                 "TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured); this needs ReadOnly. With " +
+                 "localPath it is saved inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory, " +
+                 "which needs Write, and an existing local file is never replaced. The bytes travel over the " +
+                 "server's file transfer port, 30033 by default, which must be reachable from this machine." + SshOnly)]
     public async Task<FileDownload> DownloadAsync(
         [Description("The channel the file is stored in; 0 for icons and avatars.")] int channelId,
         [Description("The file's path, such as /docs/readme.txt.")] string path,
@@ -153,6 +152,13 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         CancellationToken cancellationToken = default)
     {
         var name = ServerPath(path, nameof(path), allowRoot: false);
+
+        // Nothing changes on the server either way, but saving writes a file on this machine.
+        if (localPath is not null)
+        {
+            executor.Demand("ts_file_download with localPath", SafetyLevel.Write, profile);
+        }
+
         var target = localPath is null ? null : LocalPath(options, localPath);
 
         if (target is not null && (File.Exists(target) || Directory.Exists(target)))

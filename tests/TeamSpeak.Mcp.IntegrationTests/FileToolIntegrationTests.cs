@@ -194,6 +194,60 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
         }
     }
 
+    [RequiresTeamSpeakServerFact]
+    public async Task An_upload_that_broke_off_is_resumed_to_an_identical_file()
+    {
+        await using var connections = Connections();
+        var executor = new QueryExecutor(connections, new SafetyPolicy(SafetyLevel.Write));
+        var options = Options();
+        var (channel, _) = await TwoChannelsAsync(executor);
+        var name = "/" + Unique() + ".bin";
+
+        var content = new byte[300_000];
+        new Random(21).NextBytes(content);
+        await File.WriteAllBytesAsync(Path.Combine(_localDirectory, "resume.bin"), content, Ct);
+
+        try
+        {
+            // Break an upload off after a third of the file, as a dropped connection would.
+            var init = await server.Ssh.SendAsync(
+                new QueryCommand(
+                    "ftinitupload",
+                    new Dictionary<string, string>
+                    {
+                        ["clientftfid"] = "901", ["name"] = name, ["cid"] = channel.ToString(CultureInfo.InvariantCulture), ["cpw"] = "",
+                        ["size"] = content.Length.ToString(CultureInfo.InvariantCulture), ["overwrite"] = "1", ["resume"] = "0",
+                    },
+                    VirtualServerId: 1),
+                Ct);
+            var ticket = FileTransferTicket.FromRecord(init.Records[0]);
+
+            using (var broken = new TcpClient())
+            {
+                await broken.ConnectAsync(LiveServer.Host, ticket.Port, Ct);
+                var stream = broken.GetStream();
+                await stream.WriteAsync(Encoding.ASCII.GetBytes(ticket.Key), Ct);
+                await stream.WriteAsync(content.AsMemory(0, 100_000), Ct);
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(1), Ct);
+            var files = new FileTools(executor, options);
+            var partial = Assert.Single((await files.ListFilesAsync(channel, virtualServerId: 1, cancellationToken: Ct)).Entries, entry => entry.Path == name);
+            Assert.True(partial.Size < content.Length);
+
+            var resumed = await new FileAdminTools(executor, options).UploadAsync(
+                channel, name, localPath: "resume.bin", resume: true, virtualServerId: 1, cancellationToken: Ct);
+            Assert.Contains($"from byte {partial.Size}", resumed.Done, StringComparison.Ordinal);
+
+            var saved = await files.DownloadAsync(channel, name, localPath: "resumed.bin", virtualServerId: 1, cancellationToken: Ct);
+            Assert.Equal(content, await File.ReadAllBytesAsync(saved.SavedTo!, Ct));
+        }
+        finally
+        {
+            await DeleteQuietlyAsync(channel, name);
+        }
+    }
+
     [RequiresWebQueryFact]
     public async Task The_web_query_refuses_file_commands_with_an_explanation()
     {
