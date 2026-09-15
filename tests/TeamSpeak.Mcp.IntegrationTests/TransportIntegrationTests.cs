@@ -179,7 +179,8 @@ public sealed class TransportIntegrationTests(LiveServerFixture server)
             },
             ct);
 
-        var leaving = await SshQueryTransport.ConnectAsync(LiveServerFixture.Profile(), ct);
+        // Disposed explicitly below; await using only closes it if an assertion fails first.
+        await using var leaving = await SshQueryTransport.ConnectAsync(LiveServerFixture.Profile(), ct);
 
         // Selecting the virtual server is what makes the session a client of it, visible to the watcher.
         Assert.True((await leaving.SendAsync(new QueryCommand("serverinfo", VirtualServerId: 1), ct)).Error.IsSuccess);

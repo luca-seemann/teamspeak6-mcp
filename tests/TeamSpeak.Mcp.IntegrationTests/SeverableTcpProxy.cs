@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 
+using TeamSpeak.Query.Client;
+
 namespace TeamSpeak.Mcp.IntegrationTests;
 
 /// <summary>
@@ -102,6 +104,9 @@ internal sealed class SeverableTcpProxy : IAsyncDisposable
             var server = new TcpClient();
             try
             {
+                // The client connected to 127.0.0.1, so its own throttling was keyed on that. The server
+                // sees this connection, so pace it with every other connection to the real host.
+                await ConnectionThrottle.Shared.WaitForTurnAsync(_targetHost, _shutdown.Token);
                 await server.ConnectAsync(_targetHost, _targetPort, _shutdown.Token);
             }
             catch (Exception ex) when (ex is SocketException or OperationCanceledException)

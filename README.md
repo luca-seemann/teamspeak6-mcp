@@ -155,8 +155,9 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 Each profile keeps one long-lived connection, opened on the first tool call that needs it. If that
 connection breaks, the tool call waiting on it fails at once and says that it is unknown whether its
 command took effect; the next call reconnects. A connection that goes silent without breaking, such as
-a dead network route, is only noticed when the command times out after 30 seconds. On shutdown each
-session ends with `quit`, so the server lets go of it at once instead of holding it for 30 seconds.
+a dead network route, is only noticed when the command times out after 30 seconds. On shutdown an idle
+session ends with `quit`, so the server lets go of it at once instead of holding it for 30 seconds; a
+session that is broken, or still waiting for an answer, is simply closed.
 
 ## Tools
 

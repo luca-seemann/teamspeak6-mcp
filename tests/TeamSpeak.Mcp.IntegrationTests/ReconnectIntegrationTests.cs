@@ -76,7 +76,9 @@ public sealed class ReconnectIntegrationTests
         profile.Host = "127.0.0.1";
         profile.SshPort = proxy.Port;
 
-        // The keepalive would otherwise send a command of its own and might be the one that gets broken.
+        // A long interval keeps the keepalive from sending a command of its own that could be the one
+        // broken. Its check still runs every few seconds, so after the break either it or the next
+        // command reopens the session; both go through the same reconnect path.
         profile.KeepAliveInterval = TimeSpan.FromMinutes(10);
         return profile;
     }

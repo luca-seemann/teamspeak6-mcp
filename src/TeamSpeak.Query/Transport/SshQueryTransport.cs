@@ -49,8 +49,13 @@ public sealed class SshQueryTransport : IQueryTransport
     private Timer? _keepAlive;
     private int _keepAliveRunning;
 
-    // Volatile because OnSessionLost reads it from SSH.NET's event thread; see ExchangeOnceAsync.
-    private volatile TaskCompletionSource<QueryResponse>? _pending;
+    private TaskCompletionSource<QueryResponse>? _pending;
+
+    // Guards the hand-over between a command becoming pending and a session being found lost or being
+    // replaced, which happen on different threads; see OnSessionLost and ExchangeOnceAsync.
+    private readonly Lock _sessionGate = new();
+
+    private int _disposed;
     private StringBuilder _pendingText = new();
     private DateTimeOffset _lastActivity = DateTimeOffset.UtcNow;
 
@@ -209,6 +214,11 @@ public sealed class SshQueryTransport : IQueryTransport
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         await _shutdown.CancelAsync().ConfigureAwait(false);
 
         if (_keepAlive is not null)
@@ -353,18 +363,45 @@ public sealed class SshQueryTransport : IQueryTransport
 
     private void OnSessionLost(ShellStream shell, Exception? cause)
     {
-        // A session being replaced or shut down on purpose raises the same events; they mean nothing
-        // for the session that follows it.
-        if (_shutdown.IsCancellationRequested || !ReferenceEquals(shell, _shell))
+        lock (_sessionGate)
         {
-            return;
+            // A session being replaced or shut down on purpose raises the same events; they mean
+            // nothing for the session that follows it. The check and the mark share the lock with the
+            // swap in EnsureConnectedAsync, so a late event cannot mark the replacement.
+            if (_shutdown.IsCancellationRequested || !ReferenceEquals(shell, _shell))
+            {
+                return;
+            }
+
+            _desynchronized = true;
+
+            // Completions run asynchronously, so failing the command here runs none of its code under the lock.
+            _pending?.TrySetException(cause is null
+                ? new QueryProtocolException(SessionLostMessage)
+                : new QueryProtocolException(SessionLostMessage, cause));
         }
+    }
 
-        _desynchronized = true;
-
-        _pending?.TrySetException(cause is null
-            ? new QueryProtocolException(SessionLostMessage)
-            : new QueryProtocolException(SessionLostMessage, cause));
+    /// <summary>
+    /// Gets whether the current SSH client is connected, treating a client already disposed as not.
+    /// </summary>
+    /// <remarks>
+    /// A reconnect attempt disposes the old client before opening the next one, and a failed attempt
+    /// leaves the disposed client in place, whose <c>IsConnected</c> throws rather than answering.
+    /// </remarks>
+    private bool ClientConnected
+    {
+        get
+        {
+            try
+            {
+                return _client.IsConnected;
+            }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
+        }
     }
 
     private const string SessionLostMessage =
@@ -381,13 +418,14 @@ public sealed class SshQueryTransport : IQueryTransport
     /// it left at once with <c>reasonid=8</c>.
     /// </para>
     /// <para>
-    /// Best effort and bounded: a session that is already gone, out of step, or busy with a command
-    /// that has not answered is simply closed.
+    /// Best effort and bounded: a session that is already gone, out of step, busy for more than a second
+    /// with a command that has not answered, or held back by the flood guard for more than a second is
+    /// simply closed.
     /// </para>
     /// </remarks>
     private async Task SayGoodbyeAsync()
     {
-        if (!_client.IsConnected || _desynchronized)
+        if (!ClientConnected || _desynchronized)
         {
             return;
         }
@@ -406,7 +444,7 @@ public sealed class SshQueryTransport : IQueryTransport
             await _shell.FlushAsync(deadline.Token).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException
-                                       or Renci.SshNet.Common.SshException)
+                                       or InvalidOperationException or Renci.SshNet.Common.SshException)
         {
             // The session is closed below either way.
         }
@@ -447,7 +485,7 @@ public sealed class SshQueryTransport : IQueryTransport
     private async Task KeepAliveTickAsync()
     {
         if (_shutdown.IsCancellationRequested
-            || (_client.IsConnected && !_desynchronized && DateTimeOffset.UtcNow - _lastActivity < _keepAliveInterval))
+            || (ClientConnected && !_desynchronized && DateTimeOffset.UtcNow - _lastActivity < _keepAliveInterval))
         {
             return;
         }
@@ -483,7 +521,7 @@ public sealed class SshQueryTransport : IQueryTransport
     /// </remarks>
     private async Task EnsureConnectedAsync(CancellationToken cancellationToken)
     {
-        if (_client.IsConnected && !_desynchronized)
+        if (ClientConnected && !_desynchronized)
         {
             return;
         }
@@ -491,7 +529,7 @@ public sealed class SshQueryTransport : IQueryTransport
         await _pendingSlot.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_client.IsConnected && !_desynchronized)
+            if (ClientConnected && !_desynchronized)
             {
                 return;
             }
@@ -513,11 +551,16 @@ public sealed class SshQueryTransport : IQueryTransport
                     _client.Dispose();
 
                     var (client, shell) = await OpenAsync(_profile, cancellationToken).ConfigureAwait(false);
-                    _client = client;
-                    _shell = shell;
+                    lock (_sessionGate)
+                    {
+                        _client = client;
+                        _shell = shell;
+                        _selectedVirtualServerId = 0;
+                        _desynchronized = false;
+                    }
+
+                    // A loss before this subscription is still seen: the next check finds the client disconnected.
                     WatchSession(client, shell);
-                    _selectedVirtualServerId = 0;
-                    _desynchronized = false;
                     _readerLoop = Task.Run(() => ReadLoopAsync(_shutdown.Token), CancellationToken.None);
 
                     // Still holding the slot, so the session is prepared before any caller's command.
@@ -697,14 +740,19 @@ public sealed class SshQueryTransport : IQueryTransport
             TaskCreationOptions.RunContinuationsAsynchronously);
 
         _pendingText = new StringBuilder();
-        _pending = completion;
 
-        // OnSessionLost marks the session and then fails whatever is pending; this publishes the
-        // pending command and then checks the mark. Whichever runs second sees the other, so a session
-        // lost just before this command cannot leave it waiting out the whole timeout.
-        if (_desynchronized)
+        // OnSessionLost marks the session and fails whatever is pending under the same lock, so either
+        // it sees this command or this command sees the mark. A session lost just before the command
+        // therefore cannot leave it waiting out the whole timeout.
+        bool lost;
+        lock (_sessionGate)
         {
-            _pending = null;
+            lost = _desynchronized;
+            _pending = lost ? null : completion;
+        }
+
+        if (lost)
+        {
             throw new QueryProtocolException(SessionLostMessage);
         }
 

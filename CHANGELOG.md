@@ -154,8 +154,10 @@ All notable changes to this project are documented here. The format follows
   timeout. The SSH transport now fails the waiting command as soon as SSH.NET reports the session
   lost, and the next command reconnects, in about 4 seconds altogether.
 - A session closed without `quit` stayed on the virtual server as a query client for 30 seconds and
-  then left with `connection lost`. Disposing a transport now sends `quit`, and the session leaves at
-  once.
+  then left with `connection lost`. Disposing a transport now sends `quit` when the session is idle and
+  in step, and the session leaves at once.
+- `SshQueryTransport` could never reconnect again after a reconnect gave up, and disposing it could
+  throw: a failed attempt left a disposed SSH client in place, whose `IsConnected` throws.
 
 ### Changed (review of phase 6)
 
