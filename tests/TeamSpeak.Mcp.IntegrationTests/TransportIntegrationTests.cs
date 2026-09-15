@@ -157,6 +157,72 @@ public sealed class TransportIntegrationTests(LiveServerFixture server)
         Assert.Equal("serveradmin", whoami.Records[0].GetRequired("client_login_name"));
     }
 
+    [RequiresTeamSpeakServerFact]
+    public async Task Disposing_a_session_ends_it_with_quit_rather_than_dropping_it()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        // The server's log does not record query sessions, so a second session watches the first one
+        // leave instead: the reason the server gives tells a goodbye from a dropped connection.
+        await using var watcher = await SshQueryTransport.ConnectAsync(
+            LiveServerFixture.Profile(),
+            async (send, token) =>
+            {
+                var registered = await send(
+                    new QueryCommand("servernotifyregister", new Dictionary<string, string> { ["event"] = "server" }, VirtualServerId: 1),
+                    token);
+
+                if (!registered.Error.IsSuccess)
+                {
+                    throw new QueryProtocolException($"servernotifyregister was refused: {registered.Error.Message}");
+                }
+            },
+            ct);
+
+        var leaving = await SshQueryTransport.ConnectAsync(LiveServerFixture.Profile(), ct);
+
+        // Selecting the virtual server is what makes the session a client of it, visible to the watcher.
+        Assert.True((await leaving.SendAsync(new QueryCommand("serverinfo", VirtualServerId: 1), ct)).Error.IsSuccess);
+        var clientId = Assert.Single((await leaving.SendAsync(new QueryCommand("whoami"), ct)).Records).GetRequired("client_id");
+
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        wait.CancelAfter(TimeSpan.FromSeconds(15));
+
+        var left = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    await foreach (var notification in watcher.GetEventsAsync(wait.Token))
+                    {
+                        var record = notification.Records.FirstOrDefault(
+                            fields => fields.TryGetValue("clid", out var id) && id == clientId);
+
+                        if (notification.Name == "notifyclientleftview" && record is not null)
+                        {
+                            return record;
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    // Nothing arrived in time; reported below.
+                }
+
+                return null;
+            },
+            ct);
+
+        await leaving.DisposeAsync();
+
+        var leave = await left;
+        Assert.True(leave is not null, $"No notifyclientleftview for client {clientId} arrived within 15 seconds.");
+
+        // 8 is a client disconnecting on its own. Without quit, the session stayed on the server for 30
+        // seconds and then left with reasonid=3, connection lost, so the 15-second wait also fails that case.
+        Assert.Equal("8", leave["reasonid"]);
+    }
+
     [RequiresWebQueryFact]
     public async Task Both_transports_return_the_same_channel_list()
     {

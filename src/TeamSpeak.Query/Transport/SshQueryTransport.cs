@@ -76,6 +76,7 @@ public sealed class SshQueryTransport : IQueryTransport
         _client = client;
         _shell = shell;
         _onSessionOpened = onSessionOpened;
+        WatchSession(client, shell);
         _guard = new FloodGuard(profile.CommandInterval);
         _reconnect = new ReconnectPolicy();
         _commandTimeout = profile.CommandTimeout;
@@ -214,6 +215,8 @@ public sealed class SshQueryTransport : IQueryTransport
             await _keepAlive.DisposeAsync().ConfigureAwait(false);
         }
 
+        await SayGoodbyeAsync().ConfigureAwait(false);
+
         // ShellStream.ReadAsync does not honour a cancellation token, so cancelling alone leaves
         // the reader blocked. Disposing the stream is what actually unblocks it.
         _shell.Dispose();
@@ -331,6 +334,86 @@ public sealed class SshQueryTransport : IQueryTransport
         }
     }
 
+    /// <summary>
+    /// Fails the command waiting on a session as soon as that session is lost.
+    /// </summary>
+    /// <remarks>
+    /// Nothing else would end the wait early: the reader only ever sees that no data arrives, so a
+    /// connection reset in the middle of a command used to surface after the whole command timeout
+    /// (30 seconds, measured through a relay that reset the connection right after the command went
+    /// out). SSH.NET learns of a reset at once and says so through these events.
+    /// </remarks>
+    private void WatchSession(SshClient client, ShellStream shell)
+    {
+        client.ErrorOccurred += (_, e) => OnSessionLost(shell, e.Exception);
+        shell.ErrorOccurred += (_, e) => OnSessionLost(shell, e.Exception);
+        shell.Closed += (_, _) => OnSessionLost(shell, cause: null);
+    }
+
+    private void OnSessionLost(ShellStream shell, Exception? cause)
+    {
+        // A session being replaced or shut down on purpose raises the same events; they mean nothing
+        // for the session that follows it.
+        if (_shutdown.IsCancellationRequested || !ReferenceEquals(shell, _shell))
+        {
+            return;
+        }
+
+        _desynchronized = true;
+
+        const string message = "The connection to the TeamSpeak server was lost before it answered. " +
+                               "It is reopened on the next command; whether this one took effect is unknown.";
+
+        _pending?.TrySetException(cause is null
+            ? new QueryProtocolException(message)
+            : new QueryProtocolException(message, cause));
+    }
+
+    /// <summary>
+    /// Ends the session with <c>quit</c>, so the server lets go of it at once.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Measured on 6.0.0-beta12.1: a session closed without <c>quit</c> stayed on the virtual server as a
+    /// query client for 30 seconds and then left with <c>reasonid=3</c>, connection lost. With <c>quit</c>
+    /// it left at once with <c>reasonid=8</c>.
+    /// </para>
+    /// <para>
+    /// Best effort and bounded: a session that is already gone, out of step, or busy with a command
+    /// that has not answered is simply closed.
+    /// </para>
+    /// </remarks>
+    private async Task SayGoodbyeAsync()
+    {
+        if (!_client.IsConnected || _desynchronized)
+        {
+            return;
+        }
+
+        if (!await _pendingSlot.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        try
+        {
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            using var lease = await _guard.AcquireAsync(deadline.Token).ConfigureAwait(false);
+
+            await _shell.WriteAsync("quit\n"u8.ToArray(), deadline.Token).ConfigureAwait(false);
+            await _shell.FlushAsync(deadline.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException
+                                       or Renci.SshNet.Common.SshException)
+        {
+            // The session is closed below either way.
+        }
+        finally
+        {
+            _pendingSlot.Release();
+        }
+    }
+
     private void StartKeepAlive()
     {
         // Checked several times per interval, so a dropped session is noticed within seconds
@@ -430,6 +513,7 @@ public sealed class SshQueryTransport : IQueryTransport
                     var (client, shell) = await OpenAsync(_profile, cancellationToken).ConfigureAwait(false);
                     _client = client;
                     _shell = shell;
+                    WatchSession(client, shell);
                     _selectedVirtualServerId = 0;
                     _desynchronized = false;
                     _readerLoop = Task.Run(() => ReadLoopAsync(_shutdown.Token), CancellationToken.None);
