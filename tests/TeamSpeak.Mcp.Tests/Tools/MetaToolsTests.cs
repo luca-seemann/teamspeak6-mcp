@@ -121,6 +121,21 @@ public class MetaToolsTests
     }
 
     [Fact]
+    public async Task Explains_that_a_default_group_has_no_member_list()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns(
+            "servergroupclientlist",
+            ToolHarness.Error(QueryErrorCode.AccessToDefaultGroupForbidden, "access to default group is forbidden"));
+
+        var ex = await Assert.ThrowsAsync<McpException>(() => new GroupTools(harness.Executor).ServerGroupMembersAsync(
+            74, cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("2564", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("virtualserver_default_server_group", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Explains_that_a_value_was_too_long()
     {
         var message = QueryExecutor.DescribeRefusal(

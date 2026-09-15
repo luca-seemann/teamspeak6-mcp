@@ -116,6 +116,16 @@ public static class QueryErrorCode
     public const int OverwriteExcludesResume = 2056;
 
     /// <summary>
+    /// A command asked for something a default group does not have. Sent as
+    /// <c>access to default group is forbidden</c>.
+    /// </summary>
+    /// <remarks>
+    /// Observed for <c>servergroupclientlist</c> on the virtual server's default server group: clients
+    /// belong to it by having no other group, so the server keeps no member list for it.
+    /// </remarks>
+    public const int AccessToDefaultGroupForbidden = 2564;
+
+    /// <summary>
     /// The query login lacks a permission. Sent as <c>insufficient client permissions</c>, naming it.
     /// </summary>
     /// <remarks>

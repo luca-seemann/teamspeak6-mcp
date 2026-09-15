@@ -114,6 +114,9 @@ All notable changes to this project are documented here. The format follows
 - `ts_file_list` listed channel 0's icons as `/icons/icon_<id>`, a path the server refuses with
   `1538 invalid parameter` for info, download and delete. Listings now give `/icon_<id>`, and the
   file tools also accept the listed form and translate it.
+- Asking for the members of a default group passed on TeamSpeak's bare `2564 access to default group
+  is forbidden`. The refusal now explains that clients belong to a default group without being added,
+  so it has no member list, and where the default groups are shown.
 - `docker/docker-compose.yml` configured the MCP container with setting names that do not bind, so
   the container started without a profile.
 - After a reconnect, the SSH server's greeting was read as the first lines of the next command's

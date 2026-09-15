@@ -239,6 +239,11 @@ public sealed class QueryExecutor
                 " An upload either replaces a file (overwrite) or continues one (resume), not both.",
             QueryErrorCode.InsufficientPermissions =>
                 " The profile's query login lacks the permission the message names.",
+            QueryErrorCode.AccessToDefaultGroupForbidden =>
+                " This is a default group, the one clients have when they have no other. Clients belong to it " +
+                "without being added, so it has no member list and nobody can be added to or removed from it. " +
+                "ts_vserver_info shows the default groups as virtualserver_default_server_group and " +
+                "virtualserver_default_channel_group.",
             QueryErrorCode.InvalidFilePath =>
                 " The path does not exist, or a directory on the way to it is missing; ts_file_manage " +
                 "createdir creates directories.",
