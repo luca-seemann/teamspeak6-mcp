@@ -22,11 +22,15 @@ internal static class FileTransferSupport
     /// <param name="name">The argument name, for messages.</param>
     /// <param name="allowRoot">Whether the top level itself is acceptable, as for listing.</param>
     /// <returns>The path, starting with <c>/</c> and without a trailing one.</returns>
+    /// <remarks>
+    /// Names are taken exactly as given: a trailing space or a backslash is a legal part of a file name
+    /// on the server, so changing either could make a delete or an overwrite hit a different file.
+    /// </remarks>
     public static string ServerPath(string? value, string name, bool allowRoot)
     {
-        var segments = (value ?? string.Empty)
-            .Replace('\\', '/')
-            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var segments = string.IsNullOrWhiteSpace(value)
+            ? []
+            : value.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
         if (segments.Any(segment => segment is "." or ".."))
         {
@@ -59,29 +63,87 @@ internal static class FileTransferSupport
     /// <param name="options">The file transfer settings.</param>
     /// <param name="localPath">The path as given, relative to the directory or absolute inside it.</param>
     /// <returns>The full path.</returns>
+    /// <remarks>
+    /// The check is on the path as written and on every part of it that exists: a symbolic link or
+    /// junction inside the directory is refused, because it could lead anywhere.
+    /// </remarks>
     public static string LocalPath(FileTransferOptions options, string localPath)
     {
-        if (string.IsNullOrWhiteSpace(options.LocalDirectory))
+        var root = LocalRoot(options);
+
+        if (string.IsNullOrWhiteSpace(localPath) || localPath.Contains('\0', StringComparison.Ordinal))
+        {
+            throw new McpException("localPath must name a file, such as 'exports/logo.png'.");
+        }
+
+        string full;
+        try
+        {
+            full = Path.GetFullPath(Path.Combine(root, localPath));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            throw new McpException($"localPath '{localPath}' is not a usable path: {ex.Message}", ex);
+        }
+
+        var prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
+        if (!full.StartsWith(prefix, PathComparison))
+        {
+            throw new McpException(
+                $"localPath '{localPath}' lies outside {root}, the directory file transfers may use. " +
+                "Give a path inside it, or relative to it.");
+        }
+
+        var current = root;
+        foreach (var part in Path.GetRelativePath(root, full).Split(Path.DirectorySeparatorChar))
+        {
+            current = Path.Combine(current, part);
+            FileSystemInfo entry = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
+            if (!entry.Exists)
+            {
+                break;
+            }
+
+            if (entry.LinkTarget is not null || entry.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                throw new McpException(
+                    $"localPath '{localPath}' passes through the link {current}, which could lead outside {root}. " +
+                    "Links inside the directory are not followed.");
+            }
+        }
+
+        return full;
+    }
+
+    private static StringComparison PathComparison =>
+        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+    private static string LocalRoot(FileTransferOptions options)
+    {
+        var configured = options.LocalDirectory;
+        if (string.IsNullOrWhiteSpace(configured))
         {
             throw new McpException(
                 "localPath is switched off on this server. Pass the content inline, or configure " +
                 "TeamSpeak:FileTransfer:LocalDirectory as the directory file transfers may use.");
         }
 
-        if (string.IsNullOrWhiteSpace(localPath))
+        // A relative setting would move with the working directory, which differs between a terminal,
+        // a service and a container.
+        if (!Path.IsPathFullyQualified(configured))
         {
-            throw new McpException("localPath must not be empty.");
+            throw new McpException($"TeamSpeak:FileTransfer:LocalDirectory must be an absolute path, not '{configured}'.");
         }
 
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.LocalDirectory));
-        var full = Path.GetFullPath(Path.Combine(root, localPath.Trim()));
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(configured));
+        if (string.Equals(Path.GetPathRoot(root), root, PathComparison))
+        {
+            throw new McpException($"TeamSpeak:FileTransfer:LocalDirectory cannot be the root of a drive or file system ('{root}').");
+        }
 
-        return full.StartsWith(root + Path.DirectorySeparatorChar, comparison)
-            ? full
-            : throw new McpException(
-                $"localPath '{localPath}' lies outside {root}, the directory file transfers may use. " +
-                "Give a path inside it, or relative to it.");
+        return Directory.Exists(root)
+            ? root
+            : throw new McpException($"TeamSpeak:FileTransfer:LocalDirectory '{root}' does not exist.");
     }
 
     /// <summary>Reads the ticket from an init command's answer, explaining a refusal inside the record.</summary>

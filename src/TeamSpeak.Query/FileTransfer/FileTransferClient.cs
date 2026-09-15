@@ -19,19 +19,23 @@ namespace TeamSpeak.Query.FileTransfer;
 /// expects, or when it has sent the last byte. A connection with an unknown key is closed at once.
 /// Whether an upload arrived whole can therefore only be told from the file's size afterwards.
 /// </para>
+/// <para>
+/// Measured on a stall: the server closed an upload that sent nothing for between 16 and 30 seconds,
+/// keeping what had arrived. A steady 20 KB/s completed. The stall timeout here is set just above that.
+/// </para>
 /// </remarks>
 public static class FileTransferClient
 {
     /// <summary>How long a transfer may go without moving a byte before it is abandoned.</summary>
     public static readonly TimeSpan DefaultStallTimeout = TimeSpan.FromSeconds(30);
 
-    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
 
     private const int ChunkSize = 81920;
 
     /// <summary>Uploads bytes for a ticket from <c>ftinitupload</c>.</summary>
     /// <param name="ticket">The ticket.</param>
-    /// <param name="host">The server's host, tried after any addresses the ticket names.</param>
+    /// <param name="host">The server's host, tried before any addresses the ticket names.</param>
     /// <param name="source">Where the bytes come from, positioned at the first byte to send.</param>
     /// <param name="length">How many bytes to send: the size announced to <c>ftinitupload</c>, less the ticket's seek position.</param>
     /// <param name="cancellationToken">Cancels the transfer.</param>
@@ -83,7 +87,16 @@ public static class FileTransferClient
         }
 
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-        client.Client.Shutdown(SocketShutdown.Send);
+
+        try
+        {
+            client.Client.Shutdown(SocketShutdown.Send);
+        }
+        catch (SocketException ex)
+        {
+            // The server may already have closed; whether everything arrived is for the size check to say.
+            throw new IOException($"The connection closed while the upload was being finished: {ex.Message}", ex);
+        }
 
         // The server closes once it has stored the file. Waiting for that keeps a caller from checking
         // the file's size before the last bytes are written. Silence is not an error here: the size
@@ -102,7 +115,7 @@ public static class FileTransferClient
 
     /// <summary>Downloads the bytes for a ticket from <c>ftinitdownload</c>.</summary>
     /// <param name="ticket">The ticket.</param>
-    /// <param name="host">The server's host, tried after any addresses the ticket names.</param>
+    /// <param name="host">The server's host, tried before any addresses the ticket names.</param>
     /// <param name="destination">Where the bytes go.</param>
     /// <param name="length">How many bytes to expect: the ticket's size, less the seek position asked for.</param>
     /// <param name="cancellationToken">Cancels the transfer.</param>
@@ -162,8 +175,10 @@ public static class FileTransferClient
 
     private static async Task<TcpClient> ConnectAsync(FileTransferTicket ticket, string host, CancellationToken cancellationToken)
     {
+        // The configured host first: it is known to reach the server, while an address the server names
+        // may be one only it can see, such as a container's own, and could hang until the timeout.
         var candidates = ticket.Addresses
-            .Append(host)
+            .Prepend(host)
             .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();

@@ -96,7 +96,7 @@ public sealed class FileToolsTests : IDisposable
             .Returns("ftgetfileinfo", ToolHarness.Records(Fields(("cid", "4"), ("name", "/docs/a.txt"), ("size", "6"))));
         var served = ServeOnceAsync(expect: 6);
 
-        var result = await new FileAdminTools(harness.Executor, Options()).UploadAsync(4, "docs\\a.txt", content: "hällo", virtualServerId: 2, cancellationToken: Ct);
+        var result = await new FileAdminTools(harness.Executor, Options()).UploadAsync(4, "docs/a.txt", content: "hällo", virtualServerId: 2, cancellationToken: Ct);
 
         Assert.Equal("hällo"u8.ToArray(), await served);
         Assert.Equal(("/docs/a.txt", 6L), (result.Path, result.Bytes));
@@ -123,22 +123,86 @@ public sealed class FileToolsTests : IDisposable
         Assert.Contains("2 of 5 bytes", ex.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task Resuming_sends_only_the_bytes_the_partial_file_lacks()
+    /// <summary>Accepts connections one after another, reading each one's key and handing it to the next handler.</summary>
+    private Task ServeInOrderAsync(params Func<NetworkStream, Task>[] handlers) => Task.Run(async () =>
     {
-        await using var harness = new ToolHarness(SafetyLevel.Write, Loopback());
+        foreach (var handle in handlers)
+        {
+            using var connection = await _listener.AcceptTcpClientAsync(Ct);
+            var stream = connection.GetStream();
+            await stream.ReadExactlyAsync(new byte[Key.Length], Ct);
+            await handle(stream);
+        }
+    }, Ct);
+
+    [Fact]
+    public async Task Resuming_compares_the_stored_tail_and_then_sends_only_the_missing_bytes()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Destructive, Loopback());
+        var sizes = new Queue<string>(["3", "5"]);
         harness.Transport
-            .Returns("ftinitupload", ToolHarness.Records(Fields(("serverftfid", "3"), ("ftkey", Key), ("port", Port), ("seekpos", "3"))))
-            .Returns("ftgetfileinfo", ToolHarness.Records(Fields(("size", "5"))));
-        var served = ServeOnceAsync(expect: 2);
+            .Returns("ftgetfileinfo", _ => ToolHarness.Records(Fields(("size", sizes.Dequeue()))))
+            .Returns("ftinitdownload", ToolHarness.Records(Fields(("serverftfid", "2"), ("ftkey", Key), ("port", Port), ("size", "3"))))
+            .Returns("ftinitupload", ToolHarness.Records(Fields(("serverftfid", "3"), ("ftkey", Key), ("port", Port), ("seekpos", "3"))));
+        var received = new byte[2];
+        var served = ServeInOrderAsync(
+            stream => stream.WriteAsync("hel"u8.ToArray(), Ct).AsTask(),
+            stream => stream.ReadExactlyAsync(received, Ct).AsTask());
 
         var result = await new FileAdminTools(harness.Executor, Options()).UploadAsync(1, "/a.txt", content: "hello", resume: true, cancellationToken: Ct);
+        await served;
 
-        Assert.Equal("lo"u8.ToArray(), await served);
+        Assert.Equal("lo"u8.ToArray(), received);
         Assert.Contains("from byte 3", result.Done, StringComparison.Ordinal);
+        Assert.Equal(["ftgetfileinfo", "ftinitdownload", "ftinitupload", "ftgetfileinfo"], harness.Transport.SentCommands.Select(command => command.Name));
+        Assert.Equal("0", harness.Transport.SentCommands[1].Parameters!["seekpos"]);
 
-        var init = harness.Transport.SentCommands.First(command => command.Name == "ftinitupload").Parameters!;
+        var init = harness.Transport.SentCommands[2].Parameters!;
         Assert.Equal(("0", "1"), (init["overwrite"], init["resume"]));
+    }
+
+    [Fact]
+    public async Task A_stored_file_that_ends_differently_is_not_resumed()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Destructive, Loopback());
+        harness.Transport
+            .Returns("ftgetfileinfo", ToolHarness.Records(Fields(("size", "3"))))
+            .Returns("ftinitdownload", ToolHarness.Records(Fields(("ftkey", Key), ("port", Port), ("size", "3"))));
+        var served = ServeInOrderAsync(stream => stream.WriteAsync("XYZ"u8.ToArray(), Ct).AsTask());
+
+        var ex = await Assert.ThrowsAsync<McpException>(() =>
+            new FileAdminTools(harness.Executor, Options()).UploadAsync(1, "/a.txt", content: "hello", resume: true, cancellationToken: Ct));
+        await served;
+
+        Assert.Contains("differ", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name == "ftinitupload");
+    }
+
+    [Fact]
+    public async Task A_stored_file_that_is_already_whole_is_reported_and_nothing_is_sent()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Destructive, Loopback());
+        harness.Transport
+            .Returns("ftgetfileinfo", ToolHarness.Records(Fields(("size", "5"))))
+            .Returns("ftinitdownload", ToolHarness.Records(Fields(("ftkey", Key), ("port", Port), ("size", "5"))));
+        var served = ServeInOrderAsync(stream => stream.WriteAsync("hello"u8.ToArray(), Ct).AsTask());
+
+        var result = await new FileAdminTools(harness.Executor, Options()).UploadAsync(1, "/a.txt", content: "hello", resume: true, cancellationToken: Ct);
+        await served;
+
+        Assert.Contains("nothing was sent", result.Done, StringComparison.Ordinal);
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name == "ftinitupload");
+    }
+
+    [Fact]
+    public async Task Resuming_needs_destructive()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Write);
+
+        await Assert.ThrowsAsync<McpException>(() =>
+            new FileAdminTools(harness.Executor, Options()).UploadAsync(1, "/a.txt", content: "hello", resume: true, cancellationToken: Ct));
+
+        Assert.Empty(harness.Transport.SentCommands);
     }
 
     [Fact]
@@ -155,14 +219,14 @@ public sealed class FileToolsTests : IDisposable
     [Fact]
     public async Task A_stored_file_larger_than_the_content_is_not_resumed()
     {
-        await using var harness = new ToolHarness(SafetyLevel.Write, Loopback());
-        harness.Transport.Returns("ftinitupload", ToolHarness.Records(Fields(("serverftfid", "3"), ("ftkey", Key), ("port", Port), ("seekpos", "10"))));
+        await using var harness = new ToolHarness(SafetyLevel.Destructive, Loopback());
+        harness.Transport.Returns("ftgetfileinfo", ToolHarness.Records(Fields(("size", "10"))));
 
         var ex = await Assert.ThrowsAsync<McpException>(() =>
             new FileAdminTools(harness.Executor, Options()).UploadAsync(1, "/a.txt", content: "hello", resume: true, cancellationToken: Ct));
 
         Assert.Contains("overwrite=true", ex.Message, StringComparison.Ordinal);
-        Assert.Equal(["ftinitupload"], harness.Transport.SentCommands.Select(command => command.Name));
+        Assert.Equal(["ftgetfileinfo"], harness.Transport.SentCommands.Select(command => command.Name));
     }
 
     [Fact]
@@ -278,6 +342,48 @@ public sealed class FileToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task A_broken_download_keeps_what_arrived_and_resuming_fetches_only_the_rest()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Write, Loopback());
+        harness.Transport.Returns("ftinitdownload", ToolHarness.Records(Fields(("ftkey", Key), ("port", Port), ("size", "5"))));
+        var tools = new FileTools(harness.Executor, Options());
+        var target = Path.Combine(_localDirectory, "a.bin");
+
+        // The server closes after two of five bytes.
+        var broken = ServeOnceAsync(send: [1, 2]);
+        var ex = await Assert.ThrowsAsync<McpException>(() => tools.DownloadAsync(1, "/a.bin", localPath: "a.bin", cancellationToken: Ct));
+        await broken;
+
+        Assert.Contains("resume=true", ex.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(target));
+        Assert.Equal([1, 2], await File.ReadAllBytesAsync(target + ".partial", Ct));
+
+        var rest = ServeOnceAsync(send: [3, 4, 5]);
+        var resumed = await tools.DownloadAsync(1, "/a.bin", localPath: "a.bin", resume: true, cancellationToken: Ct);
+        await rest;
+
+        Assert.Equal(("2", 2L), (harness.Transport.SentCommands[1].Parameters!["seekpos"], resumed.ResumedFrom));
+        Assert.Equal([1, 2, 3, 4, 5], await File.ReadAllBytesAsync(target, Ct));
+        Assert.False(File.Exists(target + ".partial"));
+    }
+
+    [Fact]
+    public async Task Resuming_a_download_needs_a_local_path_and_a_partial_file_that_fits()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Write, Loopback());
+        harness.Transport.Returns("ftinitdownload", ToolHarness.Records(Fields(("ftkey", Key), ("port", Port), ("size", "3"))));
+        var tools = new FileTools(harness.Executor, Options());
+
+        await Assert.ThrowsAsync<McpException>(() => tools.DownloadAsync(1, "/a.bin", resume: true, cancellationToken: Ct));
+        Assert.Empty(harness.Transport.SentCommands);
+
+        await File.WriteAllBytesAsync(Path.Combine(_localDirectory, "b.bin.partial"), new byte[10], Ct);
+        var tooLarge = await Assert.ThrowsAsync<McpException>(() => tools.DownloadAsync(1, "/b.bin", localPath: "b.bin", resume: true, cancellationToken: Ct));
+
+        Assert.Contains("another file", tooLarge.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_missing_file_is_explained()
     {
         await using var harness = new ToolHarness(SafetyLevel.ReadOnly);
@@ -332,7 +438,7 @@ public sealed class FileToolsTests : IDisposable
     [Fact]
     public async Task Renaming_into_another_channel_sends_the_target_and_stopping_sends_the_transfer()
     {
-        await using var harness = new ToolHarness(SafetyLevel.Write);
+        await using var harness = new ToolHarness(SafetyLevel.Destructive);
         harness.Transport.Returns("ftrenamefile", ToolHarness.Records()).Returns("ftstop", ToolHarness.Records());
         var admin = new FileAdminTools(harness.Executor, Options());
 
@@ -346,6 +452,100 @@ public sealed class FileToolsTests : IDisposable
         Assert.Contains("channel 3", moved.Done, StringComparison.Ordinal);
         Assert.DoesNotContain("tcid", harness.Transport.SentCommands[1].Parameters!.Keys);
         Assert.Equal(("6", "1"), (harness.Transport.SentCommands[2].Parameters!["serverftfid"], harness.Transport.SentCommands[2].Parameters!["delete"]));
+    }
+
+    [Fact]
+    public async Task Removing_a_partial_file_when_stopping_needs_destructive()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Write);
+        harness.Transport.Returns("ftstop", ToolHarness.Records());
+        var admin = new FileAdminTools(harness.Executor, Options());
+
+        await Assert.ThrowsAsync<McpException>(() => admin.ManageAsync("stop", transferId: 6, deletePartial: true, cancellationToken: Ct));
+        Assert.Empty(harness.Transport.SentCommands);
+
+        await admin.ManageAsync("stop", transferId: 6, cancellationToken: Ct);
+        Assert.Equal("0", Assert.Single(harness.Transport.SentCommands).Parameters!["delete"]);
+    }
+
+    [Fact]
+    public async Task Server_paths_keep_spaces_and_backslashes_as_part_of_names()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("ftgetfileinfo", ToolHarness.Records(Fields(("size", "1"))));
+
+        await new FileTools(harness.Executor, Options()).FileInfoAsync(1, "/reports /a\\b.txt ", cancellationToken: Ct);
+
+        Assert.Equal("/reports /a\\b.txt ", harness.Transport.SentCommands[0].Parameters!["name"]);
+    }
+
+    [Fact]
+    public async Task A_partial_file_this_download_did_not_make_is_left_alone()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Write, Loopback());
+        var partial = Path.Combine(_localDirectory, "mine.bin.partial");
+        await File.WriteAllBytesAsync(partial, [9, 9, 9], Ct);
+
+        var ex = await Assert.ThrowsAsync<McpException>(() =>
+            new FileTools(harness.Executor, Options()).DownloadAsync(1, "/mine.bin", localPath: "mine.bin", cancellationToken: Ct));
+
+        Assert.Contains("resume=true", ex.Message, StringComparison.Ordinal);
+        Assert.Equal([9, 9, 9], await File.ReadAllBytesAsync(partial, Ct));
+        Assert.Empty(harness.Transport.SentCommands);
+    }
+
+    [Fact]
+    public async Task The_local_directory_must_be_absolute_existing_and_not_a_root_and_paths_must_be_plain()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Write);
+        var root = Path.GetPathRoot(_localDirectory)!;
+
+        foreach (var (directory, expected) in new[]
+                 {
+                     ("relative/files", "absolute"),
+                     (root, "root"),
+                     (Path.Combine(_localDirectory, "missing"), "does not exist"),
+                 })
+        {
+            var ex = await Assert.ThrowsAsync<McpException>(() =>
+                new FileAdminTools(harness.Executor, new FileTransferOptions { LocalDirectory = directory }).UploadAsync(1, "/a", localPath: "a.txt", cancellationToken: Ct));
+            Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
+        }
+
+        await Assert.ThrowsAsync<McpException>(() =>
+            new FileAdminTools(harness.Executor, Options()).UploadAsync(1, "/a", localPath: "a\0.txt", cancellationToken: Ct));
+        Assert.Empty(harness.Transport.SentCommands);
+    }
+
+    [Fact]
+    public async Task A_link_inside_the_local_directory_is_not_followed()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), "tsmcp-outside-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(outside);
+        await File.WriteAllTextAsync(Path.Combine(outside, "secret.txt"), "secret", Ct);
+
+        try
+        {
+            try
+            {
+                Directory.CreateSymbolicLink(Path.Combine(_localDirectory, "escape"), outside);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Assert.Skip($"Creating a symbolic link needs a privilege this machine does not grant: {ex.Message}");
+            }
+
+            await using var harness = new ToolHarness(SafetyLevel.Write);
+            var refused = await Assert.ThrowsAsync<McpException>(() =>
+                new FileAdminTools(harness.Executor, Options()).UploadAsync(1, "/a", localPath: Path.Combine("escape", "secret.txt"), cancellationToken: Ct));
+
+            Assert.Contains("link", refused.Message, StringComparison.Ordinal);
+            Assert.Empty(harness.Transport.SentCommands);
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
     }
 
     [Fact]

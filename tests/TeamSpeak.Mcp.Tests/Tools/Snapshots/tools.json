@@ -3777,6 +3777,11 @@
           ],
           "default": null
         },
+        "resume": {
+          "description": "With localPath: continue a download that broke off from the part it left behind (localPath \u002B \u0022.partial\u0022), fetching only the missing bytes.",
+          "type": "boolean",
+          "default": false
+        },
         "channelPassword": {
           "description": "The channel\u0027s password, if it has one. A query login with enough permissions, such as serveradmin, is let in without it.",
           "type": [
@@ -3833,6 +3838,13 @@
             "string",
             "null"
           ]
+        },
+        "resumedFrom": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
         }
       },
       "required": [
@@ -4048,7 +4060,7 @@
   {
     "name": "ts_file_manage",
     "title": "Create a directory, rename a file, or stop a transfer",
-    "description": "createdir creates the directory path in a channel\u0027s file repository; its parent must exist. rename renames or moves a file or directory from path to newPath, into another channel\u0027s repository when targetChannelId is given. stop ends a transfer ts_file_transfers lists, by its serverTransferId; deletePartial=true also removes what an unfinished upload left behind. All need Write. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "description": "createdir creates the directory path in a channel\u0027s file repository; its parent must exist. rename renames or moves a file or directory from path to newPath, into another channel\u0027s repository when targetChannelId is given. stop ends a transfer ts_file_transfers lists, by its serverTransferId. These need Write. With deletePartial=true, stop also removes what an unfinished upload left behind, which can be someone else\u0027s upload, so that needs Destructive. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -4168,7 +4180,7 @@
     },
     "annotations": {
       "title": "Create a directory, rename a file, or stop a transfer",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false
@@ -4276,7 +4288,7 @@
   {
     "name": "ts_file_upload",
     "title": "Upload a file",
-    "description": "Uploads a file into a channel\u0027s file repository. Give exactly one of content (text, stored as UTF-8), contentBase64, or localPath, a file inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory. Inline content is limited to TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured). The directory it goes into must exist; ts_file_manage createdir makes one. The stored size is checked afterwards, so a transfer that broke off is reported, not taken for success, and its partial file stays so that resume=true can continue it with the same content. Needs Write; replacing an existing file with overwrite=true needs Destructive. The bytes travel over the server\u0027s file transfer port, 30033 by default, which must be reachable from this machine. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
+    "description": "Uploads a file into a channel\u0027s file repository. Give exactly one of content (text, stored as UTF-8), contentBase64, or localPath, a file inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory. Inline content is limited to TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured). The directory it goes into must exist; ts_file_manage createdir makes one. The stored size is checked afterwards, so a transfer that broke off is reported, not taken for success, and its partial file stays so that resume=true can continue it with the same content. Needs Write; replacing an existing file with overwrite=true, or continuing one with resume=true, needs Destructive. The bytes travel over the server\u0027s file transfer port, 30033 by default, which must be reachable from this machine. File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -4318,7 +4330,7 @@
           "default": false
         },
         "resume": {
-          "description": "Continue an upload that broke off: only the bytes the partial file at path lacks are sent. Give the same, complete content as before. Cannot be combined with overwrite.",
+          "description": "Continue an upload that broke off: only the bytes the partial file at path lacks are sent. Give the same, complete content as before; the last bytes stored are compared with it first. Needs Destructive, since TeamSpeak would extend a finished file just the same. Cannot be combined with overwrite.",
           "type": "boolean",
           "default": false
         },

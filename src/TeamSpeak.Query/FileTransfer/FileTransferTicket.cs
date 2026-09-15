@@ -29,7 +29,7 @@ namespace TeamSpeak.Query.FileTransfer;
 /// <param name="SeekPosition">For an upload, where the server expects the bytes to start; 0 unless resuming.</param>
 /// <param name="Addresses">
 /// Addresses the server named because it thinks the query address cannot reach its file transfer
-/// interface; usually empty.
+/// interface; usually empty, and tried only after the configured host.
 /// </param>
 public sealed record FileTransferTicket(
     int ClientTransferId,
@@ -64,13 +64,22 @@ public sealed record FileTransferTicket(
         var addresses = record.GetString("ip")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+        var port = record.GetInt32("port", 30033);
+        var size = record.GetInt64("size");
+        var seekPosition = record.GetInt64("seekpos");
+        if (port is < 1 or > 65535 || size < 0 || seekPosition < 0)
+        {
+            throw new QueryProtocolException(
+                $"The file transfer answer is not usable: port {port}, size {size}, seekpos {seekPosition}.");
+        }
+
         return new FileTransferTicket(
             record.GetInt32("clientftfid"),
             record.GetInt32("serverftfid"),
             key,
-            record.GetInt32("port", 30033),
-            record.GetInt64("size"),
-            record.GetInt64("seekpos"),
+            port,
+            size,
+            seekPosition,
             addresses);
     }
 }

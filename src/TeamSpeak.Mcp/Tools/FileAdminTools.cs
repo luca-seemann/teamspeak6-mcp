@@ -33,8 +33,9 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
                  "must exist; ts_file_manage createdir makes one. The stored size is checked afterwards, so a " +
                  "transfer that broke off is reported, not taken for success, and its partial file stays so " +
                  "that resume=true can continue it with the same content. Needs Write; replacing an existing " +
-                 "file with overwrite=true needs Destructive. The bytes travel over the server's file transfer " +
-                 "port, 30033 by default, which must be reachable from this machine." + SshOnly)]
+                 "file with overwrite=true, or continuing one with resume=true, needs Destructive. The bytes " +
+                 "travel over the server's file transfer port, 30033 by default, which must be reachable from " +
+                 "this machine." + SshOnly)]
     public async Task<FileUpload> UploadAsync(
         [Description("The channel to store the file in; 0 for icons and avatars.")] int channelId,
         [Description("Where to store it, such as /docs/readme.txt.")] string path,
@@ -42,7 +43,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         [Description("The file's content, base64-encoded, for binary files.")] string? contentBase64 = null,
         [Description("A local file to upload: a path relative to, or inside, the configured local directory.")] string? localPath = null,
         [Description("Replace a file that already exists at path. Needs Destructive.")] bool overwrite = false,
-        [Description("Continue an upload that broke off: only the bytes the partial file at path lacks are sent. Give the same, complete content as before. Cannot be combined with overwrite.")] bool resume = false,
+        [Description("Continue an upload that broke off: only the bytes the partial file at path lacks are sent. Give the same, complete content as before; the last bytes stored are compared with it first. Needs Destructive, since TeamSpeak would extend a finished file just the same. Cannot be combined with overwrite.")] bool resume = false,
         [Description(ToolDescriptions.ChannelPassword)] string? channelPassword = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -61,10 +62,39 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
             throw new McpException("Pass overwrite to replace a file or resume to continue one, not both.");
         }
 
-        executor.Demand("ts_file_upload", overwrite ? SafetyLevel.Destructive : SafetyLevel.Write, profile);
+        // Resuming changes an existing file just as replacing one does. Measured: the server cannot tell a
+        // partial file from a finished one, and lengthened a finished file when asked to resume it.
+        executor.Demand("ts_file_upload", overwrite || resume ? SafetyLevel.Destructive : SafetyLevel.Write, profile);
 
         var (inline, local, length) = Source(content, contentBase64, localPath);
         var resolved = executor.ResolveProfile(profile);
+
+        var offset = 0L;
+        if (resume)
+        {
+            // Everything is checked before the upload is started, so a refusal leaves no transfer waiting.
+            offset = Math.Max(0, await StoredSizeAsync(channelId, channelPassword, name, virtualServerId, profile, cancellationToken).ConfigureAwait(false));
+            if (offset > length)
+            {
+                throw new McpException(
+                    $"Nothing was sent: {name} in channel {channelId} already holds {offset} bytes, more than the {length} " +
+                    "given, so it is not an unfinished upload of this content. Replace it with overwrite=true instead.");
+            }
+
+            if (offset > 0)
+            {
+                await RefuseForeignTailAsync(channelId, channelPassword, name, offset, inline, local, virtualServerId, profile, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (offset == length)
+            {
+                return new FileUpload(
+                    $"{name} in channel {channelId} already holds all {length} bytes, ending with the same bytes as the content; nothing was sent.",
+                    channelId,
+                    name,
+                    length);
+            }
+        }
 
         var parameters = new Dictionary<string, string>(StringComparer.Ordinal) { ["clientftfid"] = NextTransferId(), ["name"] = name };
         foreach (var (key, value) in ChannelParameters(channelId, channelPassword))
@@ -82,13 +112,13 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         var ticket = Ticket(resolved.Name, "ftinitupload", records);
 
         // Measured: resume answers with the stored size as seekpos, and the bytes from there on complete
-        // the file byte for byte. A fresh upload answers 0.
-        var offset = ticket.SeekPosition;
-        if (offset > length)
+        // the file byte for byte. A fresh upload answers 0. Anything else means the file changed meanwhile.
+        if (ticket.SeekPosition != offset)
         {
+            await StopQuietlyAsync(ticket, virtualServerId, profile).ConfigureAwait(false);
             throw new McpException(
-                $"Nothing was sent: {name} in channel {channelId} already holds {offset} bytes, more than the {length} " +
-                "given, so it is not an unfinished upload of this content. Replace it with overwrite=true instead.");
+                $"Nothing was sent: {name} changed while the upload was being prepared; the server expects byte " +
+                $"{ticket.SeekPosition}, not {offset}. Try again.");
         }
 
         try
@@ -107,6 +137,12 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         {
             var cleanup = await StopQuietlyAsync(ticket, virtualServerId, profile).ConfigureAwait(false);
             throw new McpException($"Uploading {name} to channel {channelId} failed: {ex.Message}{cleanup}", ex);
+        }
+        catch (OperationCanceledException)
+        {
+            // Otherwise the transfer would stay listed as waiting until the server drops it minutes later.
+            await StopQuietlyAsync(ticket, virtualServerId, profile).ConfigureAwait(false);
+            throw;
         }
 
         var stored = await StoredSizeAsync(channelId, channelPassword, name, virtualServerId, profile, cancellationToken).ConfigureAwait(false);
@@ -132,12 +168,12 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
 
     /// <summary>Creates a directory, renames or moves a file, or stops a transfer.</summary>
     [McpServerTool(Name = "ts_file_manage", Title = "Create a directory, rename a file, or stop a transfer",
-        ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("createdir creates the directory path in a channel's file repository; its parent must exist. " +
                  "rename renames or moves a file or directory from path to newPath, into another channel's " +
                  "repository when targetChannelId is given. stop ends a transfer ts_file_transfers lists, by " +
-                 "its serverTransferId; deletePartial=true also removes what an unfinished upload left behind. " +
-                 "All need Write." + SshOnly)]
+                 "its serverTransferId. These need Write. With deletePartial=true, stop also removes what an " +
+                 "unfinished upload left behind, which can be someone else's upload, so that needs Destructive." + SshOnly)]
     public async Task<ActionResult> ManageAsync(
         [Description("createdir, rename, or stop.")] string action,
         [Description("For createdir and rename: the channel.")] int? channelId = null,
@@ -158,49 +194,54 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         switch (Choice(action, nameof(action), "createdir", "rename", "stop"))
         {
             case "stop":
-            {
-                var id = transferId ?? throw new McpException("stop needs transferId, the serverTransferId ts_file_transfers shows.");
-                command = new QueryCommand(
-                    "ftstop",
-                    new Dictionary<string, string> { ["serverftfid"] = Text(id), ["delete"] = deletePartial ? "1" : "0" },
-                    VirtualServerId: virtualServerId);
-                done = deletePartial ? $"Stopped transfer {id} and removed its partial file." : $"Stopped transfer {id}.";
-                break;
-            }
-
-            case "createdir":
-            {
-                var channel = channelId ?? throw new McpException("createdir needs channelId.");
-                var directory = ServerPath(path, nameof(path), allowRoot: false);
-                var parameters = ChannelParameters(channel, channelPassword);
-                parameters["dirname"] = directory;
-                command = new QueryCommand("ftcreatedir", parameters, VirtualServerId: virtualServerId);
-                done = $"Created the directory {directory} in channel {channel}.";
-                break;
-            }
-
-            default:
-            {
-                var channel = channelId ?? throw new McpException("rename needs channelId.");
-                var from = ServerPath(path, nameof(path), allowRoot: false);
-                var to = ServerPath(newPath, nameof(newPath), allowRoot: false);
-                var parameters = ChannelParameters(channel, channelPassword);
-
-                var target = targetChannelId is { } other && other != channel ? other : (int?)null;
-                if (target is { } targetChannel)
                 {
-                    parameters["tcid"] = Text(targetChannel);
-                    parameters["tcpw"] = targetChannelPassword ?? string.Empty;
+                    var id = transferId ?? throw new McpException("stop needs transferId, the serverTransferId ts_file_transfers shows.");
+                    if (deletePartial)
+                    {
+                        executor.Demand("ts_file_manage stop with deletePartial", SafetyLevel.Destructive, profile);
+                    }
+
+                    command = new QueryCommand(
+                        "ftstop",
+                        new Dictionary<string, string> { ["serverftfid"] = Text(id), ["delete"] = deletePartial ? "1" : "0" },
+                        VirtualServerId: virtualServerId);
+                    done = deletePartial ? $"Stopped transfer {id} and removed its partial file." : $"Stopped transfer {id}.";
+                    break;
                 }
 
-                parameters["oldname"] = from;
-                parameters["newname"] = to;
-                command = new QueryCommand("ftrenamefile", parameters, VirtualServerId: virtualServerId);
-                done = target is { } moved
-                    ? $"Moved {from} in channel {channel} to {to} in channel {moved}."
-                    : $"Renamed {from} to {to} in channel {channel}.";
-                break;
-            }
+            case "createdir":
+                {
+                    var channel = channelId ?? throw new McpException("createdir needs channelId.");
+                    var directory = ServerPath(path, nameof(path), allowRoot: false);
+                    var parameters = ChannelParameters(channel, channelPassword);
+                    parameters["dirname"] = directory;
+                    command = new QueryCommand("ftcreatedir", parameters, VirtualServerId: virtualServerId);
+                    done = $"Created the directory {directory} in channel {channel}.";
+                    break;
+                }
+
+            default:
+                {
+                    var channel = channelId ?? throw new McpException("rename needs channelId.");
+                    var from = ServerPath(path, nameof(path), allowRoot: false);
+                    var to = ServerPath(newPath, nameof(newPath), allowRoot: false);
+                    var parameters = ChannelParameters(channel, channelPassword);
+
+                    var target = targetChannelId is { } other && other != channel ? other : (int?)null;
+                    if (target is { } targetChannel)
+                    {
+                        parameters["tcid"] = Text(targetChannel);
+                        parameters["tcpw"] = targetChannelPassword ?? string.Empty;
+                    }
+
+                    parameters["oldname"] = from;
+                    parameters["newname"] = to;
+                    command = new QueryCommand("ftrenamefile", parameters, VirtualServerId: virtualServerId);
+                    done = target is { } moved
+                        ? $"Moved {from} in channel {channel} to {to} in channel {moved}."
+                        : $"Renamed {from} to {to} in channel {channel}.";
+                    break;
+                }
         }
 
         var records = await executor.RunCommandAsync("ts_file_manage", profile, command, cancellationToken).ConfigureAwait(false);
@@ -277,6 +318,77 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
             : throw new McpException(
                 $"The content is {bytes.Length} bytes, more than the {options.MaxInlineBytes} accepted inline. " +
                 "Put the file in the configured local directory and pass localPath instead.");
+    }
+
+    /// <summary>How much of a partial file is compared with the content before it is continued.</summary>
+    private const int TailCheckBytes = 64 * 1024;
+
+    /// <summary>
+    /// Refuses to continue a stored file whose last bytes differ from the same bytes of the content,
+    /// since appending to it would produce a file that is neither.
+    /// </summary>
+    private async Task RefuseForeignTailAsync(
+        int channelId,
+        string? channelPassword,
+        string name,
+        long offset,
+        byte[]? inline,
+        string? local,
+        int? virtualServerId,
+        string? profile,
+        CancellationToken cancellationToken)
+    {
+        var resolved = executor.ResolveProfile(profile);
+        var count = (int)Math.Min(offset, TailCheckBytes);
+        var start = offset - count;
+
+        var parameters = new Dictionary<string, string>(StringComparer.Ordinal) { ["clientftfid"] = NextTransferId(), ["name"] = name };
+        foreach (var (key, value) in ChannelParameters(channelId, channelPassword))
+        {
+            parameters[key] = value;
+        }
+
+        parameters["seekpos"] = start.ToString(CultureInfo.InvariantCulture);
+
+        var records = await executor.RunCommandAsync(
+            "ts_file_upload", profile, new QueryCommand("ftinitdownload", parameters, VirtualServerId: virtualServerId), cancellationToken)
+            .ConfigureAwait(false);
+        var ticket = Ticket(resolved.Name, "ftinitdownload", records);
+
+        var stored = new byte[count];
+        var expected = new byte[count];
+        try
+        {
+            using (var buffer = new MemoryStream(stored))
+            {
+                await FileTransferClient.DownloadAsync(ticket, resolved.Host, buffer, count, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (inline is not null)
+            {
+                Array.Copy(inline, start, expected, 0, count);
+            }
+            else
+            {
+                var file = new FileStream(local!, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+                await using (file.ConfigureAwait(false))
+                {
+                    file.Position = start;
+                    await file.ReadExactlyAsync(expected, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException)
+        {
+            throw new McpException($"Nothing was sent: the stored part of {name} could not be compared with the content: {ex.Message}", ex);
+        }
+
+        if (!stored.AsSpan().SequenceEqual(expected))
+        {
+            throw new McpException(
+                $"Nothing was sent: the last {count} bytes stored in {name} differ from the same bytes of the content, " +
+                "so the file there is not an unfinished upload of it. Replace it with overwrite=true, or upload under another name.");
+        }
     }
 
     private async Task<long> StoredSizeAsync(int channelId, string? channelPassword, string name, int? virtualServerId, string? profile, CancellationToken cancellationToken)

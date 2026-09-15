@@ -275,23 +275,33 @@ The content comes in one of two ways:
 - **Inline**, up to `MaxInlineBytes` (100 KiB by default). A download comes back as text when it is
   valid UTF-8 and as base64 otherwise. An upload takes `content` or `contentBase64`. Inline content
   lands in the model's context, which is why the default is small.
-- **As a local file**, through `localPath`, only once `TeamSpeak:FileTransfer:LocalDirectory` is set.
-  Every local path is resolved inside that directory, and a path leading outside it is refused. The
-  model chooses these paths, and over Streamable HTTP it does so from another machine. A download
-  never replaces an existing local file.
+- **As a local file**, through `localPath`, only once `TeamSpeak:FileTransfer:LocalDirectory` is set
+  to an absolute path that exists and is not the root of a drive. Every local path is resolved inside
+  that directory, and a path leading outside it is refused. So is a path through a symbolic link or
+  junction inside it. The model chooses these paths, and over Streamable HTTP it does so from another
+  machine. A download never replaces an existing local file.
 
 A few things to know:
 - **SSH and port 30033.** The tickets come from the SSH query, and the bytes travel over the file
   transfer port, which must be reachable from this server just as the query port is. Publish it
   alongside the query ports when TeamSpeak runs in a container.
 - **Safety levels.** A download returned inline needs `ReadOnly`, because it changes nothing on the
-  TeamSpeak server. Saving it to a local file needs `Write`. Uploading needs `Write`, and replacing
-  an existing file with `overwrite=true` needs `Destructive`.
+  TeamSpeak server. Saving it to a local file needs `Write`. Uploading needs `Write`. Replacing an
+  existing file with `overwrite=true` needs `Destructive`, and so does continuing one with
+  `resume=true`: the server cannot tell a partial file from a finished one, and it lengthened a
+  finished file when asked to resume it. `ts_file_manage` stop with `deletePartial=true` needs
+  `Destructive` too, since the upload it discards may be someone else's.
 - **An upload is checked, and can be resumed.** The protocol has no acknowledgement, so after
   sending, the tool compares the size the server stored with the size it sent. A transfer that broke
-  off is reported, and its partial file stays; `ts_file_list` shows it with `incompleteSize`. Upload
-  the same content again with `resume=true`, and only the missing bytes are sent. On the test server a
-  resumed file was byte for byte identical.
+  off is reported, and its partial file stays. Upload the same content again with `resume=true`: the
+  tool first compares the last bytes stored (up to 64 KiB) with the same bytes of the content, refuses
+  if they differ, and otherwise sends only the rest. On the test server a resumed file was byte for
+  byte identical.
+- **A download can be resumed too.** A download to a local file is written to `<localPath>.partial`
+  and renamed when complete. If it breaks off, that file stays, and `resume=true` fetches only the
+  missing bytes. A `.partial` file the tool did not ask for is never overwritten.
+- **Stalls.** The server closed an upload that sent nothing for between 16 and 30 seconds, keeping
+  what had arrived. The tools give up after 30 seconds without a byte. A steady 20 KB/s completed.
 - **Channel passwords.** The file tools take `channelPassword`. Without it, or with a wrong one, a
   login in the Guest group was refused with `781 invalid channel password`. `serveradmin` is let in
   with any password.

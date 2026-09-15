@@ -73,7 +73,12 @@ All notable changes to this project are documented here. The format follows
     until that is set, and saving a download to one needs `Write`.
   - An upload's stored size is compared with what was sent, so a transfer that broke off is reported
     rather than taken for success. Its partial file is kept, and `resume=true` sends only the missing
-    bytes.
+    bytes, after checking that the bytes stored last match the content. Resuming needs `Destructive`,
+    because the server extends a finished file just the same.
+  - A download to a local file goes through `<localPath>.partial`, which a broken download leaves for
+    `resume=true` to continue.
+  - Local paths through a symbolic link or junction are refused. `LocalDirectory` must be absolute,
+    must exist, and cannot be a drive or file system root.
   - `ts_file_manage` creates directories, renames or moves files into another channel, and stops a
     transfer, optionally removing its partial file.
 - `FileTransferClient` and `FileTransferTicket` in `TeamSpeak.Query`: the raw byte transfer over the

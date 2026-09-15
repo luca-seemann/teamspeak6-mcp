@@ -146,12 +146,18 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         [Description("The channel the file is stored in; 0 for icons and avatars.")] int channelId,
         [Description("The file's path, such as /docs/readme.txt.")] string path,
         [Description("Save the file here instead of returning it: a path relative to, or inside, the configured local directory.")] string? localPath = null,
+        [Description("With localPath: continue a download that broke off from the part it left behind (localPath + \".partial\"), fetching only the missing bytes.")] bool resume = false,
         [Description(ToolDescriptions.ChannelPassword)] string? channelPassword = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
         var name = ServerPath(path, nameof(path), allowRoot: false);
+
+        if (resume && localPath is null)
+        {
+            throw new McpException("resume needs localPath: it continues a partial local file, and an inline download is simply repeated.");
+        }
 
         // Nothing changes on the server either way, but saving writes a file on this machine.
         if (localPath is not null)
@@ -166,6 +172,14 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
             throw new McpException($"Nothing was downloaded: {target} already exists, and a download never replaces a local file.");
         }
 
+        // A partial file this call did not make may be someone's own file or another download under way.
+        if (target is not null && !resume && File.Exists(target + ".partial"))
+        {
+            throw new McpException(
+                $"Nothing was downloaded: {target}.partial already exists. If it is what a broken download of this " +
+                "file left, pass resume=true to continue it; otherwise choose another localPath.");
+        }
+
         var resolved = executor.ResolveProfile(profile);
         var parameters = new Dictionary<string, string>(StringComparer.Ordinal) { ["clientftfid"] = NextTransferId(), ["name"] = name };
         foreach (var (key, value) in ChannelParameters(channelId, channelPassword))
@@ -173,12 +187,21 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
             parameters[key] = value;
         }
 
-        parameters["seekpos"] = "0";
+        // Measured: seekpos makes the server send the file from that byte on, while size stays the whole file's.
+        var offset = resume && target is not null && File.Exists(target + ".partial") ? new FileInfo(target + ".partial").Length : 0;
+        parameters["seekpos"] = offset.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         var records = await executor.RunCommandAsync(
             "ts_file_download", profile, new QueryCommand("ftinitdownload", parameters, VirtualServerId: virtualServerId), cancellationToken)
             .ConfigureAwait(false);
         var ticket = Ticket(resolved.Name, "ftinitdownload", records);
+
+        if (offset > ticket.Size)
+        {
+            throw new McpException(
+                $"Nothing was downloaded: {target}.partial holds {offset} bytes, more than the {ticket.Size} of {name}, so it " +
+                "belongs to another file. Download without resume to start over.");
+        }
 
         if (target is null && ticket.Size > options.MaxInlineBytes)
         {
@@ -200,36 +223,32 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
                     : new FileDownload(channelId, name, bytes.Length, "base64", Convert.ToBase64String(bytes), null);
             }
 
-            await SaveAsync(ticket, resolved.Host, target, cancellationToken).ConfigureAwait(false);
-            return new FileDownload(channelId, name, ticket.Size, "file", null, target);
+            await SaveAsync(ticket, resolved.Host, target, offset, cancellationToken).ConfigureAwait(false);
+            return new FileDownload(channelId, name, ticket.Size, "file", null, target, offset > 0 ? offset : null);
         }
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException)
         {
-            throw new McpException($"Downloading {name} from channel {channelId} failed: {ex.Message}", ex);
+            var kept = target is not null && File.Exists(target + ".partial")
+                ? $" What arrived is kept in {target}.partial; call again with resume=true to continue."
+                : string.Empty;
+            throw new McpException($"Downloading {name} from channel {channelId} failed: {ex.Message}{kept}", ex);
         }
     }
 
-    private static async Task SaveAsync(FileTransferTicket ticket, string host, string target, CancellationToken cancellationToken)
+    private static async Task SaveAsync(FileTransferTicket ticket, string host, string target, long offset, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
 
-        // Written under another name first, so a transfer that breaks off leaves no file that looks complete.
+        // Written under another name first, so a transfer that breaks off leaves no file that looks complete,
+        // and what arrived stays there for resume to continue. A fresh download never opens an existing one.
         var partial = target + ".partial";
-        try
+        var file = new FileStream(partial, offset > 0 ? FileMode.Append : FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+        await using (file.ConfigureAwait(false))
         {
-            var file = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            await using (file.ConfigureAwait(false))
-            {
-                await FileTransferClient.DownloadAsync(ticket, host, file, ticket.Size, cancellationToken).ConfigureAwait(false);
-            }
+            await FileTransferClient.DownloadAsync(ticket, host, file, ticket.Size - offset, cancellationToken).ConfigureAwait(false);
+        }
 
-            File.Move(partial, target, overwrite: false);
-        }
-        catch
-        {
-            File.Delete(partial);
-            throw;
-        }
+        File.Move(partial, target, overwrite: false);
     }
 
     private static string? AsText(byte[] bytes)
@@ -310,4 +329,5 @@ public sealed record RunningTransfer(
 /// <param name="Format"><c>text</c> or <c>base64</c> when the content is in the answer, <c>file</c> when it was saved.</param>
 /// <param name="Content">The content, for <c>text</c> and <c>base64</c>.</param>
 /// <param name="SavedTo">Where it was saved, for <c>file</c>.</param>
-public sealed record FileDownload(int ChannelId, string Path, long Size, string Format, string? Content, string? SavedTo);
+/// <param name="ResumedFrom">For a resumed download, the byte it continued from.</param>
+public sealed record FileDownload(int ChannelId, string Path, long Size, string Format, string? Content, string? SavedTo, long? ResumedFrom = null);

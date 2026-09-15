@@ -144,7 +144,8 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
     public async Task An_unfinished_upload_is_listed_and_stopping_it_removes_the_partial_file()
     {
         await using var connections = Connections();
-        var executor = new QueryExecutor(connections, new SafetyPolicy(SafetyLevel.Write));
+        // Stopping with deletePartial discards an upload, which needs Destructive.
+        var executor = new QueryExecutor(connections, new SafetyPolicy(SafetyLevel.Destructive));
         var files = new FileTools(executor, Options());
         var (channel, _) = await TwoChannelsAsync(executor);
         var name = "/" + Unique() + ".bin";
@@ -154,8 +155,13 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
                 "ftinitupload",
                 new Dictionary<string, string>
                 {
-                    ["clientftfid"] = "900", ["name"] = name, ["cid"] = channel.ToString(CultureInfo.InvariantCulture), ["cpw"] = "",
-                    ["size"] = "1000000", ["overwrite"] = "1", ["resume"] = "0",
+                    ["clientftfid"] = "900",
+                    ["name"] = name,
+                    ["cid"] = channel.ToString(CultureInfo.InvariantCulture),
+                    ["cpw"] = "",
+                    ["size"] = "1000000",
+                    ["overwrite"] = "1",
+                    ["resume"] = "0",
                 },
                 VirtualServerId: 1),
             Ct);
@@ -198,7 +204,7 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
     public async Task An_upload_that_broke_off_is_resumed_to_an_identical_file()
     {
         await using var connections = Connections();
-        var executor = new QueryExecutor(connections, new SafetyPolicy(SafetyLevel.Write));
+        var executor = new QueryExecutor(connections, new SafetyPolicy(SafetyLevel.Destructive));
         var options = Options();
         var (channel, _) = await TwoChannelsAsync(executor);
         var name = "/" + Unique() + ".bin";
@@ -215,8 +221,13 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
                     "ftinitupload",
                     new Dictionary<string, string>
                     {
-                        ["clientftfid"] = "901", ["name"] = name, ["cid"] = channel.ToString(CultureInfo.InvariantCulture), ["cpw"] = "",
-                        ["size"] = content.Length.ToString(CultureInfo.InvariantCulture), ["overwrite"] = "1", ["resume"] = "0",
+                        ["clientftfid"] = "901",
+                        ["name"] = name,
+                        ["cid"] = channel.ToString(CultureInfo.InvariantCulture),
+                        ["cpw"] = "",
+                        ["size"] = content.Length.ToString(CultureInfo.InvariantCulture),
+                        ["overwrite"] = "1",
+                        ["resume"] = "0",
                     },
                     VirtualServerId: 1),
                 Ct);
@@ -241,6 +252,12 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
 
             var saved = await files.DownloadAsync(channel, name, localPath: "resumed.bin", virtualServerId: 1, cancellationToken: Ct);
             Assert.Equal(content, await File.ReadAllBytesAsync(saved.SavedTo!, Ct));
+
+            // And a download that broke off, left as the first 120 KB in the partial file, resumed to the whole.
+            await File.WriteAllBytesAsync(Path.Combine(_localDirectory, "again.bin.partial"), content[..120_000], Ct);
+            var continued = await files.DownloadAsync(channel, name, localPath: "again.bin", resume: true, virtualServerId: 1, cancellationToken: Ct);
+            Assert.Equal(120_000L, continued.ResumedFrom);
+            Assert.Equal(content, await File.ReadAllBytesAsync(continued.SavedTo!, Ct));
         }
         finally
         {

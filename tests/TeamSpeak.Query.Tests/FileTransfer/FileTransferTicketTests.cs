@@ -47,4 +47,12 @@ public class FileTransferTicketTests
     {
         Assert.Throws<QueryProtocolException>(() => FileTransferTicket.FromRecord(Record("clientftfid=1 port=30033")));
     }
+
+    [Theory]
+    [InlineData("ftkey=abc port=0")]
+    [InlineData("ftkey=abc port=70000")]
+    [InlineData("ftkey=abc port=30033 size=-1")]
+    [InlineData("ftkey=abc port=30033 seekpos=-5")]
+    public void Refuses_a_port_size_or_position_no_transfer_could_have(string line) =>
+        Assert.Throws<QueryProtocolException>(() => FileTransferTicket.FromRecord(Record(line)));
 }

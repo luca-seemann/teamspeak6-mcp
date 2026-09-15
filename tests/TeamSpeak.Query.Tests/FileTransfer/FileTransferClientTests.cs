@@ -143,7 +143,7 @@ public sealed class FileTransferClientTests : IDisposable
     }
 
     [Fact]
-    public async Task Falls_back_to_the_query_host_when_an_address_the_server_names_is_unreachable()
+    public async Task Falls_back_to_an_address_the_server_names_when_the_configured_host_is_unreachable()
     {
         var server = Task.Run(async () =>
         {
@@ -155,7 +155,7 @@ public sealed class FileTransferClientTests : IDisposable
 
         // Nothing listens on this port at 127.0.0.2, so the connection is refused at once.
         using var destination = new MemoryStream();
-        await FileTransferClient.DownloadAsync(Ticket(3, "127.0.0.2"), "127.0.0.1", destination, 3, Ct);
+        await FileTransferClient.DownloadAsync(Ticket(3, "127.0.0.1"), "127.0.0.2", destination, 3, Ct);
 
         Assert.Equal([1, 2, 3], destination.ToArray());
         await server;
