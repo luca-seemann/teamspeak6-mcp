@@ -1,6 +1,8 @@
 # To do
 
-Things decided or announced but deliberately not built yet: the list of work waiting for a trigger.
+Work and checks that wait for a trigger: things decided or announced but deliberately not built yet,
+and verification that needs something not at hand yet. [docs/known-gaps.md](docs/known-gaps.md)
+lists everything that is unverified, including what cannot be checked on the test server at all.
 
 - **Server→client push for events.** Deferred on 15 September 2026. Delivery stays `ts_events_poll`
   and `ts_events_wait` for now. Push is feasible over stdio (`SendNotificationAsync`), impossible over

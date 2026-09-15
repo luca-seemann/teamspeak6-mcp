@@ -8,6 +8,8 @@ manage groups, and watch what is happening on the server.
 > **Status: pre-release, 0.1.0-beta.** Reading, changing, events, file transfer and prompts are
 > complete and verified against a live TeamSpeak 6 server, and the server builds as a NuGet tool
 > package and as self-contained binaries. Nothing is published yet.
+> [docs/known-gaps.md](docs/known-gaps.md) lists what is still unverified, and [TODO.md](TODO.md) what
+> waits for a trigger.
 
 ## Why this exists
 
@@ -454,6 +456,8 @@ src/TeamSpeak.Query    Transport-agnostic ServerQuery client library
 src/TeamSpeak.Mcp      The MCP server itself (stdio and Streamable HTTP)
 tests/                 Unit tests, an in-memory fake server, and a live-server integration suite
 docker/                Container image and a compose file that brings up TeamSpeak alongside it
+docs/                  How TeamSpeak 6 really behaves, measured, and the known gaps of this project
+reference/             The ServerQuery command reference, captured from the server itself
 ```
 
 The integration suite skips itself unless `TSMCP_TEST_HOST` points at a live server, so
