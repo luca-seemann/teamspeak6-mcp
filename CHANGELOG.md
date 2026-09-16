@@ -105,7 +105,6 @@ All notable changes to this project are documented here. The format follows
   `clientdbinfo` and `logview`. Each was captured over SSH and the WebQuery within the same minute,
   and the SSH captures keep the `\n\r` line ending the server really sends. Tests check that both
   transports decode each one to the same records.
-
 - `SECURITY.md`, saying where a vulnerability goes and what this server can reach: query
   credentials, everything the safety level allows, and local files inside the configured directory.
 - A release workflow. A version tag builds the three binaries and the packages, and attaches them

@@ -415,7 +415,7 @@ inside and compiled ahead of time with ReadyToRun. It needs nothing installed.
   the first answer.
 
 Pushing a version tag builds all three binaries and the packages and attaches them to a GitHub
-release, with checksums. No release is tagged yet.
+release, with checksums. No release is tagged yet, and that workflow has never run.
 
 ```bash
 claude mcp add teamspeak \

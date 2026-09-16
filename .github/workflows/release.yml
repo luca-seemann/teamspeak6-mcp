@@ -22,10 +22,13 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # github.ref_name is the branch when the workflow is started by hand, so the tag is resolved once.
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ env.TAG }}
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -50,7 +53,7 @@ jobs:
       # One archive per platform, so a download is a single file with a recognisable name.
       - name: Archive
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${TAG#v}"
           mkdir -p artifacts
           for rid in win-x64 linux-x64 linux-arm64; do
             case "$rid" in
@@ -65,8 +68,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.event.inputs.tag || github.ref_name }}" artifacts/* \
-            --title "${{ github.event.inputs.tag || github.ref_name }}" \
+          # A semver prerelease carries a hyphen, as in v0.1.0-beta; v1.0.0 does not.
+          case "$TAG" in
+            *-*) prerelease=--prerelease ;;
+            *)   prerelease= ;;
+          esac
+          gh release create "$TAG" artifacts/* \
+            --title "$TAG" \
             --notes "See [CHANGELOG.md](CHANGELOG.md). Verify downloads against SHA256SUMS.txt." \
-            --verify-tag \
-            --prerelease
+            --verify-tag $prerelease
