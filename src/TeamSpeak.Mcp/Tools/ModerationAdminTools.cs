@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -134,7 +135,7 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
                  "needs Destructive, because it hands out access. delete invalidates an unused key and needs " +
                  "Write.")]
     public async Task<ActionResult> ManageTokenAsync(
-        [Description("add or delete.")] string action,
+        [Description("add or delete.")][AllowedValues("add", "delete")] string action,
         [Description("For add: the server group the key grants.")] int? serverGroupId = null,
         [Description("For add: the channel group the key grants, together with channelId.")] int? channelGroupId = null,
         [Description("For add with channelGroupId: the channel.")] int? channelId = null,
@@ -179,7 +180,7 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
                  "one. Integrations use these to tie TeamSpeak identities to other systems; ts_custom_search " +
                  "finds them again. Needs Write.")]
     public async Task<ActionResult> CustomPropertyAsync(
-        [Description("set or delete.")] string action,
+        [Description("set or delete.")][AllowedValues("set", "delete")] string action,
         [Description("The client's database id.")] int databaseId,
         [Description("The property identifier, for example 'forum_account'.")] string ident,
         [Description("For set: the value.")] string? value = null,
@@ -209,12 +210,12 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
                  "change was made. Needs Write.")]
     public async Task<ActionResult> AddLogAsync(
         [Description("The entry text.")] string message,
-        [Description("info (the default), warning, error, or debug.")] string? level = null,
+        [Description("info (the default), warning, error, or debug.")][AllowedValues("info", "warning", "error", "debug")] string level = "info",
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var levelId = (level is null ? "info" : Choice(level, nameof(level), "info", "warning", "error", "debug")) switch
+        var levelId = Choice(level, nameof(level), "info", "warning", "error", "debug") switch
         {
             "error" => "1",
             "warning" => "2",
@@ -234,13 +235,13 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
     /// <summary>Creates or deletes a WebQuery API key.</summary>
     [McpServerTool(Name = "ts_apikey_manage", Title = "Create or delete a WebQuery API key",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("add creates a WebQuery API key with a scope (read, write or manage) and a lifetime in days, " +
+    [Description("add creates a WebQuery API key with a scope (read unless given) and a lifetime in days, " +
                  "for this query login or another identity; the key itself is returned once and never shown " +
                  "again. delete removes a key by the id ts_apikey_list shows; deleting the key a profile of " +
                  "this server uses cuts that profile off. Both need Destructive.")]
     public async Task<ActionResult> ManageApiKeyAsync(
-        [Description("add or delete.")] string action,
-        [Description("For add: read, write, or manage.")] string? scope = null,
+        [Description("add or delete.")][AllowedValues("add", "delete")] string action,
+        [Description("For add: read (the default), write, or manage.")][AllowedValues("read", "write", "manage")] string scope = "read",
         [Description("For add: lifetime in days. 0 means the key never expires. Omitted, the server's default of 14 days.")] int? lifetimeDays = null,
         [Description("For add: the identity to own the key. Omit for this query login.")] int? databaseId = null,
         [Description("For delete: the key id.")] int? keyId = null,
@@ -284,7 +285,7 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
                  "identity's query login. Query logins act with that identity's permissions, so both need " +
                  "Destructive.")]
     public async Task<ActionResult> ManageQueryLoginAsync(
-        [Description("add or delete.")] string action,
+        [Description("add or delete.")][AllowedValues("add", "delete")] string action,
         [Description("The identity's database id.")] int databaseId,
         [Description("For add: the login name.")] string? loginName = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,

@@ -32,7 +32,7 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
         await using var hub = new QueryEventHub(connections.Profiles);
         var events = new EventTools(executor, hub);
 
-        var subscribed = await events.SubscribeAsync(["textserver", "channel"], virtualServerId: 1, cancellationToken: Ct);
+        var subscribed = await events.SubscribeAsync([EventCategoryName.TextServer, EventCategoryName.Channel], virtualServerId: 1, cancellationToken: Ct);
         Assert.Equal(["channel", "textserver"], subscribed.Subscription.Categories);
         Assert.Equal(1, subscribed.Subscription.SessionsOpened);
 
@@ -76,7 +76,7 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
         var events = new EventTools(executor, hub);
         var power = new VirtualServerAdminTools(executor);
 
-        var subscribed = await events.SubscribeAsync(["textserver"], virtualServerId: 1, cancellationToken: Ct);
+        var subscribed = await events.SubscribeAsync([EventCategoryName.TextServer], virtualServerId: 1, cancellationToken: Ct);
         try
         {
             await power.PowerAsync("stop", 1, "event recovery test", cancellationToken: Ct);
@@ -90,7 +90,7 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
             while (!arrived && DateTimeOffset.UtcNow < deadline)
             {
                 await new ClientAdminTools(executor).SendMessageAsync("server", message, virtualServerId: 1, cancellationToken: Ct);
-                var page = await events.WaitAsync(cursor, timeoutSeconds: 5, categories: ["textserver"], virtualServerId: 1, cancellationToken: Ct);
+                var page = await events.WaitAsync(cursor, timeoutSeconds: 5, categories: [EventCategoryName.TextServer], virtualServerId: 1, cancellationToken: Ct);
                 arrived = page.Events.Any(e => e.Fields.Count > 0 && e.Fields[0].TryGetValue("msg", out var text) && text == message);
                 cursor = page.NextCursor;
             }
@@ -111,7 +111,7 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
 
         while (DateTimeOffset.UtcNow < deadline)
         {
-            var page = await events.WaitAsync(cursor, timeoutSeconds: 5, categories: [category], virtualServerId: 1, cancellationToken: Ct);
+            var page = await events.WaitAsync(cursor, timeoutSeconds: 5, categories: [Enum.Parse<EventCategoryName>(category, ignoreCase: true)], virtualServerId: 1, cancellationToken: Ct);
             if (page.Events.FirstOrDefault(e => e.Fields.Count > 0 && matches(e.Fields[0])) is { } found)
             {
                 return found;

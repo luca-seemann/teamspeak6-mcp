@@ -533,11 +533,11 @@ public class WriteToolsTests
     }
 
     [Theory]
-    [InlineData(null, "4")]
+    [InlineData("info", "4")]
     [InlineData("error", "1")]
     [InlineData("Warning", "2")]
     [InlineData("debug", "3")]
-    public async Task Maps_log_levels_to_the_server_codes(string? level, string expected)
+    public async Task Maps_log_levels_to_the_server_codes(string level, string expected)
     {
         await using var harness = new ToolHarness(SafetyLevel.Write);
         harness.Transport.Returns("logadd", ToolHarness.Records());

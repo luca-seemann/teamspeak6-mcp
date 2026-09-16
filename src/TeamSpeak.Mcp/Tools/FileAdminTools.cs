@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text;
 
@@ -182,7 +183,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
                  "its serverTransferId. These need Write. With deletePartial=true, stop also removes what an " +
                  "unfinished upload left behind, which can be someone else's upload, so that needs Destructive." + SshOnly)]
     public async Task<ActionResult> ManageAsync(
-        [Description("createdir, rename, or stop.")] string action,
+        [Description("createdir, rename, or stop.")][AllowedValues("createdir", "rename", "stop")] string action,
         [Description("For createdir and rename: the channel.")] int? channelId = null,
         [Description("For createdir: the directory to create. For rename: what to rename, such as /old.txt.")] string? path = null,
         [Description("For rename: the new path, such as /archive/new.txt.")] string? newPath = null,

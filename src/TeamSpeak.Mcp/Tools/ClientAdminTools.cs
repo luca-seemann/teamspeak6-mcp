@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -77,7 +78,7 @@ public sealed class ClientAdminTools(QueryExecutor executor)
                  "server's own query session. Needs Destructive.")]
     public async Task<ActionResult> KickAsync(
         [Description("The client's session id, from ts_client_list.")] int clientId,
-        [Description("channel to kick into the default channel, or server to disconnect them.")] string from,
+        [Description("channel to kick into the default channel, or server to disconnect them.")][AllowedValues("channel", "server")] string from,
         [Description("A reason shown to the client, at most 40 characters.")] string? reason = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -205,7 +206,7 @@ public sealed class ClientAdminTools(QueryExecutor executor)
                  "back as one uninterrupted step, because TeamSpeak delivers channel messages only to the " +
                  "channel the sender is in. Needs Write.")]
     public async Task<ActionResult> SendMessageAsync(
-        [Description("client, channel, server, or instance.")] string target,
+        [Description("client, channel, server, or instance.")][AllowedValues("client", "channel", "server", "instance")] string target,
         [Description("The message text.")] string message,
         [Description("For client: the recipient's session id.")] int? clientId = null,
         [Description("For channel: the channel.")] int? channelId = null,
@@ -254,7 +255,7 @@ public sealed class ClientAdminTools(QueryExecutor executor)
                  "connect; it needs a real client's unique identity, not a query login. delete removes a " +
                  "message from this server's own inbox, as listed by ts_message_list. Needs Write.")]
     public async Task<ActionResult> OfflineMessageAsync(
-        [Description("send or delete.")] string action,
+        [Description("send or delete.")][AllowedValues("send", "delete")] string action,
         [Description("For send: the recipient's unique identity, from ts_client_resolve.")] string? uniqueId = null,
         [Description("For send: the subject.")] string? subject = null,
         [Description("For send: the message text.")] string? message = null,

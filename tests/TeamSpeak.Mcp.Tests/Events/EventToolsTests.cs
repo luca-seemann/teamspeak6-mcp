@@ -59,7 +59,7 @@ public class EventToolsTests
         buffer.Append(1, Text("1", "private message"));
         buffer.Append(2, Text("3", "other server"));
 
-        var result = new EventTools(harness.Executor, hub).Poll(after: 0, categories: ["textserver"], virtualServerId: 1);
+        var result = new EventTools(harness.Executor, hub).Poll(after: 0, categories: [EventCategoryName.TextServer], virtualServerId: 1);
 
         var only = Assert.Single(result.Events);
         Assert.Equal(("server message", "notifytextmessage", "textserver"), (only.Fields[0]["msg"], only.Name, Assert.Single(only.Categories)));
@@ -85,7 +85,7 @@ public class EventToolsTests
         var sessions = new Sessions();
         await using var hub = new QueryEventHub(harness.Executor.Connections.Profiles, 100, sessions.OpenAsync);
         var tools = new EventTools(harness.Executor, hub);
-        var subscribed = await tools.SubscribeAsync(["textserver"], cancellationToken: Ct);
+        var subscribed = await tools.SubscribeAsync([EventCategoryName.TextServer], cancellationToken: Ct);
 
         var waiting = tools.WaitAsync(subscribed.Cursor, timeoutSeconds: 10, cancellationToken: Ct);
         Assert.Single(sessions.Opened).Push(Text("3", "hello"));
@@ -102,7 +102,7 @@ public class EventToolsTests
         var sessions = new Sessions();
         await using var hub = new QueryEventHub(harness.Executor.Connections.Profiles, 100, sessions.OpenAsync);
         var tools = new EventTools(harness.Executor, hub);
-        await tools.SubscribeAsync(["bans"], cancellationToken: Ct);
+        await tools.SubscribeAsync([EventCategoryName.Bans], cancellationToken: Ct);
 
         var result = await tools.UnsubscribeAsync(cancellationToken: Ct);
 
@@ -118,9 +118,20 @@ public class EventToolsTests
         var sessions = new Sessions();
         await using var hub = new QueryEventHub(harness.Executor.Connections.Profiles, 100, sessions.OpenAsync);
 
-        await Assert.ThrowsAsync<McpException>(() => new EventTools(harness.Executor, hub).SubscribeAsync(["everything"], cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => new EventTools(harness.Executor, hub).SubscribeAsync([(EventCategoryName)99], cancellationToken: Ct));
 
         Assert.Empty(sessions.Opened);
+    }
+
+    [Fact]
+    public void The_tool_categories_name_exactly_the_hub_categories()
+    {
+        Assert.Equal(Enum.GetNames<EventCategory>(), Enum.GetNames<EventCategoryName>());
+
+        // The schema's lowercase names, which the subscription result reports back the same way.
+        Assert.Equal(
+            ["\"server\"", "\"channel\"", "\"textserver\"", "\"textchannel\"", "\"textprivate\"", "\"bans\""],
+            Enum.GetValues<EventCategoryName>().Select(category => System.Text.Json.JsonSerializer.Serialize(category)));
     }
 
     [Fact]
@@ -141,7 +152,7 @@ public class EventToolsTests
         await using var harness = new ToolHarness();
         await using var hub = new QueryEventHub(harness.Executor.Connections.Profiles, 42, new Sessions().OpenAsync);
         var tools = new EventTools(harness.Executor, hub);
-        await tools.SubscribeAsync(["server"], virtualServerId: 1, cancellationToken: Ct);
+        await tools.SubscribeAsync([EventCategoryName.Server], virtualServerId: 1, cancellationToken: Ct);
         hub.BufferFor("test").Append(1, Text("3", "x"));
 
         var status = tools.Status();

@@ -141,6 +141,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- 22 parameters that take one of a fixed set of values, such as `action`, `target`, `scope`, `level`
+  and the event `categories`, listed the values only in their description. Their schema now carries
+  an `enum`, so a client can offer and check them. `level` of `ts_log_add`, `type` of the group tools
+  and `scope` of `ts_apikey_manage` have real defaults (`info`, `regular`, `read`) instead of `null`.
+- A missing argument or one of the wrong type was answered only with "An error occurred invoking",
+  naming neither the argument nor the problem. The answer now says, for example, "'channelId' must be
+  an integer, not the string "abc"", and the SDK no longer logs it as an unhandled exception.
 - `serverInfo` reported the assembly version `0.1.0.0` instead of `0.1.0-beta`, and now also
   names the server `teamspeak6-mcp` explicitly. The capabilities still advertise `listChanged`: the
   SDK sets it whenever tools exist and ignores a configured `false`. The lists never change, so no

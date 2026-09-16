@@ -89,21 +89,27 @@
   {
     "name": "ts_apikey_manage",
     "title": "Create or delete a WebQuery API key",
-    "description": "add creates a WebQuery API key with a scope (read, write or manage) and a lifetime in days, for this query login or another identity; the key itself is returned once and never shown again. delete removes a key by the id ts_apikey_list shows; deleting the key a profile of this server uses cuts that profile off. Both need Destructive.",
+    "description": "add creates a WebQuery API key with a scope (read unless given) and a lifetime in days, for this query login or another identity; the key itself is returned once and never shown again. delete removes a key by the id ts_apikey_list shows; deleting the key a profile of this server uses cuts that profile off. Both need Destructive.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "action": {
           "description": "add or delete.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "add",
+            "delete"
+          ]
         },
         "scope": {
-          "description": "For add: read, write, or manage.",
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+          "description": "For add: read (the default), write, or manage.",
+          "type": "string",
+          "default": "read",
+          "enum": [
+            "read",
+            "write",
+            "manage"
+          ]
         },
         "lifetimeDays": {
           "description": "For add: lifetime in days. 0 means the key never expires. Omitted, the server\u0027s default of 14 days.",
@@ -1225,7 +1231,12 @@
       "properties": {
         "action": {
           "description": "create, copy, or rename.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "create",
+            "copy",
+            "rename"
+          ]
         },
         "name": {
           "description": "The name of the new group, or the new name.",
@@ -1241,11 +1252,13 @@
         },
         "type": {
           "description": "For create and copy: regular (the default), template, or query.",
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+          "type": "string",
+          "default": "regular",
+          "enum": [
+            "regular",
+            "template",
+            "query"
+          ]
         },
         "virtualServerId": {
           "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
@@ -1789,7 +1802,11 @@
         },
         "from": {
           "description": "channel to kick into the default channel, or server to disconnect them.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "channel",
+            "server"
+          ]
         },
         "reason": {
           "description": "A reason shown to the client, at most 40 characters.",
@@ -2804,7 +2821,11 @@
       "properties": {
         "action": {
           "description": "set or delete.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "set",
+            "delete"
+          ]
         },
         "databaseId": {
           "description": "The client\u0027s database id.",
@@ -2974,15 +2995,20 @@
           "default": 50
         },
         "categories": {
-          "description": "Only events of these categories: server, channel, textserver, textchannel, textprivate, bans. Omit for all.",
+          "description": "Only events of these categories. Omit for all.",
           "type": [
             "array",
             "null"
           ],
           "items": {
-            "type": [
-              "string",
-              "null"
+            "type": "string",
+            "enum": [
+              "server",
+              "channel",
+              "textserver",
+              "textchannel",
+              "textprivate",
+              "bans"
             ]
           },
           "default": null
@@ -3266,15 +3292,20 @@
       "type": "object",
       "properties": {
         "categories": {
-          "description": "Categories to add: server, channel, textserver, textchannel, textprivate, bans. Omit for all.",
+          "description": "Categories to add. Omit for all.",
           "type": [
             "array",
             "null"
           ],
           "items": {
-            "type": [
-              "string",
-              "null"
+            "type": "string",
+            "enum": [
+              "server",
+              "channel",
+              "textserver",
+              "textchannel",
+              "textprivate",
+              "bans"
             ]
           },
           "default": null
@@ -3406,15 +3437,20 @@
       "type": "object",
       "properties": {
         "categories": {
-          "description": "Categories to end: server, channel, textserver, textchannel, textprivate, bans. Omit to end all of them.",
+          "description": "Categories to end. Omit to end all of them.",
           "type": [
             "array",
             "null"
           ],
           "items": {
-            "type": [
-              "string",
-              "null"
+            "type": "string",
+            "enum": [
+              "server",
+              "channel",
+              "textserver",
+              "textchannel",
+              "textprivate",
+              "bans"
             ]
           },
           "default": null
@@ -3543,15 +3579,20 @@
           "default": 50
         },
         "categories": {
-          "description": "Only events of these categories: server, channel, textserver, textchannel, textprivate, bans. Omit for all.",
+          "description": "Only events of these categories. Omit for all.",
           "type": [
             "array",
             "null"
           ],
           "items": {
-            "type": [
-              "string",
-              "null"
+            "type": "string",
+            "enum": [
+              "server",
+              "channel",
+              "textserver",
+              "textchannel",
+              "textprivate",
+              "bans"
             ]
           },
           "default": null
@@ -4117,7 +4158,12 @@
       "properties": {
         "action": {
           "description": "createdir, rename, or stop.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "createdir",
+            "rename",
+            "stop"
+          ]
         },
         "channelId": {
           "description": "For createdir and rename: the channel.",
@@ -4685,11 +4731,14 @@
         },
         "level": {
           "description": "info (the default), warning, error, or debug.",
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+          "type": "string",
+          "default": "info",
+          "enum": [
+            "info",
+            "warning",
+            "error",
+            "debug"
+          ]
         },
         "virtualServerId": {
           "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
@@ -4983,7 +5032,13 @@
       "properties": {
         "target": {
           "description": "client, channel, server, or instance.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "client",
+            "channel",
+            "server",
+            "instance"
+          ]
         },
         "message": {
           "description": "The message text.",
@@ -5080,7 +5135,11 @@
       "properties": {
         "action": {
           "description": "send or delete.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "send",
+            "delete"
+          ]
         },
         "uniqueId": {
           "description": "For send: the recipient\u0027s unique identity, from ts_client_resolve.",
@@ -5695,7 +5754,11 @@
       "properties": {
         "action": {
           "description": "grant or revoke.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "grant",
+            "revoke"
+          ]
         },
         "permission": {
           "description": "The permission name, for example \u0027i_client_talk_power\u0027. See ts_perm_list.",
@@ -6038,7 +6101,11 @@
       "properties": {
         "action": {
           "description": "add or delete.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "add",
+            "delete"
+          ]
         },
         "databaseId": {
           "description": "The identity\u0027s database id.",
@@ -6279,7 +6346,12 @@
       "properties": {
         "action": {
           "description": "create, copy, or rename.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "create",
+            "copy",
+            "rename"
+          ]
         },
         "name": {
           "description": "The name of the new group, or the new name.",
@@ -6295,11 +6367,13 @@
         },
         "type": {
           "description": "For create and copy: regular (the default), template, or query.",
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+          "type": "string",
+          "default": "regular",
+          "enum": [
+            "regular",
+            "template",
+            "query"
+          ]
         },
         "virtualServerId": {
           "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
@@ -6442,7 +6516,11 @@
       "properties": {
         "action": {
           "description": "add or remove.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "add",
+            "remove"
+          ]
         },
         "groupId": {
           "description": "The server group.",
@@ -6520,7 +6598,12 @@
       "properties": {
         "action": {
           "description": "list, add or delete.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "list",
+            "add",
+            "delete"
+          ]
         },
         "password": {
           "description": "For add and delete: the password.",
@@ -6713,7 +6796,11 @@
       "properties": {
         "action": {
           "description": "add or delete.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "add",
+            "delete"
+          ]
         },
         "serverGroupId": {
           "description": "For add: the server group the key grants.",
@@ -7157,7 +7244,11 @@
       "properties": {
         "action": {
           "description": "start or stop.",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "start",
+            "stop"
+          ]
         },
         "virtualServerId": {
           "description": "The virtual server to start or stop.",

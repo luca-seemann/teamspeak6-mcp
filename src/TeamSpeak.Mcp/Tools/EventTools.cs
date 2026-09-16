@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -18,9 +19,6 @@ namespace TeamSpeak.Mcp.Tools;
 public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
 {
     private const int MaxWaitSeconds = 60;
-    private const string CategoryList = "server, channel, textserver, textchannel, textprivate, bans";
-
-    private static readonly string[] CategoryNames = ["server", "channel", "textserver", "textchannel", "textprivate", "bans"];
 
     /// <summary>Subscribes to events.</summary>
     /// <param name="categories">The categories.</param>
@@ -44,7 +42,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
                  "need the SSH query and use a query session of their own. Subscriptions are shared by " +
                  "everyone using this server, and last until ts_events_unsubscribe or a restart.")]
     public async Task<EventSubscribeResult> SubscribeAsync(
-        [Description("Categories to add: " + CategoryList + ". Omit for all.")] string[]? categories = null,
+        [Description("Categories to add. Omit for all.")] EventCategoryName[]? categories = null,
         [Description("Limit the channel category to one channel id; omit for every channel.")] int? channelId = null,
         [Description("For the textchannel category, the channel whose chat to receive: the event session is moved into it and appears there as a query client, and is moved back there after any reconnect. It stays in that channel until you subscribe again with a different one; omitting this leaves the current channel unchanged (the default channel until one is set).")]
         int? textChannelId = null,
@@ -82,7 +80,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
                  "categories, or when none would be left, the event session is closed. Events already " +
                  "collected stay readable until newer ones push them out.")]
     public async Task<EventUnsubscribeResult> UnsubscribeAsync(
-        [Description("Categories to end: " + CategoryList + ". Omit to end all of them.")] string[]? categories = null,
+        [Description("Categories to end. Omit to end all of them.")] EventCategoryName[]? categories = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -121,7 +119,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
         [Description("The last cursor seen: nextCursor from an earlier answer, or the cursor from ts_events_subscribe. 0 for everything still buffered.")]
         long after = 0,
         [Description("How many events to return, from 1 to 200.")] int limit = 50,
-        [Description("Only events of these categories: " + CategoryList + ". Omit for all.")] string[]? categories = null,
+        [Description("Only events of these categories. Omit for all.")] EventCategoryName[]? categories = null,
         [Description("Only events from this virtual server; omit for all.")] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null)
     {
@@ -151,7 +149,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
         long after,
         [Description("How long to wait, from 1 to 60 seconds.")] int timeoutSeconds = 30,
         [Description("How many events to return, from 1 to 200.")] int limit = 50,
-        [Description("Only events of these categories: " + CategoryList + ". Omit for all.")] string[]? categories = null,
+        [Description("Only events of these categories. Omit for all.")] EventCategoryName[]? categories = null,
         [Description("Only events from this virtual server; omit for all.")] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -208,11 +206,13 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
         }
     }
 
-    private static EventCategory[]? ParseCategories(string[]? categories) =>
+    private static EventCategory[]? ParseCategories(EventCategoryName[]? categories) =>
         categories is null || categories.Length == 0
             ? null
             : categories
-                .Select(category => Enum.Parse<EventCategory>(Choice(category, "categories", CategoryNames), ignoreCase: true))
+                .Select(category => Enum.IsDefined(category)
+                    ? Enum.Parse<EventCategory>(category.ToString())
+                    : throw new McpException($"'categories' holds an unknown category {(int)category}."))
                 .Distinct()
                 .ToArray();
 
@@ -351,3 +351,33 @@ public sealed record EventStatus(
     int BufferCapacity,
     long Oldest,
     long Newest);
+
+/// <summary>An event category as the event tools accept it, lowercase in the tool schema.</summary>
+/// <remarks>Mirrors <see cref="EventCategory"/> by member name; a test keeps the two in step.</remarks>
+[JsonConverter(typeof(JsonStringEnumConverter<EventCategoryName>))]
+public enum EventCategoryName
+{
+    /// <summary><see cref="EventCategory.Server"/>.</summary>
+    [JsonStringEnumMemberName("server")]
+    Server,
+
+    /// <summary><see cref="EventCategory.Channel"/>.</summary>
+    [JsonStringEnumMemberName("channel")]
+    Channel,
+
+    /// <summary><see cref="EventCategory.TextServer"/>.</summary>
+    [JsonStringEnumMemberName("textserver")]
+    TextServer,
+
+    /// <summary><see cref="EventCategory.TextChannel"/>.</summary>
+    [JsonStringEnumMemberName("textchannel")]
+    TextChannel,
+
+    /// <summary><see cref="EventCategory.TextPrivate"/>.</summary>
+    [JsonStringEnumMemberName("textprivate")]
+    TextPrivate,
+
+    /// <summary><see cref="EventCategory.Bans"/>.</summary>
+    [JsonStringEnumMemberName("bans")]
+    Bans,
+}

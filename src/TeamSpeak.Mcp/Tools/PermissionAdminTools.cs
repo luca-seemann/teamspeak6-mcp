@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -25,7 +26,7 @@ public sealed class PermissionAdminTools(QueryExecutor executor, PermissionNameC
                  "databaseId (the identity in that channel). negated applies only to server groups; skip " +
                  "only to server groups and identities. Check the result with ts_perm_effective. Needs Write.")]
     public async Task<ActionResult> SetPermissionAsync(
-        [Description("grant or revoke.")] string action,
+        [Description("grant or revoke.")][AllowedValues("grant", "revoke")] string action,
         [Description("The permission name, for example 'i_client_talk_power'. See ts_perm_list.")] string permission,
         [Description("For grant: the value. Booleans use 1 and 0.")] int? value = null,
         [Description("For grant on a server group: use the lowest rather than highest value across groups.")] bool? negated = null,

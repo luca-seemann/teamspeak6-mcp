@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -66,7 +67,7 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
                  "it and needs Destructive; the optional reason is shown to them. The virtual server id is " +
                  "required here rather than defaulted, so the wrong server is not stopped by accident.")]
     public async Task<ActionResult> PowerAsync(
-        [Description("start or stop.")] string action,
+        [Description("start or stop.")][AllowedValues("start", "stop")] string action,
         [Description("The virtual server to start or stop.")] int virtualServerId,
         [Description("When stopping, a message shown to the clients being disconnected.")] string? reason = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -231,7 +232,7 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
                  "needs Write; delete removes one by its password and needs Write; add creates one and needs " +
                  "Destructive, because it hands out access.")]
     public async Task<ActionResult> TempPasswordAsync(
-        [Description("list, add or delete.")] string action,
+        [Description("list, add or delete.")][AllowedValues("list", "add", "delete")] string action,
         [Description("For add and delete: the password.")] string? password = null,
         [Description("For add: how many seconds it stays valid.")] int? durationSeconds = null,
         [Description("For add: what it is for.")] string? description = null,

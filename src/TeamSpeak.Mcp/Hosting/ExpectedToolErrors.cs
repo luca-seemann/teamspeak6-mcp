@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -15,9 +17,11 @@ namespace TeamSpeak.Mcp.Hosting;
 /// trace, so every refused call looked like a crash in the client's MCP log.
 /// </para>
 /// <para>
-/// Only <see cref="McpException"/> itself is handled here. <see cref="McpProtocolException"/> signals a
-/// protocol-level failure, such as an unknown tool, and any other exception is a real bug; both still
-/// reach the SDK unchanged and are logged in full.
+/// <see cref="McpException"/> is handled here, and so are the exceptions the SDK throws while binding
+/// arguments, but only when <see cref="ArgumentMismatch"/> finds an argument that does not fit the
+/// schema, so the model learns which one. <see cref="McpProtocolException"/> signals a protocol-level
+/// failure, such as an unknown tool, and any other exception is a real bug; both still reach the SDK
+/// unchanged and are logged in full.
 /// </para>
 /// </remarks>
 public static class ExpectedToolErrors
@@ -40,8 +44,18 @@ public static class ExpectedToolErrors
             {
                 return ToResult(ex);
             }
+            catch (Exception ex) when (ex is ArgumentException or JsonException && Mismatch(request) is { } problem)
+            {
+                // Binding failed before the tool ran; the SDK's own message names neither argument nor tool.
+                return ToResult(new McpException($"Nothing was done: {problem} See the input schema of {request.Params?.Name}.", ex));
+            }
         };
     }
+
+    private static string? Mismatch(RequestContext<CallToolRequestParams>? request) =>
+        (request?.MatchedPrimitive as McpServerTool)?.ProtocolTool.InputSchema is { } schema
+            ? ArgumentMismatch.Describe(schema, request.Params?.Arguments)
+            : null;
 
     /// <summary>Builds the error result a model sees for an expected tool error.</summary>
     /// <param name="exception">The error the tool raised.</param>

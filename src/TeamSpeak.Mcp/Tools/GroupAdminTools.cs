@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -21,10 +22,10 @@ public sealed class GroupAdminTools(QueryExecutor executor)
                  "of an existing one, the usual way to start a similar role. rename changes a group's name. " +
                  "Returns the new group's id for create and copy. Needs Write.")]
     public Task<ActionResult> ManageServerGroupAsync(
-        [Description("create, copy, or rename.")] string action,
+        [Description("create, copy, or rename.")][AllowedValues("create", "copy", "rename")] string action,
         [Description("The name of the new group, or the new name.")] string name,
         [Description("For copy: the group to copy. For rename: the group to rename.")] int? groupId = null,
-        [Description("For create and copy: " + ToolDescriptions.GroupType)] string? type = null,
+        [Description("For create and copy: " + ToolDescriptions.GroupType)][AllowedValues("regular", "template", "query")] string type = "regular",
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default) =>
@@ -38,10 +39,10 @@ public sealed class GroupAdminTools(QueryExecutor executor)
                  "of an existing one. rename changes a group's name. Returns the new group's id for create " +
                  "and copy. Needs Write.")]
     public Task<ActionResult> ManageChannelGroupAsync(
-        [Description("create, copy, or rename.")] string action,
+        [Description("create, copy, or rename.")][AllowedValues("create", "copy", "rename")] string action,
         [Description("The name of the new group, or the new name.")] string name,
         [Description("For copy: the group to copy. For rename: the group to rename.")] int? groupId = null,
-        [Description("For create and copy: " + ToolDescriptions.GroupType)] string? type = null,
+        [Description("For create and copy: " + ToolDescriptions.GroupType)][AllowedValues("regular", "template", "query")] string type = "regular",
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default) =>
@@ -96,7 +97,7 @@ public sealed class GroupAdminTools(QueryExecutor executor)
     [Description("Adds a client identity to a server group, or removes it, by database id, whether or not " +
                  "the person is online. Default groups and templates cannot be assigned. Needs Write.")]
     public async Task<ActionResult> ServerGroupMembershipAsync(
-        [Description("add or remove.")] string action,
+        [Description("add or remove.")][AllowedValues("add", "remove")] string action,
         [Description("The server group.")] int groupId,
         [Description("The client's database id; see ts_client_resolve.")] int databaseId,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
@@ -156,7 +157,7 @@ public sealed class GroupAdminTools(QueryExecutor executor)
         string action,
         string name,
         int? groupId,
-        string? type,
+        string type,
         int? virtualServerId,
         string? profile,
         CancellationToken cancellationToken)
@@ -196,8 +197,8 @@ public sealed class GroupAdminTools(QueryExecutor executor)
             records);
     }
 
-    private static string GroupTypeId(string? type) =>
-        (type is null ? "regular" : Choice(type, nameof(type), "regular", "template", "query")) switch
+    private static string GroupTypeId(string type) =>
+        Choice(type, nameof(type), "regular", "template", "query") switch
         {
             "template" => "0",
             "query" => "2",
