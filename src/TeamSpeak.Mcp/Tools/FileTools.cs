@@ -150,6 +150,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         [Description(ToolDescriptions.ChannelPassword)] string? channelPassword = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
+        IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var name = EntryPath(channelId, path, nameof(path));
@@ -210,12 +211,14 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
                 "Pass localPath to save it to a file instead.");
         }
 
+        var reporter = new TransferProgress(progress, offset, ticket.Size, "Downloaded");
+
         try
         {
             if (target is null)
             {
                 using var buffer = new MemoryStream((int)ticket.Size);
-                await FileTransferClient.DownloadAsync(ticket, resolved.Host, buffer, ticket.Size, cancellationToken).ConfigureAwait(false);
+                await FileTransferClient.DownloadAsync(ticket, resolved.Host, buffer, ticket.Size, cancellationToken, progress: reporter).ConfigureAwait(false);
 
                 var bytes = buffer.ToArray();
                 return AsText(bytes) is { } text
@@ -223,7 +226,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
                     : new FileDownload(channelId, name, bytes.Length, "base64", Convert.ToBase64String(bytes), null);
             }
 
-            await SaveAsync(ticket, resolved.Host, target, offset, cancellationToken).ConfigureAwait(false);
+            await SaveAsync(ticket, resolved.Host, target, offset, reporter, cancellationToken).ConfigureAwait(false);
             return new FileDownload(channelId, name, ticket.Size, "file", null, target, offset > 0 ? offset : null);
         }
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException)
@@ -235,7 +238,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         }
     }
 
-    private static async Task SaveAsync(FileTransferTicket ticket, string host, string target, long offset, CancellationToken cancellationToken)
+    private static async Task SaveAsync(FileTransferTicket ticket, string host, string target, long offset, IProgress<long> progress, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
 
@@ -245,7 +248,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         var file = new FileStream(partial, offset > 0 ? FileMode.Append : FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
         await using (file.ConfigureAwait(false))
         {
-            await FileTransferClient.DownloadAsync(ticket, host, file, ticket.Size - offset, cancellationToken).ConfigureAwait(false);
+            await FileTransferClient.DownloadAsync(ticket, host, file, ticket.Size - offset, cancellationToken, progress: progress).ConfigureAwait(false);
         }
 
         File.Move(partial, target, overwrite: false);

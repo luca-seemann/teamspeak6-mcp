@@ -40,6 +40,7 @@ public static class FileTransferClient
     /// <param name="length">How many bytes to send: the size announced to <c>ftinitupload</c>, less the ticket's seek position.</param>
     /// <param name="cancellationToken">Cancels the transfer.</param>
     /// <param name="stallTimeout">How long the transfer may stall; <see cref="DefaultStallTimeout"/> when omitted.</param>
+    /// <param name="progress">Told how many bytes this transfer has sent so far, after every chunk.</param>
     /// <returns>A task that completes when the bytes were sent and the server closed the connection or stayed silent.</returns>
     /// <exception cref="IOException">Thrown when no address could be reached, the source ran out, or the connection broke.</exception>
     public static async Task UploadAsync(
@@ -48,7 +49,8 @@ public static class FileTransferClient
         Stream source,
         long length,
         CancellationToken cancellationToken,
-        TimeSpan? stallTimeout = null)
+        TimeSpan? stallTimeout = null,
+        IProgress<long>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(ticket);
         ArgumentNullException.ThrowIfNull(source);
@@ -84,6 +86,7 @@ public static class FileTransferClient
                 cancellationToken).ConfigureAwait(false);
 
             remaining -= read;
+            progress?.Report(length - remaining);
         }
 
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -120,6 +123,7 @@ public static class FileTransferClient
     /// <param name="length">How many bytes to expect: the ticket's size, less the seek position asked for.</param>
     /// <param name="cancellationToken">Cancels the transfer.</param>
     /// <param name="stallTimeout">How long the transfer may stall; <see cref="DefaultStallTimeout"/> when omitted.</param>
+    /// <param name="progress">Told how many bytes this transfer has received so far, after every chunk.</param>
     /// <returns>A task that completes when every expected byte arrived.</returns>
     /// <exception cref="IOException">Thrown when no address could be reached or the server closed before the last byte.</exception>
     public static async Task DownloadAsync(
@@ -128,7 +132,8 @@ public static class FileTransferClient
         Stream destination,
         long length,
         CancellationToken cancellationToken,
-        TimeSpan? stallTimeout = null)
+        TimeSpan? stallTimeout = null,
+        IProgress<long>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(ticket);
         ArgumentNullException.ThrowIfNull(destination);
@@ -157,6 +162,7 @@ public static class FileTransferClient
 
             await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
             received += read;
+            progress?.Report(received);
         }
     }
 

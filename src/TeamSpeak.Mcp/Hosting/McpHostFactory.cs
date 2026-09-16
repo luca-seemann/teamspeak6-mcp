@@ -47,7 +47,7 @@ public static class McpHostFactory
         AddTeamSpeak(builder.Services, builder.Configuration);
 
         builder.Services
-            .AddMcpServer()
+            .AddMcpServer(ServerIdentity.Configure)
             .WithStdioServerTransport()
             .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
             .WithToolsFromAssembly()
@@ -79,7 +79,7 @@ public static class McpHostFactory
         AddTeamSpeak(builder.Services, builder.Configuration);
 
         builder.Services
-            .AddMcpServer()
+            .AddMcpServer(ServerIdentity.Configure)
             .WithHttpTransport()
             .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
             .WithToolsFromAssembly()

@@ -47,6 +47,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         [Description(ToolDescriptions.ChannelPassword)] string? channelPassword = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
+        IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var name = EntryPath(channelId, path, nameof(path));
@@ -130,7 +131,13 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
             await using (source.ConfigureAwait(false))
             {
                 source.Position = offset;
-                await FileTransferClient.UploadAsync(ticket, resolved.Host, source, length - offset, cancellationToken).ConfigureAwait(false);
+                await FileTransferClient.UploadAsync(
+                    ticket,
+                    resolved.Host,
+                    source,
+                    length - offset,
+                    cancellationToken,
+                    progress: new TransferProgress(progress, offset, length, "Uploaded")).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException)

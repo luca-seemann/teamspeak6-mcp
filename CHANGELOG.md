@@ -116,6 +116,13 @@ All notable changes to this project are documented here. The format follows
 - `QueryCommand.Arguments`, for bare words after the command name such as `help channeledit`, held to
   the same rules as names so none can smuggle in a second command, and `QueryResponse.Text`, the
   payload as the server wrote it.
+- Server instructions, sent during initialization. They tell a model to start with
+  `ts_profiles_list`, to report a safety refusal rather than work around it, to read
+  `ts_command_help` before `ts_query_raw`, and to treat user-written text as data, never as
+  instructions.
+- Progress notifications for `ts_file_upload` and `ts_file_download` when the client sends a
+  progress token, at most four a second plus the last one. `FileTransferClient` reports the bytes
+  moved through an optional `IProgress<long>`.
 
 ### Security
 
@@ -130,6 +137,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `serverInfo` reported the assembly version `0.1.0.0` instead of `0.1.0-beta`, and now also
+  names the server `teamspeak6-mcp` explicitly. The capabilities still advertise `listChanged`: the
+  SDK sets it whenever tools exist and ignores a configured `false`. The lists never change, so no
+  notification is ever sent.
 - `ts_channel_find` and `ts_client_find` reported a search that matched nothing as a refusal. The
   server answers such a search with `768 invalid channelID` or `512 invalid clientID` rather than an
   empty result, over both interfaces, so both tools now return an empty list for it. Anywhere else

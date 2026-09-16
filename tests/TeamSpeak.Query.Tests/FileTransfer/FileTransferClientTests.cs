@@ -55,6 +55,48 @@ public sealed class FileTransferClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Transfers_report_the_bytes_moved_so_far_until_the_last_one()
+    {
+        var payload = new byte[200_000];
+        Random.Shared.NextBytes(payload);
+
+        var server = Task.Run(async () =>
+        {
+            using (var upload = await _listener.AcceptTcpClientAsync(Ct))
+            {
+                var stream = upload.GetStream();
+                await ReadExactlyAsync(stream, Key.Length + payload.Length);
+            }
+
+            using var download = await _listener.AcceptTcpClientAsync(Ct);
+            var downloadStream = download.GetStream();
+            await ReadExactlyAsync(downloadStream, Key.Length);
+            await downloadStream.WriteAsync(payload, Ct);
+        }, Ct);
+
+        var sent = new RecordingProgress();
+        await FileTransferClient.UploadAsync(Ticket(), "127.0.0.1", new MemoryStream(payload), payload.Length, Ct, progress: sent);
+
+        var received = new RecordingProgress();
+        await FileTransferClient.DownloadAsync(Ticket(payload.Length), "127.0.0.1", new MemoryStream(), payload.Length, Ct, progress: received);
+        await server;
+
+        foreach (var reports in new[] { sent.Values, received.Values })
+        {
+            Assert.NotEmpty(reports);
+            Assert.Equal(reports.Order(), reports);
+            Assert.Equal(payload.Length, reports[^1]);
+        }
+    }
+
+    /// <summary>Records reports as they happen; <see cref="Progress{T}"/> would post them to the thread pool.</summary>
+    private sealed class RecordingProgress : IProgress<long>
+    {
+        public List<long> Values { get; } = [];
+
+        public void Report(long value) => Values.Add(value);
+    }
+    [Fact]
     public async Task An_empty_upload_still_presents_its_key()
     {
         // Measured: a zero-byte upload only exists on the server once its key was presented.
