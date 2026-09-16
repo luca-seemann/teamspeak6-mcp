@@ -183,8 +183,13 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
         await using var connections = SharedSshConnections();
         var executor = new QueryExecutor(connections, new SafetyPolicy());
 
-        var channels = await new ChannelTools(executor).FindChannelsAsync("Default", 1, cancellationToken: ct);
-        Assert.Contains(channels.Channels, channel => channel.Name.Contains("Default", StringComparison.OrdinalIgnoreCase));
+        // Search for part of a channel that exists: the test server's channel names are not fixed, and a
+        // search that matches nothing is refused with 768 rather than answered with an empty list.
+        var existing = (await new ChannelTools(executor).ListChannelsAsync(virtualServerId: 1, cancellationToken: ct)).Channels
+            .First(channel => !channel.Name.StartsWith('[') && channel.Name.Length >= 4);
+        var fragment = existing.Name[^4..];
+        var channels = await new ChannelTools(executor).FindChannelsAsync(fragment, 1, cancellationToken: ct);
+        Assert.Contains(channels.Channels, channel => channel.Id == existing.Id);
 
         var whoami = await new MetaTools(executor).WhoAmIAsync(cancellationToken: ct);
         var ownClientId = int.Parse(whoami.Fields["client_id"], System.Globalization.CultureInfo.InvariantCulture);
