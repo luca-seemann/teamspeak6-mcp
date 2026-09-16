@@ -93,25 +93,27 @@ public static class McpHostFactory
         var disabled = ToolGroups.Disabled(configuration);
 
         builder
+            .WithMessageFilters(filters => filters.AddOutgoingFilter(ServerIdentity.StaticLists))
             .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
             .WithToolsFromAssembly()
             .WithPromptsFromAssembly()
             .WithResourcesFromAssembly();
 
-        if (disabled.Count > 0)
+        // The SDK fills the tool collection while configuring the options; this runs after it.
+        builder.Services.PostConfigure<McpServerOptions>(options =>
         {
-            // The SDK fills the tool collection while configuring the options; this runs after it.
-            builder.Services.PostConfigure<McpServerOptions>(options =>
+            foreach (var tool in options.ToolCollection?.ToArray() ?? [])
             {
-                foreach (var tool in options.ToolCollection?.ToArray() ?? [])
+                if (ToolGroups.Of(tool.ProtocolTool.Name) is { } group && disabled.Contains(group))
                 {
-                    if (ToolGroups.Of(tool.ProtocolTool.Name) is { } group && disabled.Contains(group))
-                    {
-                        options.ToolCollection!.Remove(tool);
-                    }
+                    options.ToolCollection!.Remove(tool);
                 }
-            });
-        }
+                else
+                {
+                    SchemaFixes.AdmitNullToEnums(tool.ProtocolTool);
+                }
+            }
+        });
     }
 
     /// <summary>

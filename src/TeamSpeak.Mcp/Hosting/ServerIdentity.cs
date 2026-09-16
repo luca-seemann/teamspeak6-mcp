@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json.Nodes;
 
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -37,17 +38,51 @@ public static class ServerIdentity
     /// Sets the server name, version and instructions.
     /// </summary>
     /// <param name="options">The options to configure.</param>
-    /// <remarks>
-    /// The capabilities advertise <c>listChanged</c> although the lists are fixed at startup. The SDK
-    /// sets it whenever a tool, prompt or resource collection exists and overrides a configured
-    /// <see langword="false"/>; it is harmless, because a list that never changes sends no notification.
-    /// </remarks>
     public static void Configure(McpServerOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
         options.ServerInfo = new Implementation { Name = Name, Title = "TeamSpeak", Version = Version };
         options.ServerInstructions = Instructions;
+    }
+
+    /// <summary>
+    /// Corrects the initialize result to say that the tool, prompt and resource lists never change.
+    /// </summary>
+    /// <param name="next">The rest of the outgoing pipeline.</param>
+    /// <returns>A handler that rewrites <c>listChanged</c> to <see langword="false"/>.</returns>
+    /// <remarks>
+    /// The lists are fixed at startup, but the SDK advertises <c>listChanged: true</c> whenever a
+    /// collection exists and overrides a configured <see langword="false"/>. A client that believes it
+    /// would wait for notifications that never come, so the answer is corrected on its way out.
+    /// </remarks>
+    public static McpMessageHandler StaticLists(McpMessageHandler next)
+    {
+        ArgumentNullException.ThrowIfNull(next);
+
+        return (context, cancellationToken) =>
+        {
+            MarkListsStatic(context.JsonRpcMessage);
+            return next(context, cancellationToken);
+        };
+    }
+
+    /// <summary>Sets <c>listChanged</c> to <see langword="false"/> if the message is an initialize result.</summary>
+    /// <param name="message">An outgoing message; anything but an initialize result is left alone.</param>
+    public static void MarkListsStatic(JsonRpcMessage message)
+    {
+        if (message is JsonRpcResponse { Result: JsonObject result }
+            && result["serverInfo"] is not null
+            && result["capabilities"] is JsonObject capabilities)
+        {
+            foreach (var kind in (string[])["tools", "prompts", "resources"])
+            {
+                if (capabilities[kind] is JsonObject capability && capability.ContainsKey("listChanged"))
+                {
+                    capability["listChanged"] = false;
+                }
+            }
+        }
     }
 
     private static string ReadVersion()

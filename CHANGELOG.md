@@ -154,15 +154,17 @@ All notable changes to this project are documented here. The format follows
   2,300 and 2,700 tokens.
 - 22 parameters that take one of a fixed set of values, such as `action`, `target`, `scope`, `level`
   and the event `categories`, listed the values only in their description. Their schema now carries
-  an `enum`, so a client can offer and check them. `level` of `ts_log_add`, `type` of the group tools
-  and `scope` of `ts_apikey_manage` have real defaults (`info`, `regular`, `read`) instead of `null`.
+  an `enum`, so a client can offer and check them. `level` of `ts_log_add` and `type` of the group
+  tools have real defaults (`info`, `regular`). An optional parameter such as `scope` keeps `null` in
+  its `enum`, which the SDK had dropped, so the schema no longer rejects its own default.
 - A missing argument or one of the wrong type was answered only with "An error occurred invoking",
   naming neither the argument nor the problem. The answer now says, for example, "'channelId' must be
   an integer, not the string "abc"", and the SDK no longer logs it as an unhandled exception.
 - `serverInfo` reported the assembly version `0.1.0.0` instead of `0.1.0-beta`, and now also
-  names the server `teamspeak6-mcp` explicitly. The capabilities still advertise `listChanged`: the
-  SDK sets it whenever tools exist and ignores a configured `false`. The lists never change, so no
-  notification is ever sent.
+  names the server `teamspeak6-mcp` explicitly.
+- The capabilities advertised `listChanged: true` for tools, prompts and resources over stdio,
+  although the lists never change. The SDK sets it whenever a collection exists and ignores a
+  configured `false`, so the initialize result is corrected on its way out.
 - `ts_channel_find` and `ts_client_find` reported a search that matched nothing as a refusal. The
   server answers such a search with `768 invalid channelID` or `512 invalid clientID` rather than an
   empty result, over both interfaces, so both tools now return an empty list for it. Anywhere else

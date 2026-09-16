@@ -492,6 +492,7 @@ public class WriteToolsTests
         var tools = new ModerationAdminTools(harness.Executor);
 
         await Assert.ThrowsAsync<McpException>(() => tools.ManageApiKeyAsync("add", "admin", cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => tools.ManageApiKeyAsync("add", cancellationToken: Ct));
         await tools.ManageApiKeyAsync("add", "read", lifetimeDays: 0, databaseId: 3, virtualServerId: 2, cancellationToken: Ct);
 
         var sent = Assert.Single(harness.Transport.SentCommands);

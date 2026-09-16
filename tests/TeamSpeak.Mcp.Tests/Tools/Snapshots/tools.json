@@ -89,7 +89,7 @@
   {
     "name": "ts_apikey_manage",
     "title": "Create or delete a WebQuery API key",
-    "description": "add creates a WebQuery API key with a scope (read unless given) and a lifetime in days, for this query login or another identity; the key itself is returned once and never shown again. delete removes a key by the id ts_apikey_list shows; deleting the key a profile of this server uses cuts that profile off. Both need Destructive.",
+    "description": "add creates a WebQuery API key with a scope (read, write or manage) and a lifetime in days, for this query login or another identity; the key itself is returned once and never shown again. delete removes a key by the id ts_apikey_list shows; deleting the key a profile of this server uses cuts that profile off. Both need Destructive.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -102,13 +102,17 @@
           ]
         },
         "scope": {
-          "description": "For add: read (the default), write, or manage.",
-          "type": "string",
-          "default": "read",
+          "description": "For add: read, write, or manage.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
           "enum": [
             "read",
             "write",
-            "manage"
+            "manage",
+            null
           ]
         },
         "lifetimeDays": {

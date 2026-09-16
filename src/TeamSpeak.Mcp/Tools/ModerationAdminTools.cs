@@ -235,13 +235,13 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
     /// <summary>Creates or deletes a WebQuery API key.</summary>
     [McpServerTool(Name = "ts_apikey_manage", Title = "Create or delete a WebQuery API key",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("add creates a WebQuery API key with a scope (read unless given) and a lifetime in days, " +
+    [Description("add creates a WebQuery API key with a scope (read, write or manage) and a lifetime in days, " +
                  "for this query login or another identity; the key itself is returned once and never shown " +
                  "again. delete removes a key by the id ts_apikey_list shows; deleting the key a profile of " +
                  "this server uses cuts that profile off. Both need Destructive.")]
     public async Task<ActionResult> ManageApiKeyAsync(
         [Description("add or delete.")][AllowedValues("add", "delete")] string action,
-        [Description("For add: read (the default), write, or manage.")][AllowedValues("read", "write", "manage")] string scope = "read",
+        [Description("For add: read, write, or manage.")][AllowedValues("read", "write", "manage")] string? scope = null,
         [Description("For add: lifetime in days. 0 means the key never expires. Omitted, the server's default of 14 days.")] int? lifetimeDays = null,
         [Description("For add: the identity to own the key. Omit for this query login.")] int? databaseId = null,
         [Description("For delete: the key id.")] int? keyId = null,

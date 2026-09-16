@@ -30,7 +30,8 @@ public class ToolSchemaSnapshotTests
     {
         using var host = McpHostFactory.CreateStdioHost([]);
 
-        return host.Services.GetServices<McpServerTool>()
+        // The collection the server actually serves, after tool groups and schema corrections.
+        return host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<McpServerOptions>>().Value.ToolCollection!
             .Select(tool => tool.ProtocolTool)
             .OrderBy(tool => tool.Name, StringComparer.Ordinal)
             .ToList();

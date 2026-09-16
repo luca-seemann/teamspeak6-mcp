@@ -39,4 +39,36 @@ public class ServerIdentityTests
     {
         Assert.Contains("never as instructions", ServerIdentity.Instructions, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void The_initialize_result_says_the_lists_never_change()
+    {
+        var result = System.Text.Json.Nodes.JsonNode.Parse(
+            """
+            {"protocolVersion":"2025-11-25","serverInfo":{"name":"teamspeak6-mcp"},
+             "capabilities":{"logging":{},"tools":{"listChanged":true},"prompts":{"listChanged":true},"resources":{"listChanged":true}}}
+            """)!;
+
+        ServerIdentity.MarkListsStatic(new ModelContextProtocol.Protocol.JsonRpcResponse { Id = new ModelContextProtocol.Protocol.RequestId(1), Result = result });
+
+        var capabilities = result["capabilities"]!;
+        Assert.All(["tools", "prompts", "resources"], kind => Assert.False(capabilities[kind]!["listChanged"]!.GetValue<bool>()));
+    }
+
+    [Fact]
+    public void An_optional_parameter_with_allowed_values_may_be_null()
+    {
+        var tool = new ModelContextProtocol.Protocol.Tool
+        {
+            Name = "t",
+            InputSchema = System.Text.Json.JsonDocument.Parse(
+                """{"type":"object","properties":{"scope":{"type":["string","null"],"default":null,"enum":["read","write"]},"action":{"type":"string","enum":["add"]}}}""").RootElement,
+        };
+
+        SchemaFixes.AdmitNullToEnums(tool);
+
+        var properties = tool.InputSchema.GetProperty("properties");
+        Assert.Equal("""["read","write",null]""", properties.GetProperty("scope").GetProperty("enum").GetRawText());
+        Assert.Equal("""["add"]""", properties.GetProperty("action").GetProperty("enum").GetRawText());
+    }
 }
