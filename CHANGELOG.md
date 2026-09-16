@@ -106,6 +106,11 @@ All notable changes to this project are documented here. The format follows
   and the SSH captures keep the `\n\r` line ending the server really sends. Tests check that both
   transports decode each one to the same records.
 
+- `SECURITY.md`, saying where a vulnerability goes and what this server can reach: query
+  credentials, everything the safety level allows, and local files inside the configured directory.
+- A release workflow. A version tag builds the three binaries and the packages, and attaches them
+  to a GitHub release with checksums. Nothing is pushed to nuget.org automatically.
+
 ### Fixed
 
 - `ts_channel_move` could not reorder a channel within its parent. The server refuses `channelmove`
@@ -193,6 +198,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Package metadata names the repository, the project URL and the copyright, and the placeholder
+  owner in `.mcp/server.json` is replaced.
 - The container image carries the self-contained binary on `runtime-deps` instead of a
   framework-dependent build on the ASP.NET image, and builds for linux/amd64 and linux/arm64 without
   emulation.

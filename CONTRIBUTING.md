@@ -8,7 +8,7 @@ You need the [.NET SDK 10.0.400](https://dotnet.microsoft.com/download) or newer
 restores on first build.
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/luca-seemann/teamspeak6-mcp.git
 cd teamspeak6-mcp
 dotnet build
 dotnet test

@@ -31,7 +31,7 @@ closes a gap once something becomes available, such as a Git remote or an arm64 
   commands may still hold surprises. The 28 captured on 15 September 2026 keep the server's real
   `\n\r` line endings; the earlier ones had them normalised.
 - **The test server is small, and often has no human client.** It carries a permanent channel tree
-  (Lobby, Games with two sub-channels), but usually only the query session is connected, so the
+  of about two dozen channels, but usually only the query session is connected, so the
   client-facing tools — client listing and decoding, effective permissions, complaints, talker status
   — have met a real person only on the occasions someone was connected, and otherwise in unit tests.
   Several live tests skip themselves when nobody is online. After the phase 9 transport changes they

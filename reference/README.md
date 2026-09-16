@@ -1,5 +1,12 @@
 # Captured protocol reference
 
+> **Whose text this is.** `serverquery-6.0.0-beta12.1.txt` is TeamSpeak's own documentation, as the
+> server itself prints it. It is © TeamSpeak Systems GmbH, is **not** covered by this repository's
+> licence, and is included unchanged so that this project's behaviour can be checked against it.
+> Everything else in this repository is the project's own work. If TeamSpeak Systems would rather it
+> were not here, open an issue and it goes; the section below explains how to capture it yourself in
+> a few minutes.
+
 TeamSpeak 6 ships **no public ServerQuery command reference**. The official documentation site has
 four query pages and none of them lists a command, an endpoint path, or a response shape. The real
 reference lives inside the server package, behind `--query-documentation-path`.

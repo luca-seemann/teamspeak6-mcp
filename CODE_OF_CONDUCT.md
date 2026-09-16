@@ -30,8 +30,11 @@ corrective action in response to behaviour they deem inappropriate, up to and in
 permanent ban. They may remove or reject comments, commits, code, issues and other contributions
 that violate this code.
 
-Report unacceptable behaviour by opening a confidential issue or contacting a maintainer directly.
-Reports will be reviewed and investigated, and will remain confidential.
+Report unacceptable behaviour privately, through
+[GitHub's private vulnerability reporting](https://github.com/luca-seemann/teamspeak6-mcp/security/advisories/new)
+for anything sensitive, or by contacting a maintainer directly. Reports will be reviewed and
+investigated, and will remain confidential. For security problems in the software itself, see
+[SECURITY.md](SECURITY.md).
 
 ## Attribution
 

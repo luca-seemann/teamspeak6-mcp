@@ -1,15 +1,41 @@
 # teamspeak6-mcp
 
+[![CI](https://github.com/luca-seemann/teamspeak6-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/luca-seemann/teamspeak6-mcp/actions/workflows/ci.yml)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/download)
+[![MCP](https://img.shields.io/badge/MCP-server-orange.svg)](https://modelcontextprotocol.io)
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server for administering
 **TeamSpeak 6** servers, so an AI assistant can do the tedious parts of server administration:
 tidy up channel trees, explain why a user lacks a permission, work through bans and complaints,
 manage groups, and watch what is happening on the server.
 
 > **Status: pre-release, 0.1.0-beta.** Reading, changing, events, file transfer and prompts are
-> complete and verified against a live TeamSpeak 6 server, and the server builds as a NuGet tool
-> package and as self-contained binaries. Nothing is published yet.
-> [docs/known-gaps.md](docs/known-gaps.md) lists what is still unverified, and [TODO.md](TODO.md) what
-> waits for a trigger.
+> complete and verified against a live TeamSpeak 6 server, which is itself still in beta. The server
+> builds as a NuGet tool package and as self-contained binaries, but nothing is published on
+> nuget.org and no release has been tagged yet, so today you build it yourself — see
+> [Installing](#installing). [docs/known-gaps.md](docs/known-gaps.md) lists honestly what is not
+> verified, and [TODO.md](TODO.md) what waits for a trigger.
+
+## Quick start
+
+With the [.NET SDK 10](https://dotnet.microsoft.com/download), against a TeamSpeak 6 server whose
+SSH query is enabled:
+
+```bash
+git clone https://github.com/luca-seemann/teamspeak6-mcp.git
+cd teamspeak6-mcp
+
+claude mcp add teamspeak \
+  -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com \
+  -e TSMCP_TeamSpeak__Profiles__home__Password='<serveradmin query password>' \
+  -- dotnet run --project src/TeamSpeak.Mcp
+```
+
+Then ask: *"Which channels are on the server, and who is online?"* — that works straight away,
+because a new profile is read-only. Nothing can be changed until you raise
+[the safety level](#safety), and the sections below explain what the server needs, what each tool
+does, and how to install it properly.
 
 ## Why this exists
 
@@ -388,7 +414,8 @@ inside and compiled ahead of time with ReadyToRun. It needs nothing installed.
 - **Smaller:** `-p:EnableCompressionInSingleFile=true` brings it to about 70 MB, at about 0.3 seconds to
   the first answer.
 
-The CI workflow builds all three binaries and the packages for tags.
+Pushing a version tag builds all three binaries and the packages and attaches them to a GitHub
+release, with checksums. No release is tagged yet.
 
 ```bash
 claude mcp add teamspeak \
@@ -465,11 +492,24 @@ The integration suite skips itself unless `TSMCP_TEST_HOST` points at a live ser
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and pull requests are welcome.
+Bug reports and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has the build, the
+live-test suite and the house rules; [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies to everyone
+taking part. Found a security problem? [SECURITY.md](SECURITY.md) says where it goes, and please do
+not open a public issue for it.
+
+Two documents are worth reading before you dig in, because they are what this project actually
+learned: [docs/teamspeak6-findings.md](docs/teamspeak6-findings.md) records how TeamSpeak 6 really
+behaves where its documentation is silent or wrong, and [docs/known-gaps.md](docs/known-gaps.md)
+states plainly what is untested.
 
 ## License
 
-[MIT](LICENSE)
+Copyright 2026 Luca Seemann. Licensed under the [GNU Affero General Public License, version 3
+or later](LICENSE).
+
+`reference/serverquery-6.0.0-beta12.1.txt` is the exception: it is TeamSpeak's own documentation,
+as the server prints it, and belongs to TeamSpeak Systems GmbH. See
+[reference/README.md](reference/README.md).
 
 ## Disclaimer
 

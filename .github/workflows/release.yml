@@ -1,0 +1,72 @@
+# Builds the binaries and packages for a version tag and attaches them to a GitHub release.
+# Nothing is pushed to nuget.org; that stays a deliberate, manual step.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build a release for'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build and test
+        run: |
+          dotnet build --configuration Release
+          dotnet test --no-build --configuration Release
+
+      # One self-contained, ReadyToRun-compiled executable per runtime identifier.
+      - name: Publish binaries
+        run: |
+          for rid in win-x64 linux-x64 linux-arm64; do
+            dotnet publish src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj \
+              --configuration Release --runtime "$rid" --output "publish/$rid"
+          done
+
+      - name: Pack
+        run: dotnet pack src/TeamSpeak.Mcp/TeamSpeak.Mcp.csproj --configuration Release --output publish/nuget
+
+      # One archive per platform, so a download is a single file with a recognisable name.
+      - name: Archive
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p artifacts
+          for rid in win-x64 linux-x64 linux-arm64; do
+            case "$rid" in
+              win-x64) (cd "publish/$rid" && zip -q "../../artifacts/teamspeak6-mcp-$version-$rid.zip" teamspeak6-mcp.exe) ;;
+              *)       tar -czf "artifacts/teamspeak6-mcp-$version-$rid.tar.gz" -C "publish/$rid" teamspeak6-mcp ;;
+            esac
+          done
+          cp publish/nuget/*.nupkg artifacts/
+          (cd artifacts && sha256sum * > SHA256SUMS.txt)
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.event.inputs.tag || github.ref_name }}" artifacts/* \
+            --title "${{ github.event.inputs.tag || github.ref_name }}" \
+            --notes "See [CHANGELOG.md](CHANGELOG.md). Verify downloads against SHA256SUMS.txt." \
+            --verify-tag \
+            --prerelease

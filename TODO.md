@@ -16,10 +16,10 @@ lists everything that is unverified, including what cannot be checked on the tes
 - **Run the CI workflow once.** Waiting for the push to GitHub. `.github/workflows/ci.yml` has never
   run, its package job included. Push, let build and test pass on Linux and Windows, then start the
   workflow by hand and check the package artifacts.
-- **Publish to nuget.org.** Waiting for the repository's real address and the decision to release.
-  Replace the `REPLACE-WITH-OWNER` placeholder in `src/TeamSpeak.Mcp/.mcp/server.json`, set
-  `RepositoryUrl` for the package, push the packages from `dotnet pack`, then check that
-  `dnx TeamSpeak6.Mcp` works without `--add-source`.
+- **Publish to nuget.org.** Waiting for the decision to release. The metadata is in place, so this
+  is: tag a version, let the release workflow build the packages, push them with an API key, then
+  check that `dnx TeamSpeak6.Mcp` works without `--add-source`. Publishing also lists the server in
+  the MCP registry through `.mcp/server.json`.
 - **Run the linux-arm64 binary on arm64 hardware.** Waiting for an arm64 machine. It has only been
   built. Start it over stdio and call a tool against the test server, as was done for win-x64 and
   linux-x64.

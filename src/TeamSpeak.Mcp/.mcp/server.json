@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "description": "Administer TeamSpeak 6 servers over the SSH query and WebQuery: channels, clients, groups, permissions, bans, events and file transfer, behind read-only, write and destructive safety levels.",
-  "name": "io.github.REPLACE-WITH-OWNER/teamspeak6-mcp",
+  "name": "io.github.luca-seemann/teamspeak6-mcp",
   "version": "0.1.0-beta",
   "packages": [
     {
@@ -50,7 +50,7 @@
     }
   ],
   "repository": {
-    "url": "https://github.com/REPLACE-WITH-OWNER/teamspeak6-mcp",
+    "url": "https://github.com/luca-seemann/teamspeak6-mcp",
     "source": "github"
   }
 }

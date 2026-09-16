@@ -16,8 +16,12 @@
   <PropertyGroup Label="Package metadata">
     <Authors>teamspeak6-mcp contributors</Authors>
     <Product>TeamSpeak 6 MCP Server</Product>
+    <Copyright>Copyright (c) 2026 Luca Seemann</Copyright>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/luca-seemann/teamspeak6-mcp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/luca-seemann/teamspeak6-mcp</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
   </PropertyGroup>
 
   <!-- Test projects are never packed and tolerate missing XML docs. -->
