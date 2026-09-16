@@ -92,14 +92,15 @@ public sealed class ClientTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_client_find", Title = "Find online clients by nickname",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Finds the currently connected clients whose nickname contains some text and returns " +
-                 "their session ids and nicknames. To find someone who is offline, use ts_clientdb_find.")]
+                 "their session ids and nicknames, or an empty list when no one matches. To find someone " +
+                 "who is offline, use ts_clientdb_find.")]
     public async Task<OnlineClientMatches> FindClientsAsync(
         [Description("Text to find in nicknames, for example 'alice'.")] string pattern,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var records = await executor.RunAsync(
+        var records = await executor.RunSearchAsync(
             "ts_client_find",
             SafetyLevel.ReadOnly,
             profile,
@@ -107,6 +108,7 @@ public sealed class ClientTools(QueryExecutor executor)
                 "clientfind",
                 new Dictionary<string, string> { ["pattern"] = ToolArguments.RequireText(pattern, nameof(pattern)) },
                 VirtualServerId: virtualServerId),
+            QueryErrorCode.InvalidClientId,
             cancellationToken).ConfigureAwait(false);
 
         return new OnlineClientMatches(records

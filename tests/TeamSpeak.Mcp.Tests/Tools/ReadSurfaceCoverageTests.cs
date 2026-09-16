@@ -127,6 +127,33 @@ public class ReadSurfaceCoverageTests
     }
 
     [Fact]
+    public async Task A_search_that_matches_nothing_is_an_empty_list_rather_than_a_refusal()
+    {
+        // Measured over both interfaces: channelfind answers 768 and clientfind 512 when nothing matches.
+        await using var harness = new ToolHarness();
+        harness.Transport
+            .Returns("clientfind", ToolHarness.Error(QueryErrorCode.InvalidClientId, "invalid clientID"))
+            .Returns("channelfind", ToolHarness.Error(QueryErrorCode.InvalidChannelId, "invalid channelID"));
+
+        Assert.Empty((await new ClientTools(harness.Executor).FindClientsAsync("nobody", cancellationToken: Ct)).Clients);
+        Assert.Empty((await new ChannelTools(harness.Executor).FindChannelsAsync("nowhere", cancellationToken: Ct)).Channels);
+    }
+
+    [Fact]
+    public async Task A_search_refused_for_another_reason_is_still_a_refusal()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport
+            .Returns("channelfind", ToolHarness.Error(QueryErrorCode.InsufficientPermissions, "insufficient client permissions"))
+            .Returns("clientfind", ToolHarness.Error(QueryErrorCode.InvalidChannelId, "invalid channelID"));
+
+        await Assert.ThrowsAsync<McpException>(() => new ChannelTools(harness.Executor).FindChannelsAsync("Lobby", cancellationToken: Ct));
+
+        // A code that means "no match" for one search is not taken as that for another.
+        await Assert.ThrowsAsync<McpException>(() => new ClientTools(harness.Executor).FindClientsAsync("Alice", cancellationToken: Ct));
+    }
+
+    [Fact]
     public async Task Lists_complaints_about_one_client()
     {
         await using var harness = new ToolHarness();

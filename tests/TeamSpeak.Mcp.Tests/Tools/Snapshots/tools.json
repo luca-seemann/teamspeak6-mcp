@@ -753,7 +753,7 @@
   {
     "name": "ts_channel_find",
     "title": "Find channels by name",
-    "description": "Finds the channels whose name contains some text, ignoring case, and returns their ids and full names.",
+    "description": "Finds the channels whose name contains some text, ignoring case, and returns their ids and full names, or an empty list when no name matches.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1566,7 +1566,7 @@
   {
     "name": "ts_client_find",
     "title": "Find online clients by nickname",
-    "description": "Finds the currently connected clients whose nickname contains some text and returns their session ids and nicknames. To find someone who is offline, use ts_clientdb_find.",
+    "description": "Finds the currently connected clients whose nickname contains some text and returns their session ids and nicknames, or an empty list when no one matches. To find someone who is offline, use ts_clientdb_find.",
     "inputSchema": {
       "type": "object",
       "properties": {

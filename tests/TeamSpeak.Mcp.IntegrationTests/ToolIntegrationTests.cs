@@ -205,13 +205,15 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
         await using var connections = SharedSshConnections();
         var executor = new QueryExecutor(connections, new SafetyPolicy());
 
-        // Search for part of a channel that exists: the test server's channel names are not fixed, and a
-        // search that matches nothing is refused with 768 rather than answered with an empty list.
+        // Search for part of a channel that exists, since the test server's channel names are not fixed.
         var existing = (await new ChannelTools(executor).ListChannelsAsync(virtualServerId: 1, cancellationToken: ct)).Channels
             .First(channel => !channel.Name.StartsWith('[') && channel.Name.Length >= 4);
         var fragment = existing.Name[^4..];
         var channels = await new ChannelTools(executor).FindChannelsAsync(fragment, 1, cancellationToken: ct);
         Assert.Contains(channels.Channels, channel => channel.Id == existing.Id);
+
+        // The server refuses a search that matches nothing with 768; the tool answers with no channels.
+        Assert.Empty((await new ChannelTools(executor).FindChannelsAsync("zzqx-no-such-channel", 1, cancellationToken: ct)).Channels);
 
         var whoami = await new MetaTools(executor).WhoAmIAsync(cancellationToken: ct);
         var ownClientId = int.Parse(whoami.Fields["client_id"], System.Globalization.CultureInfo.InvariantCulture);
@@ -219,6 +221,9 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
 
         var online = await new ClientTools(executor).FindClientsAsync("serveradmin", 1, cancellationToken: ct);
         Assert.Contains(online.Clients, client => client.ClientId == ownClientId);
+
+        // Likewise with 512 for clients.
+        Assert.Empty((await new ClientTools(executor).FindClientsAsync("zzqx-no-such-client", 1, cancellationToken: ct)).Clients);
 
         // Any identity the server knows will do; the test server's list is not fixed.
         var page = await new ClientDatabaseTools(executor).ListKnownClientsAsync(limit: 5, virtualServerId: 1, cancellationToken: ct);

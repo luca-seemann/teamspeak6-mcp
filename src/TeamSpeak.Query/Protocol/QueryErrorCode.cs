@@ -41,6 +41,20 @@ public static class QueryErrorCode
     /// </summary>
     public const int AlreadyMemberOfChannel = 770;
 
+    /// <summary>A client id names no client. Sent as <c>invalid clientID</c>.</summary>
+    /// <remarks>
+    /// Also what <c>clientfind</c> answers when no nickname matches, over both interfaces, where
+    /// <c>clientdbfind</c> answers <see cref="EmptyResultSet"/>. Measured on 6.0.0-beta12.1.
+    /// </remarks>
+    public const int InvalidClientId = 512;
+
+    /// <summary>A channel id names no channel. Sent as <c>invalid channelID</c>.</summary>
+    /// <remarks>
+    /// Also what <c>channelfind</c> answers when no channel name matches, over both interfaces.
+    /// Measured on 6.0.0-beta12.1.
+    /// </remarks>
+    public const int InvalidChannelId = 768;
+
     /// <summary>
     /// The channel password was missing or wrong. Sent as <c>invalid channel password</c>.
     /// </summary>

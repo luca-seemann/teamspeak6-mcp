@@ -119,6 +119,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `ts_channel_find` and `ts_client_find` reported a search that matched nothing as a refusal. The
+  server answers such a search with `768 invalid channelID` or `512 invalid clientID` rather than an
+  empty result, over both interfaces, so both tools now return an empty list for it. Anywhere else
+  those codes still mean a wrong id.
 - The SSH transport trimmed spaces from every line before looking for the status line that ends a
   response. A help page quotes example responses indented by two spaces, status line included, so a
   response would have ended in the middle of the page and handed the rest to the next command. Only

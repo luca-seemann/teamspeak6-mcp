@@ -140,9 +140,19 @@ connection with an unknown key at once. Probed in three rounds:
 - The WebQuery has no form for it: `/help` and `/1/help?apikeyadd` answer `404 not found`, and
   `/help/apikeyadd` answers `1538`.
 
-**A channel search that matches nothing is an error.** `channelfind` with a pattern no channel name
-contains was refused with `768 invalid channelID`, not answered with an empty result. A live test
-that searched for "Default" found this once the test server's default channel had been renamed.
+**A search that matches nothing is an error, and each search says so differently.** Probed over SSH
+and the WebQuery alike, with a pattern nothing contains:
+
+| Search | Answer |
+|---|---|
+| `channelfind` | `768 invalid channelID` |
+| `clientfind` | `512 invalid clientID` |
+| `clientdbfind`, also with `-uid` | `1281 database empty result set` |
+
+The first two are the codes for a wrong id, which `channelinfo cid=99999` also returns, so they can
+only be read as "nothing found" for the search itself. `ts_channel_find` and `ts_client_find` do
+exactly that and return an empty list. A live test that searched for "Default" found this once the
+test server's default channel had been renamed.
 
 **An empty parameter value is a missing parameter.** `channelfind pattern=` returns
 `1542 missing required parameter`, a different code from the `1539` seen elsewhere, so an empty

@@ -87,14 +87,14 @@ public sealed class ChannelTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_channel_find", Title = "Find channels by name",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Finds the channels whose name contains some text, ignoring case, and returns their " +
-                 "ids and full names.")]
+                 "ids and full names, or an empty list when no name matches.")]
     public async Task<ChannelMatches> FindChannelsAsync(
         [Description("Text to find in channel names, for example 'afk'.")] string pattern,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var records = await executor.RunAsync(
+        var records = await executor.RunSearchAsync(
             "ts_channel_find",
             SafetyLevel.ReadOnly,
             profile,
@@ -102,6 +102,7 @@ public sealed class ChannelTools(QueryExecutor executor)
                 "channelfind",
                 new Dictionary<string, string> { ["pattern"] = ToolArguments.RequireText(pattern, nameof(pattern)) },
                 VirtualServerId: virtualServerId),
+            QueryErrorCode.InvalidChannelId,
             cancellationToken).ConfigureAwait(false);
 
         return new ChannelMatches(records

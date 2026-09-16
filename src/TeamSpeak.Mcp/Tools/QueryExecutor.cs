@@ -93,6 +93,62 @@ public sealed class QueryExecutor
         QueryCommand command,
         CancellationToken cancellationToken)
     {
+        var (profileName, response) = await SendUncheckedAsync(action, required, profile, command, cancellationToken).ConfigureAwait(false);
+
+        return response.Error.IsSuccess || response.Error.IsEmptyResult
+            ? response
+            : throw new McpException(DescribeRefusal(profileName, command.Name, response.Error));
+    }
+
+    /// <summary>
+    /// Checks safety, sends a search and returns its records, reading the status the server sends when
+    /// nothing matches as no records.
+    /// </summary>
+    /// <param name="action">What is being attempted, used in refusal messages, usually the tool name.</param>
+    /// <param name="required">The safety level the command needs.</param>
+    /// <param name="profile">The profile name, or <see langword="null"/> when only one is configured.</param>
+    /// <param name="command">The search to send.</param>
+    /// <param name="noMatchCode">The status this search answers with when nothing matches.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The records; empty when nothing matched.</returns>
+    /// <exception cref="McpException">
+    /// Thrown when the call is not allowed, cannot reach the server, or the server refuses it for any
+    /// other reason.
+    /// </exception>
+    /// <remarks>
+    /// Measured on 6.0.0-beta12.1 over both interfaces: <c>channelfind</c> answers
+    /// <see cref="QueryErrorCode.InvalidChannelId"/> and <c>clientfind</c>
+    /// <see cref="QueryErrorCode.InvalidClientId"/> when nothing matches. Elsewhere those codes mean a
+    /// wrong id, so they are read as "nothing found" only for the search that names them.
+    /// </remarks>
+    public async Task<IReadOnlyList<QueryRecord>> RunSearchAsync(
+        string action,
+        SafetyLevel required,
+        string? profile,
+        QueryCommand command,
+        int noMatchCode,
+        CancellationToken cancellationToken)
+    {
+        var (profileName, response) = await SendUncheckedAsync(action, required, profile, command, cancellationToken).ConfigureAwait(false);
+
+        if (response.Error.Id == noMatchCode || response.Error.IsEmptyResult)
+        {
+            return [];
+        }
+
+        return response.Error.IsSuccess
+            ? response.Records
+            : throw new McpException(DescribeRefusal(profileName, command.Name, response.Error));
+    }
+
+    /// <summary>Checks safety and sends one command, leaving the server's status to the caller.</summary>
+    private async Task<(string ProfileName, QueryResponse Response)> SendUncheckedAsync(
+        string action,
+        SafetyLevel required,
+        string? profile,
+        QueryCommand command,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(command);
 
@@ -103,20 +159,15 @@ public sealed class QueryExecutor
 
         var transport = await TransportForAsync(resolved, cancellationToken).ConfigureAwait(false);
 
-        QueryResponse response;
         try
         {
-            response = await transport.SendAsync(command, cancellationToken).ConfigureAwait(false);
+            return (resolved.Name, await transport.SendAsync(command, cancellationToken).ConfigureAwait(false));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new McpException(
                 $"'{command.Name}' did not complete on profile '{resolved.Name}': {ex.Message}", ex);
         }
-
-        return response.Error.IsSuccess || response.Error.IsEmptyResult
-            ? response
-            : throw new McpException(DescribeRefusal(resolved.Name, command.Name, response.Error));
     }
 
     /// <summary>
