@@ -170,6 +170,9 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:EventBufferSize` | `TSMCP_TeamSpeak__EventBufferSize` | `1000` events per profile |
 | `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | — (file tools pass content inline only) |
 | `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `102400` (100 KiB) |
+| `TeamSpeak:Http:BearerToken` | `TSMCP_TeamSpeak__Http__BearerToken` | — (Streamable HTTP only; required when bound to a non-loopback address) |
+| `TeamSpeak:Http:AllowedOrigins:<n>` | `TSMCP_TeamSpeak__Http__AllowedOrigins__<n>` | — (only loopback origins) |
+| `TeamSpeak:Http:AllowedHosts:<n>` | `TSMCP_TeamSpeak__Http__AllowedHosts__<n>` | — (only loopback host names; checked when no token is set) |
 | `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | — |
 | `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | — (enables SSH) |
 | `TeamSpeak:Profiles:<name>:SshPort` | `TSMCP_TeamSpeak__Profiles__<name>__SshPort` | `10022` |
@@ -446,15 +449,25 @@ project's `.mcp.json`:
 
 `docker/Dockerfile` builds an image for linux/amd64 and linux/arm64 that serves Streamable HTTP on
 port 7801, and `docker/docker-compose.yml` starts it next to a TeamSpeak server. The endpoint is the
-root path:
+root path. Inside a container the server listens on all interfaces, so it needs a bearer token and
+refuses to start without one; the compose file publishes the port on 127.0.0.1 only:
 
 ```bash
+export TSMCP_HTTP_TOKEN=$(openssl rand -hex 32)
 docker compose -f docker/docker-compose.yml up -d
-claude mcp add --transport http teamspeak http://localhost:7801/
+claude mcp add --transport http teamspeak http://localhost:7801/ --header "Authorization: Bearer $TSMCP_HTTP_TOKEN"
 ```
 
-The image has not been built yet; see [TODO.md](TODO.md). Anyone who can reach the port can use every
-tool the safety level allows, so keep it on a private network.
+The image has not been built yet; see [TODO.md](TODO.md).
+
+However it is started, the Streamable HTTP endpoint protects itself:
+- **A foreign `Origin` is refused with 403.** A web page open in your browser cannot use the server
+  through DNS rebinding. Pages on a loopback host, and origins listed in `TeamSpeak:Http:AllowedOrigins`,
+  are accepted; MCP clients send no `Origin` at all.
+- **Without a token, only loopback addresses and names.** The server binds only to a loopback address
+  and accepts only loopback host names, plus `TeamSpeak:Http:AllowedHosts`.
+- **With a token, every request must present it** as `Authorization: Bearer <token>`. It must be at
+  least 32 characters long.
 
 #### From source
 

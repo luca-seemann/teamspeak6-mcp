@@ -117,6 +117,17 @@ All notable changes to this project are documented here. The format follows
   the same rules as names so none can smuggle in a second command, and `QueryResponse.Text`, the
   payload as the server wrote it.
 
+### Security
+
+- Streamable HTTP accepted requests from any web page and any host name. A page open in the user's
+  browser could reach a server listening on localhost through DNS rebinding and call every tool the
+  safety level allows: a request with `Origin: http://evil.example` and a forged `Host` was answered
+  with 200. The endpoint now refuses a foreign `Origin` with 403, as the MCP specification requires,
+  accepts only loopback host names unless configured otherwise, and supports a bearer token
+  (`TeamSpeak:Http:BearerToken`). Binding to anything but a loopback address without a token is
+  refused at startup, so the container needs `TSMCP_HTTP_TOKEN`, and the compose file publishes the
+  port on 127.0.0.1 only.
+
 ### Fixed
 
 - `ts_channel_find` and `ts_client_find` reported a search that matched nothing as a refusal. The

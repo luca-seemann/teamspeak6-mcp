@@ -32,6 +32,9 @@ public sealed class TeamSpeakMcpOptions
     /// <summary>Gets or sets where file transfers may read and write locally.</summary>
     public FileTransferOptions FileTransfer { get; set; } = new();
 
+    /// <summary>Gets or sets who may use the Streamable HTTP endpoint.</summary>
+    public HttpOptions Http { get; set; } = new();
+
     /// <summary>Turns the bound options into validated profiles.</summary>
     /// <returns>The profile registry.</returns>
     /// <exception cref="InvalidOperationException">Thrown when a profile is unusable.</exception>

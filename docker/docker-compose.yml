@@ -47,11 +47,15 @@ services:
       # TSMCP_TeamSpeak__Profiles__default__ApiKey: <key>
       # Tools stay read-only unless this is raised to Write or Destructive.
       TSMCP_TeamSpeak__Safety: ReadOnly
+      # Inside the container the server listens on all interfaces, so it refuses to start without a
+      # bearer token. Clients send it as "Authorization: Bearer <token>".
+      TSMCP_TeamSpeak__Http__BearerToken: ${TSMCP_HTTP_TOKEN:?Set TSMCP_HTTP_TOKEN to a random value of at least 32 characters}
       # File tools pass content inline unless given a directory for local files; mount a volume
       # there. The bytes travel over port 30033 of the teamspeak service.
       # TSMCP_TeamSpeak__FileTransfer__LocalDirectory: /data/files
     ports:
-      - "7801:7801"
+      # Published on the loopback address only; publish more widely only behind your own network controls.
+      - "127.0.0.1:7801:7801"
     restart: unless-stopped
 
 volumes:

@@ -69,6 +69,13 @@ public static class McpHostFactory
         builder.WebHost.UseUrls(url);
 
         builder.Configuration.AddEnvironmentVariables(EnvironmentPrefix);
+
+        // Built before anything listens, so settings that would leave the endpoint open stop the start.
+        var guard = new HttpAccessGuard(
+            builder.Configuration.GetSection($"{TeamSpeakMcpOptions.SectionName}:{nameof(TeamSpeakMcpOptions.Http)}").Get<HttpOptions>()
+                ?? new HttpOptions(),
+            url);
+
         AddTeamSpeak(builder.Services, builder.Configuration);
 
         builder.Services
@@ -80,6 +87,7 @@ public static class McpHostFactory
             .WithResourcesFromAssembly();
 
         var app = builder.Build();
+        app.Use(guard.InvokeAsync);
         app.MapMcp();
         return app;
     }

@@ -38,10 +38,10 @@ Worth knowing when judging a report:
   have to be granted per profile, and the check runs before any command is sent. A tool that
   changes something while its profile allows less is a vulnerability, and so is a command that
   reaches TeamSpeak without being classified.
-- Over Streamable HTTP there is **no authentication**. Anyone who reaches the port can use every
-  tool the safety level allows, which is why the README says to keep it on a private network. That
-  is a documented limitation, not a vulnerability; a report that it allows access from elsewhere on
-  the network is expected.
+- Over Streamable HTTP the endpoint refuses a foreign `Origin` with 403, accepts only loopback host
+  names unless configured otherwise, and requires a bearer token once one is set. Without a token it
+  will not start on anything but a loopback address. A request that reaches a tool without meeting
+  these checks, such as a browser page through DNS rebinding, is a vulnerability.
 - File tools may read and write local files, but only inside the directory configured as
   `TeamSpeak:FileTransfer:LocalDirectory`. A path that escapes that directory, including through a
   symbolic link, is a vulnerability.
