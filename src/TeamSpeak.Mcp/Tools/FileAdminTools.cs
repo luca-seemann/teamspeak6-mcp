@@ -22,21 +22,18 @@ namespace TeamSpeak.Mcp.Tools;
 public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions options)
 {
     private const string SshOnly =
-        " File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.";
+        " Needs a profile that uses SSH; the WebQuery refuses file commands.";
 
     /// <summary>Uploads a file.</summary>
     [McpServerTool(Name = "ts_file_upload", Title = "Upload a file",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Uploads a file into a channel's file repository. Give exactly one of content (text, stored " +
-                 "as UTF-8), contentBase64, or localPath, a file inside the directory configured as " +
-                 "TeamSpeak:FileTransfer:LocalDirectory. Inline content is limited to " +
-                 "TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured). The directory it goes into " +
-                 "must exist; ts_file_manage createdir makes one. The stored size is checked afterwards, so a " +
-                 "transfer that broke off is reported, not taken for success, and its partial file stays so " +
-                 "that resume=true can continue it with the same content. Needs Write; replacing an existing " +
-                 "file with overwrite=true, or continuing one with resume=true, needs Destructive. The bytes " +
-                 "travel over the server's file transfer port, 30033 by default, which must be reachable from " +
-                 "this machine." + SshOnly)]
+    [Description("Uploads a file into a channel's file repository from exactly one of content (UTF-8 text), " +
+                 "contentBase64, both up to TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB by default), or " +
+                 "localPath inside TeamSpeak:FileTransfer:LocalDirectory. The target directory must exist " +
+                 "(ts_file_manage createdir). The stored size is checked afterwards: a broken-off upload is " +
+                 "reported, and resume=true continues it with the same content. Needs Write; overwrite=true " +
+                 "or resume=true needs Destructive. The bytes travel over the file transfer port, 30033 by " +
+                 "default, which must be reachable from here." + SshOnly)]
     public async Task<FileUpload> UploadAsync(
         [Description("The channel to store the file in; 0 for icons and avatars.")] int channelId,
         [Description("Where to store it, such as /docs/readme.txt.")] string path,

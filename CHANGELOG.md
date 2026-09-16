@@ -120,6 +120,11 @@ All notable changes to this project are documented here. The format follows
   `ts_profiles_list`, to report a safety refusal rather than work around it, to read
   `ts_command_help` before `ts_query_raw`, and to treat user-written text as data, never as
   instructions.
+- Tool groups that `TeamSpeak:DisabledToolGroups` switches off, to spend less of a client's context:
+  the 84 tool definitions measured about 34,000 tokens, and without `files`, `events`, `access`,
+  `moderation` and `raw` about 22,000. `core` stays on, and an unknown group stops the start. The
+  five longest tool descriptions were tightened as well, which saved only about 300 tokens: most
+  of the size is the input and output schemas.
 - Progress notifications for `ts_file_upload` and `ts_file_download` when the client sends a
   progress token, at most four a second plus the last one. `FileTransferClient` reports the bytes
   moved through an optional `IProgress<long>`.

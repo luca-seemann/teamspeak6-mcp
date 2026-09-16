@@ -30,21 +30,18 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
     /// <returns>The subscription and the cursor to read from.</returns>
     [McpServerTool(Name = "ts_events_subscribe", Title = "Subscribe to server events",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
-    [Description("Starts collecting events from a virtual server, so ts_events_poll and ts_events_wait " +
-                 "can return them. Categories: server (clients connecting and disconnecting, server " +
-                 "settings changed), channel (channels created, edited or deleted, clients moving, " +
-                 "connecting and disconnecting), textserver (server-wide messages), textchannel " +
-                 "(messages in the channel the event session sits in, the default channel), textprivate " +
-                 "(private messages sent to the event session's clientId, which the subscription reports) " +
-                 "and bans (bans added or removed). Without " +
-                 "categories, all of them. Adding categories keeps the ones already subscribed. " +
-                 "Returns a cursor: pass it as 'after' to read only what arrives from now on. Events " +
-                 "need the SSH query and use a query session of their own. Subscriptions are shared by " +
-                 "everyone using this server, and last until ts_events_unsubscribe or a restart.")]
+    [Description("Starts collecting events from a virtual server for ts_events_poll and ts_events_wait. " +
+                 "Categories: server (clients connecting and leaving, settings changed), channel (channels " +
+                 "changed, clients moving, connecting and leaving), textserver (server chat), textchannel " +
+                 "(chat in the event session's channel), textprivate (private messages to the event " +
+                 "session's clientId, reported in the result) and bans. Omitted, all of them; new " +
+                 "categories add to those subscribed. Pass the returned cursor as 'after' to read only " +
+                 "what arrives from now on. Needs SSH and opens a query session of its own. Subscriptions " +
+                 "are shared by everyone using this server until ts_events_unsubscribe or a restart.")]
     public async Task<EventSubscribeResult> SubscribeAsync(
         [Description("Categories to add. Omit for all.")] EventCategoryName[]? categories = null,
         [Description("Limit the channel category to one channel id; omit for every channel.")] int? channelId = null,
-        [Description("For the textchannel category, the channel whose chat to receive: the event session is moved into it and appears there as a query client, and is moved back there after any reconnect. It stays in that channel until you subscribe again with a different one; omitting this leaves the current channel unchanged (the default channel until one is set).")]
+        [Description("For textchannel: the channel whose chat to receive. The event session moves there, shows as a query client, and returns there after a reconnect. Omitted, it stays where it is, at first the default channel.")]
         int? textChannelId = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,

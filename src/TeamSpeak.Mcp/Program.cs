@@ -12,7 +12,7 @@ switch (options.Transport)
         }
         catch (InvalidOperationException ex)
         {
-            // Settings that would leave the endpoint open; the message says what to change.
+            // Settings that cannot work, such as an open endpoint; the message says what to change.
             await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
             return 1;
         }
@@ -22,7 +22,18 @@ switch (options.Transport)
 
     case TransportMode.Stdio:
     default:
-        await McpHostFactory.CreateStdioHost(args).RunAsync().ConfigureAwait(false);
+        Microsoft.Extensions.Hosting.IHost host;
+        try
+        {
+            host = McpHostFactory.CreateStdioHost(args);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
+            return 1;
+        }
+
+        await host.RunAsync().ConfigureAwait(false);
         break;
 }
 

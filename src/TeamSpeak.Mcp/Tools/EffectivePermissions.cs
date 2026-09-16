@@ -39,13 +39,12 @@ public sealed partial class PermissionTools
     [McpServerTool(Name = "ts_perm_effective", Title = "Explain a client's effective permissions",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Answers 'why can or can't this client do X?'. For one client identity in one channel, " +
-                 "shows the value the client ends up with for a permission and every assignment that fed " +
-                 "into it: each server group, the client itself, its channel group in that channel and " +
-                 "any client-in-channel permission, marking which one decided and whether a skip flag or " +
-                 "b_client_skip_channelgroup_permissions kept channel values out. Pass permission for an exact name, or search for text in " +
-                 "names such as 'kick'. Without channelId it uses the channel the client is in, or the " +
-                 "default channel when the client is offline. Channel permissions such as the power " +
-                 "needed to join are listed as requirements, not grants.")]
+                 "shows the value a permission ends up with and every assignment behind it (server groups, " +
+                 "the client, its channel group, client-in-channel), which one decided, and whether a skip " +
+                 "flag or b_client_skip_channelgroup_permissions kept channel values out. Pass permission " +
+                 "for an exact name, or search for part of names such as 'kick'. channelId defaults to the " +
+                 "client's channel, or the default channel when offline. Channel permissions such as the " +
+                 "join power are listed as requirements, not grants.")]
     public async Task<EffectivePermissions> EffectivePermissionsAsync(
         [Description("The client's database id; see ts_client_resolve.")] int databaseId,
         [Description("An exact permission name, for example 'i_client_talk_power'.")] string? permission = null,

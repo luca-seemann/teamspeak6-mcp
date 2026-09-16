@@ -24,7 +24,7 @@ namespace TeamSpeak.Mcp.Tools;
 public sealed class FileTools(QueryExecutor executor, FileTransferOptions options)
 {
     private const string SshOnly =
-        " File commands need a profile that uses SSH; TeamSpeak refuses them over the WebQuery.";
+        " Needs a profile that uses SSH; the WebQuery refuses file commands.";
 
     private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
@@ -137,11 +137,11 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
     [McpServerTool(Name = "ts_file_download", Title = "Download a stored file",
         ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Downloads a file from a channel's file repository. Without localPath the content comes back " +
-                 "in the answer, as text when it is valid UTF-8 and as base64 otherwise, for files up to " +
-                 "TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured); this needs ReadOnly. With " +
-                 "localPath it is saved inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory, " +
-                 "which needs Write, and an existing local file is never replaced. The bytes travel over the " +
-                 "server's file transfer port, 30033 by default, which must be reachable from this machine." + SshOnly + ToolDescriptions.UserWrittenText)]
+                 "inline, as text when valid UTF-8 and as base64 otherwise, up to " +
+                 "TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB by default); needs ReadOnly. With localPath " +
+                 "it is saved inside TeamSpeak:FileTransfer:LocalDirectory, never replacing a file; needs " +
+                 "Write. The bytes travel over the file transfer port, 30033 by default, which must be " +
+                 "reachable from here." + SshOnly + ToolDescriptions.UserWrittenText)]
     public async Task<FileDownload> DownloadAsync(
         [Description("The channel the file is stored in; 0 for icons and avatars.")] int channelId,
         [Description("The file's path, such as /docs/readme.txt.")] string path,

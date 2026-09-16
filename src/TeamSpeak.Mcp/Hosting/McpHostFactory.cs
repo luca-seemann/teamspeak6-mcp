@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using ModelContextProtocol.Server;
+
 using TeamSpeak.Mcp.Configuration;
 using TeamSpeak.Mcp.Tools;
 using TeamSpeak.Query.Client;
@@ -46,13 +48,7 @@ public static class McpHostFactory
         builder.Configuration.AddEnvironmentVariables(EnvironmentPrefix);
         AddTeamSpeak(builder.Services, builder.Configuration);
 
-        builder.Services
-            .AddMcpServer(ServerIdentity.Configure)
-            .WithStdioServerTransport()
-            .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
-            .WithToolsFromAssembly()
-            .WithPromptsFromAssembly()
-            .WithResourcesFromAssembly();
+        AddPrimitives(builder.Services.AddMcpServer(ServerIdentity.Configure).WithStdioServerTransport(), builder.Configuration);
 
         return builder.Build();
     }
@@ -78,18 +74,44 @@ public static class McpHostFactory
 
         AddTeamSpeak(builder.Services, builder.Configuration);
 
-        builder.Services
-            .AddMcpServer(ServerIdentity.Configure)
-            .WithHttpTransport()
-            .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
-            .WithToolsFromAssembly()
-            .WithPromptsFromAssembly()
-            .WithResourcesFromAssembly();
+        AddPrimitives(builder.Services.AddMcpServer(ServerIdentity.Configure).WithHttpTransport(), builder.Configuration);
 
         var app = builder.Build();
         app.Use(guard.InvokeAsync);
         app.MapMcp();
         return app;
+    }
+
+    /// <summary>
+    /// Registers the tools, prompts and resources, and leaves out the tool groups configuration switches off.
+    /// </summary>
+    /// <param name="builder">The MCP server being built.</param>
+    /// <param name="configuration">The configuration naming the disabled groups.</param>
+    private static void AddPrimitives(IMcpServerBuilder builder, IConfiguration configuration)
+    {
+        // Read here rather than when the options are first used, so a mistyped group stops the start.
+        var disabled = ToolGroups.Disabled(configuration);
+
+        builder
+            .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
+            .WithToolsFromAssembly()
+            .WithPromptsFromAssembly()
+            .WithResourcesFromAssembly();
+
+        if (disabled.Count > 0)
+        {
+            // The SDK fills the tool collection while configuring the options; this runs after it.
+            builder.Services.PostConfigure<McpServerOptions>(options =>
+            {
+                foreach (var tool in options.ToolCollection?.ToArray() ?? [])
+                {
+                    if (ToolGroups.Of(tool.ProtocolTool.Name) is { } group && disabled.Contains(group))
+                    {
+                        options.ToolCollection!.Remove(tool);
+                    }
+                }
+            });
+        }
     }
 
     /// <summary>

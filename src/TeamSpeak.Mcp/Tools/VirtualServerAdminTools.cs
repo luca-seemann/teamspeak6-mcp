@@ -151,15 +151,12 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Replaces a virtual server's configuration, channels, groups and permissions with a " +
                  "snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. " +
-                 "TeamSpeak does not check permissions while deploying, so a snapshot can grant any " +
-                 "privilege: deploy only snapshots whose origin you trust. The virtual server shuts down " +
-                 "for the deploy, disconnecting everyone on it, and stays unusable until it finishes; this " +
-                 "tool waits up to 10 minutes; a normal deploy took about a second. Every channel, group " +
-                 "and client database id changes, so ids read before are stale. Channel files are not " +
-                 "kept: deploying with -keepfiles crashed TeamSpeak 6.0.0-beta12.1 and left the virtual " +
-                 "server impossible to start, select or delete, so this server refuses it on every " +
-                 "path. Take ts_vserver_snapshot_create of the target first. As a safeguard, " +
-                 "confirmName must repeat the target virtual server's exact name. Needs Destructive.")]
+                 "TeamSpeak checks no permissions while deploying, so a snapshot can grant anything: deploy " +
+                 "only snapshots from a trusted source. The virtual server shuts down meanwhile, " +
+                 "disconnecting everyone; this tool waits up to 10 minutes. Afterwards every channel, group " +
+                 "and client database id is new. Channel files are lost: -keepfiles crashed TeamSpeak " +
+                 "6.0.0-beta12.1 beyond repair and is refused. Snapshot the target first. confirmName must " +
+                 "repeat the target's exact name. Needs Destructive.")]
     public async Task<ActionResult> SnapshotDeployAsync(
         [Description("The snapshot's version field.")] string version,
         [Description("The snapshot's data field.")] string data,

@@ -168,6 +168,7 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 |---|---|---|
 | `TeamSpeak:Safety` | `TSMCP_TeamSpeak__Safety` | `ReadOnly` |
 | `TeamSpeak:EventBufferSize` | `TSMCP_TeamSpeak__EventBufferSize` | `1000` events per profile |
+| `TeamSpeak:DisabledToolGroups` | `TSMCP_TeamSpeak__DisabledToolGroups` | — (every group; comma-separated, see [Tool groups](#tool-groups)) |
 | `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | — (file tools pass content inline only) |
 | `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `102400` (100 KiB) |
 | `TeamSpeak:Http:BearerToken` | `TSMCP_TeamSpeak__Http__BearerToken` | — (Streamable HTTP only; required when bound to a non-loopback address) |
@@ -364,6 +365,31 @@ example, lists them as slash commands such as `/mcp__teamspeak__server-audit`.
 
 Only `client`, `action` and `member` are required. The prompts only instruct the model; what it may
 actually change is still decided by the safety level.
+
+### Tool groups
+
+A client sends every tool definition to the model with each request: about 34,000 tokens for all 84.
+A deployment that never needs some of them can switch whole groups off, for example
+`TSMCP_TeamSpeak__DisabledToolGroups=files,events`. An unknown name stops the start with the list of
+valid ones.
+
+| Group | Tools | Tokens, measured |
+|---|---|---|
+| `core` | `ts_profiles_list`, `ts_whoami`, `ts_command_help`; cannot be switched off | ~700 |
+| `raw` | `ts_query_raw` | ~600 |
+| `servers` | `ts_vserver_*`, `ts_instance_*`, `ts_health_report`, `ts_temp_password` | ~4,400 |
+| `channels` | `ts_channel_*` | ~2,600 |
+| `groups` | `ts_servergroup_*`, `ts_channelgroup_*`, `ts_client_groups`, `ts_client_channelgroup_set` | ~4,000 |
+| `clients` | `ts_client_*`, `ts_clientdb_*`, `ts_message_*`, `ts_offline_message`, `ts_custom_*` | ~7,300 |
+| `permissions` | `ts_perm_*` | ~3,000 |
+| `moderation` | `ts_ban_*`, `ts_complaint_*`, `ts_token_*`, `ts_log_*` | ~3,600 |
+| `access` | `ts_apikey_*`, `ts_querylogin_*` | ~1,500 |
+| `events` | `ts_events_*` | ~3,000 |
+| `files` | `ts_file_*` | ~3,800 |
+
+Switching a group off is not a safety measure: the safety level decides what may change, and a tool
+above it stays listed so the model can say why it was refused. Resources and prompts stay available,
+and a prompt may then suggest a tool that is not listed.
 
 ## Setting up
 
