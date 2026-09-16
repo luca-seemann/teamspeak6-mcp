@@ -2527,6 +2527,57 @@
     }
   },
   {
+    "name": "ts_command_help",
+    "title": "Show a ServerQuery command\u0027s documentation",
+    "description": "Asks the TeamSpeak server for its own documentation of a ServerQuery command: its usage with every parameter, the permissions it checks, a description and an example. Without command it returns the overview of all commands. Use it before ts_query_raw to get command and parameter names right; the answer always matches the version the server runs. Needs a profile that uses SSH, because the WebQuery does not serve help.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command to explain, for example \u0027channeledit\u0027. Omit it for the list of all commands.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command",
+        "text"
+      ]
+    },
+    "annotations": {
+      "title": "Show a ServerQuery command\u0027s documentation",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
     "name": "ts_complaint_delete",
     "title": "Delete a complaint",
     "description": "Deletes one complaint, identified by who it is about and who filed it, as ts_complaint_list shows. Needs Write.",

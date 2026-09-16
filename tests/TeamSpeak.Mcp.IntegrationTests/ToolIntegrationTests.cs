@@ -50,6 +50,28 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
     }
 
     [RequiresTeamSpeakServerFact]
+    public async Task Command_help_returns_a_whole_page_and_the_session_stays_in_step()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var connections = SharedSshConnections();
+        var tools = new MetaTools(new QueryExecutor(connections, new SafetyPolicy()));
+
+        // servernotifyregister quotes two indented status lines before its real one.
+        var help = await tools.CommandHelpAsync("servernotifyregister", cancellationToken: ct);
+        Assert.StartsWith("Usage: servernotifyregister", help.Text, StringComparison.Ordinal);
+        Assert.EndsWith("servernotifyregister event=channel id=123\n  error id=0 msg=ok", help.Text, StringComparison.Ordinal);
+
+        // Had the page ended at the first quoted status line, its rest would now be read as this answer.
+        var who = await tools.WhoAmIAsync(cancellationToken: ct);
+        Assert.Equal("serveradmin", who.Fields["client_login_name"]);
+
+        var overview = await tools.CommandHelpAsync(cancellationToken: ct);
+        Assert.Contains("channeledit", overview.Text, StringComparison.Ordinal);
+
+        await Assert.ThrowsAsync<McpException>(() => tools.CommandHelpAsync("nosuchcommand", cancellationToken: ct));
+    }
+
+    [RequiresTeamSpeakServerFact]
     public async Task Channel_and_client_tools_answer_over_ssh()
     {
         var ct = TestContext.Current.CancellationToken;

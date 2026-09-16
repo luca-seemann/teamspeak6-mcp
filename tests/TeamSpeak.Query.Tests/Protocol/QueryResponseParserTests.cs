@@ -80,6 +80,34 @@ public class QueryResponseParserTests
     }
 
     [Fact]
+    public void Ends_a_help_page_only_at_the_status_line_that_starts_its_line()
+    {
+        // Measured on 6.0.0-beta12.1: lines end with \n\r, and the example quotes a status line
+        // indented by two spaces before the real one.
+        const string Raw =
+            "Usage: apikeyadd scope={manage|write|read}\n\r\n\r" +
+            "Example:\n\r\n\r  apikeyadd scope=manage\n\r\n\r  error id=0 msg=ok\n\r\n\r\n\r" +
+            "error id=0 msg=ok\n\r";
+
+        var response = QueryResponseParser.Parse(Raw);
+
+        Assert.True(response.Error.IsSuccess);
+        Assert.Equal(
+            "Usage: apikeyadd scope={manage|write|read}\n\nExample:\n\n  apikeyadd scope=manage\n\n  error id=0 msg=ok",
+            response.Text);
+        Assert.False(QueryResponseParser.IsComplete(Raw[..Raw.LastIndexOf("error", StringComparison.Ordinal)]));
+        Assert.True(QueryResponseParser.IsComplete(Raw));
+    }
+
+    [Fact]
+    public void Keeps_the_payload_of_an_ordinary_response_as_text_too()
+    {
+        var response = QueryResponseParser.Parse(Fixture.Ssh("version"));
+
+        Assert.Equal("version=6.0.0-beta12.1 build=1785239375 platform=Linux", response.Text);
+    }
+
+    [Fact]
     public void Rejects_a_response_without_a_status_line()
     {
         Assert.Throws<QueryProtocolException>(() => QueryResponseParser.Parse("version=6.0.0\n"));

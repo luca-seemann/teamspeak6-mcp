@@ -31,6 +31,9 @@ Verified against server 6.0.0-beta12.1:
 
 ## Re-capturing
 
+For a single command there is no need: `ts_command_help` asks the connected server for its page,
+for whatever version it runs.
+
 The capture scripts are not committed; they are throwaway. To rebuild the reference, open one SSH
 session and issue `help` followed by `help <command>` for each name in the first column, writing the
 raw bytes out unmodified.

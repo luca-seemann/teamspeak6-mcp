@@ -837,13 +837,13 @@ public sealed class SshQueryTransport : IQueryTransport
         while ((newline = text.IndexOf('\n', StringComparison.Ordinal)) >= 0
                && ReferenceEquals(shell, _shell))
         {
-            var line = text[..newline].Trim('\r', ' ');
+            // Only carriage returns are removed, never spaces. A help page quotes example responses
+            // indented by two spaces, status line included, and trimming them would end the response
+            // in the middle of the page and hand the rest to the next command.
+            var line = text[..newline].Trim('\r');
             text = text[(newline + 1)..];
 
-            if (line.Length > 0)
-            {
-                Dispatch(line);
-            }
+            Dispatch(line);
         }
 
         carry.Clear();
@@ -861,7 +861,7 @@ public sealed class SshQueryTransport : IQueryTransport
         }
 
         var pending = _pending;
-        if (pending is null)
+        if (pending is null || (line.Length == 0 && _pendingText.Length == 0))
         {
             return;
         }

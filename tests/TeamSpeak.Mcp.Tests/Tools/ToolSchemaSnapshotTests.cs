@@ -107,7 +107,7 @@ public class ToolSchemaSnapshotTests
                 "ts_apikey_list", "ts_ban_list", "ts_channel_find", "ts_channel_info", "ts_channel_list",
                 "ts_channelgroup_list", "ts_channelgroup_members", "ts_client_find", "ts_client_groups",
                 "ts_client_info", "ts_client_list", "ts_client_resolve", "ts_clientdb_find", "ts_clientdb_info",
-                "ts_clientdb_list", "ts_complaint_list", "ts_custom_info", "ts_custom_search",
+                "ts_clientdb_list", "ts_command_help", "ts_complaint_list", "ts_custom_info", "ts_custom_search",
                 "ts_events_poll", "ts_events_status", "ts_events_subscribe", "ts_events_unsubscribe", "ts_events_wait",
                 "ts_file_info", "ts_file_list", "ts_file_transfers",
                 "ts_health_report",

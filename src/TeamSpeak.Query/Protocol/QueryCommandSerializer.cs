@@ -23,6 +23,12 @@ public static class QueryCommandSerializer
 
         var builder = new StringBuilder(command.Name);
 
+        foreach (var argument in command.Arguments ?? [])
+        {
+            ValidateName(argument, nameof(command));
+            builder.Append(' ').Append(argument);
+        }
+
         foreach (var (key, value) in command.Parameters ?? EmptyParameters)
         {
             ValidateName(key, nameof(command));
@@ -45,6 +51,7 @@ public static class QueryCommandSerializer
     /// </param>
     /// <returns>A relative URL such as <c>1/clientinfo?clid=3</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when a name would break the URL.</exception>
+    /// <exception cref="NotSupportedException">Thrown for a command with positional arguments.</exception>
     /// <remarks>
     /// Values are percent-encoded rather than query-escaped: the WebQuery speaks JSON and HTTP, so
     /// the backslash escapes of the line protocol have no place here.
@@ -53,6 +60,12 @@ public static class QueryCommandSerializer
     {
         ArgumentNullException.ThrowIfNull(command);
         ValidateName(command.Name, nameof(command));
+
+        if (command.Arguments is { Count: > 0 })
+        {
+            throw new NotSupportedException(
+                $"'{command.Name}' takes a positional argument, which the WebQuery has no form for.");
+        }
 
         var builder = new StringBuilder();
 

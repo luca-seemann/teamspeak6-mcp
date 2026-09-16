@@ -32,6 +32,19 @@ public class HttpQueryTransportTests
     }
 
     [Fact]
+    public async Task Refuses_help_without_sending_anything()
+    {
+        // Measured: the WebQuery answers /help with 404 "not found".
+        var handler = new StubHandler(Ok);
+        await using var transport = new HttpQueryTransport(Profile(), new HttpClient(handler));
+
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            transport.SendAsync(new QueryCommand("help"), TestContext.Current.CancellationToken));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task Addresses_instance_wide_commands_without_a_virtual_server()
     {
         var handler = new StubHandler(Ok);

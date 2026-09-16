@@ -130,6 +130,20 @@ connection with an unknown key at once. Probed in three rounds:
   and its download `sender=1`. Both ran at about 130 MB/s on the LAN, and each entry vanished when the
   transfer ended. 80 MB through the probe took 0.6 s up and 0.7 s down.
 
+**`help` quotes status lines, and only SSH serves it.** Probed on the test server:
+- Lines end with `\n\r`, as in every SSH response, so each line after the first starts with a
+  carriage return.
+- A page's example section quotes the command's response, indented by two spaces, status line
+  included. `help servernotifyregister` quotes two, `  error id=0 msg=ok`, before its real status
+  line. A reader that trims spaces before looking for `error ` ends the response early.
+- `help nosuchcommand` answers `1538 invalid parameter`.
+- The WebQuery has no form for it: `/help` and `/1/help?apikeyadd` answer `404 not found`, and
+  `/help/apikeyadd` answers `1538`.
+
+**A channel search that matches nothing is an error.** `channelfind` with a pattern no channel name
+contains was refused with `768 invalid channelID`, not answered with an empty result. A live test
+that searched for "Default" found this once the test server's default channel had been renamed.
+
 **An empty parameter value is a missing parameter.** `channelfind pattern=` returns
 `1542 missing required parameter`, a different code from the `1539` seen elsewhere, so an empty
 string never works as a "match anything" pattern.

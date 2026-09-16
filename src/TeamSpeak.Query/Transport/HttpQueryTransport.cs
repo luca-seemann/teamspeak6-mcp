@@ -160,6 +160,13 @@ public sealed class HttpQueryTransport : IQueryTransport
 
     private async Task<QueryResponse> SendOnceAsync(QueryCommand command, CancellationToken cancellationToken)
     {
+        // Measured on 6.0.0-beta12.1: /help answers 404 "not found", and /help/<command> 1538.
+        if (string.Equals(command.Name, "help", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new NotSupportedException(
+                "The WebQuery does not serve 'help'; it answers 404. The SSH query does.");
+        }
+
         using var lease = await _guard.AcquireAsync(cancellationToken).ConfigureAwait(false);
 
         var path = QueryCommandSerializer.ToWebQueryPath(

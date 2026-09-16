@@ -11,4 +11,15 @@ namespace TeamSpeak.Query.Protocol;
 /// <param name="Error">The terminating status of the command.</param>
 public sealed record QueryResponse(
     IReadOnlyList<QueryRecord> Records,
-    QueryError Error);
+    QueryError Error)
+{
+    /// <summary>
+    /// Gets the payload as the server wrote it, for commands that answer with prose rather than records.
+    /// </summary>
+    /// <remarks>
+    /// <c>help</c> is the case in point: its records are meaningless, its text is the answer. Line breaks
+    /// and indentation are kept and carriage returns removed. Empty over the WebQuery, which answers
+    /// with JSON records only.
+    /// </remarks>
+    public string Text { get; init; } = string.Empty;
+}

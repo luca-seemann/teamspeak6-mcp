@@ -26,9 +26,15 @@ namespace TeamSpeak.Query.Protocol;
 /// Only for commands known to run long: a snapshot deploy abandoned after the default timeout left
 /// a live server stuck in <c>deploy running</c>.
 /// </param>
+/// <param name="Arguments">
+/// Bare words written straight after the command name, for commands that take a positional argument
+/// rather than <c>key=value</c>, such as <c>help channeledit</c>. Each must be a plain name. Only the
+/// SSH interface has a form for them.
+/// </param>
 public sealed record QueryCommand(
     string Name,
     IReadOnlyDictionary<string, string>? Parameters = null,
     IReadOnlyList<string>? Options = null,
     int? VirtualServerId = null,
-    TimeSpan? Timeout = null);
+    TimeSpan? Timeout = null,
+    IReadOnlyList<string>? Arguments = null);

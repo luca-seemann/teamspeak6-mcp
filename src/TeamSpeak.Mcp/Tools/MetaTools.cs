@@ -96,6 +96,49 @@ public sealed class MetaTools(QueryExecutor executor)
             bindings.Select(binding => binding.GetString("ip")).Where(ip => ip.Length > 0).ToList());
     }
 
+    /// <summary>Shows the server's own documentation of a ServerQuery command.</summary>
+    /// <param name="command">The command to explain, or <see langword="null"/> for the overview.</param>
+    /// <param name="profile">The profile.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The documentation, as the server wrote it.</returns>
+    [McpServerTool(Name = "ts_command_help", Title = "Show a ServerQuery command's documentation",
+        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Asks the TeamSpeak server for its own documentation of a ServerQuery command: its usage " +
+                 "with every parameter, the permissions it checks, a description and an example. Without " +
+                 "command it returns the overview of all commands. Use it before ts_query_raw to get command " +
+                 "and parameter names right; the answer always matches the version the server runs. Needs a " +
+                 "profile that uses SSH, because the WebQuery does not serve help.")]
+    public async Task<CommandHelp> CommandHelpAsync(
+        [Description("The command to explain, for example 'channeledit'. Omit it for the list of all commands.")]
+        string? command = null,
+        [Description(ToolDescriptions.Profile)] string? profile = null,
+        CancellationToken cancellationToken = default)
+    {
+        var name = string.IsNullOrWhiteSpace(command) ? null : command.Trim();
+        if (name is not null && !name.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-'))
+        {
+            throw new McpException(
+                $"'{name}' is not a ServerQuery command name. Pass the name alone, for example 'channeledit'.");
+        }
+
+        var resolved = executor.ResolveProfile(profile);
+        if (QueryConnectionManager.ResolveTransport(resolved) != PreferredTransport.Ssh)
+        {
+            throw new McpException(
+                $"Profile '{resolved.Name}' uses the WebQuery, which does not serve help: it answers 404. " +
+                "Give the profile an SSH password; with Transport Auto it then uses SSH. Nothing was sent.");
+        }
+
+        var response = await executor.RunForResponseAsync(
+            "ts_command_help",
+            SafetyLevel.ReadOnly,
+            profile,
+            new QueryCommand("help", Arguments: name is null ? null : [name]),
+            cancellationToken).ConfigureAwait(false);
+
+        return new CommandHelp(name, response.Text);
+    }
+
     /// <summary>Sends any ServerQuery command.</summary>
     /// <param name="command">The command name.</param>
     /// <param name="parameters">Key/value parameters.</param>
@@ -181,6 +224,11 @@ public sealed record InstanceInfo(
     IReadOnlyDictionary<string, string> Host,
     IReadOnlyDictionary<string, string> Instance,
     IReadOnlyList<string> BoundAddresses);
+
+/// <summary>A command's documentation, as the server wrote it.</summary>
+/// <param name="Command">The command explained, or <see langword="null"/> for the overview of all commands.</param>
+/// <param name="Text">The documentation, with its line breaks and indentation.</param>
+public sealed record CommandHelp(string? Command, string Text);
 
 /// <summary>The outcome of a raw command.</summary>
 /// <param name="Command">The command that was sent.</param>

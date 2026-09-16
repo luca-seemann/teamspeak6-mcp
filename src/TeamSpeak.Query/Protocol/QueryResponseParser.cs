@@ -4,9 +4,16 @@ namespace TeamSpeak.Query.Protocol;
 /// Parses raw responses from the line-based (SSH) ServerQuery interface.
 /// </summary>
 /// <remarks>
+/// <para>
 /// A response is zero or more payload lines followed by a status line such as
 /// <c>error id=0 msg=ok</c>. There is no prompt to synchronise on — despite what the official
 /// documentation shows, the server never emits one — so the status line is the only frame marker.
+/// </para>
+/// <para>
+/// Only a status line that starts its line ends a response. Measured on 6.0.0-beta12.1: a
+/// <c>help</c> page quotes example responses indented by two spaces, status line included, and
+/// <c>help servernotifyregister</c> quotes two of them before its real status line.
+/// </para>
 /// </remarks>
 public static class QueryResponseParser
 {
@@ -20,16 +27,7 @@ public static class QueryResponseParser
     public static bool IsComplete(string raw)
     {
         ArgumentNullException.ThrowIfNull(raw);
-
-        foreach (var line in EnumerateLines(raw))
-        {
-            if (line.StartsWith(StatusPrefix, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return EnumerateLines(raw).Any(IsStatusLine);
     }
 
     /// <summary>Parses a complete raw response.</summary>
@@ -41,18 +39,27 @@ public static class QueryResponseParser
         ArgumentNullException.ThrowIfNull(raw);
 
         var records = new List<QueryRecord>();
+        var text = new List<string>();
         QueryError? error = null;
 
         foreach (var line in EnumerateLines(raw))
         {
-            if (line.StartsWith(StatusPrefix, StringComparison.Ordinal))
+            if (IsStatusLine(line))
             {
                 error = ParseStatus(line);
                 break;
             }
 
+            text.Add(line);
+
+            var trimmed = line.Trim(' ');
+            if (trimmed.Length == 0)
+            {
+                continue;
+            }
+
             // A payload line holds one or more records separated by '|'.
-            foreach (var record in line.Split('|', StringSplitOptions.RemoveEmptyEntries))
+            foreach (var record in trimmed.Split('|', StringSplitOptions.RemoveEmptyEntries))
             {
                 records.Add(new QueryRecord(ParseRecord(record)));
             }
@@ -60,19 +67,35 @@ public static class QueryResponseParser
 
         return error is null
             ? throw new QueryProtocolException("The response contained no 'error id=' status line.")
-            : new QueryResponse(records, error);
+            : new QueryResponse(records, error) { Text = string.Join('\n', WithoutBlankEdges(text)) };
     }
 
+    private static bool IsStatusLine(string line) => line.StartsWith(StatusPrefix, StringComparison.Ordinal);
+
+    /// <summary>Splits into lines, removing carriage returns but keeping indentation.</summary>
+    /// <remarks>
+    /// The server ends lines with <c>\n\r</c>, so every line after the first starts with the carriage
+    /// return of the break before it. Spaces are left alone: they are what tells a quoted example
+    /// status line from the real one.
+    /// </remarks>
     private static IEnumerable<string> EnumerateLines(string raw)
     {
         foreach (var line in raw.Split('\n'))
         {
-            var trimmed = line.Trim('\r', ' ');
-            if (trimmed.Length > 0)
-            {
-                yield return trimmed;
-            }
+            yield return line.Trim('\r');
         }
+    }
+
+    private static IEnumerable<string> WithoutBlankEdges(List<string> lines)
+    {
+        var first = lines.FindIndex(line => line.Trim(' ').Length > 0);
+        if (first < 0)
+        {
+            return [];
+        }
+
+        var last = lines.FindLastIndex(line => line.Trim(' ').Length > 0);
+        return lines.Skip(first).Take(last - first + 1);
     }
 
     private static QueryError ParseStatus(string line)

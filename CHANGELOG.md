@@ -109,9 +109,20 @@ All notable changes to this project are documented here. The format follows
   credentials, everything the safety level allows, and local files inside the configured directory.
 - A release workflow. A version tag builds the three binaries and the packages, and attaches them
   to a GitHub release with checksums. Nothing is pushed to nuget.org automatically.
+- `ts_command_help`, for 84 tools in all. It asks the connected server for its own documentation of
+  a ServerQuery command, or for the overview of all commands, so a model can get command and
+  parameter names right before using `ts_query_raw`, for exactly the version that runs. SSH only:
+  the WebQuery answers `/help` with 404.
+- `QueryCommand.Arguments`, for bare words after the command name such as `help channeledit`, held to
+  the same rules as names so none can smuggle in a second command, and `QueryResponse.Text`, the
+  payload as the server wrote it.
 
 ### Fixed
 
+- The SSH transport trimmed spaces from every line before looking for the status line that ends a
+  response. A help page quotes example responses indented by two spaces, status line included, so a
+  response would have ended in the middle of the page and handed the rest to the next command. Only
+  a status line that starts its line ends a response now, and only such a line is routed as an event.
 - `ts_channel_move` could not reorder a channel within its parent. The server refuses `channelmove`
   to a channel's own parent with `770 already member of channel`, whatever the order, so the tool
   now reads the parent first and sets `channel_order` when it stays the same.

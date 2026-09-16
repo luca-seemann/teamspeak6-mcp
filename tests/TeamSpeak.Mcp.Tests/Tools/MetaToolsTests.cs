@@ -94,6 +94,56 @@ public class MetaToolsTests
     }
 
     [Fact]
+    public async Task Command_help_asks_the_server_and_returns_its_text_with_the_indentation()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns(
+            "help",
+            QueryResponseParser.Parse("Usage: channeledit cid={channelID}\n\r\n\r  error id=0 msg=ok\n\r\n\rerror id=0 msg=ok\n\r"));
+
+        var result = await new MetaTools(harness.Executor).CommandHelpAsync(
+            "channeledit",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var sent = Assert.Single(harness.Transport.SentCommands);
+        Assert.Equal(("help", "channeledit"), (sent.Name, Assert.Single(sent.Arguments!)));
+        Assert.Equal(("channeledit", "Usage: channeledit cid={channelID}\n\n  error id=0 msg=ok"), (result.Command, result.Text));
+    }
+
+    [Theory]
+    [InlineData("channeledit cid=1")]
+    [InlineData("help\nserverstop")]
+    public async Task Command_help_refuses_anything_but_a_bare_command_name(string command)
+    {
+        await using var harness = new ToolHarness();
+
+        await Assert.ThrowsAsync<McpException>(() => new MetaTools(harness.Executor).CommandHelpAsync(
+            command,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Empty(harness.Transport.SentCommands);
+    }
+
+    [Fact]
+    public async Task Command_help_explains_that_the_web_query_does_not_serve_it()
+    {
+        await using var harness = new ToolHarness(profile: new QueryProfile
+        {
+            Name = "web",
+            Host = "web.example.com",
+            WebQueryUrl = new Uri("http://web.example.com:10080"),
+            ApiKey = "key",
+        });
+
+        var ex = await Assert.ThrowsAsync<McpException>(() => new MetaTools(harness.Executor).CommandHelpAsync(
+            "channeledit",
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("SSH password", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(harness.Transport.SentCommands);
+    }
+
+    [Fact]
     public async Task Explains_an_api_key_scope_refusal()
     {
         await using var harness = new ToolHarness();

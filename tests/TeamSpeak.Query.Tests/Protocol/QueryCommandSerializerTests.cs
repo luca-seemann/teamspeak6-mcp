@@ -93,6 +93,29 @@ public class QueryCommandSerializerTests
     }
 
     [Fact]
+    public void Writes_positional_arguments_straight_after_the_command_name()
+    {
+        Assert.Equal("help channeledit", QueryCommandSerializer.ToWireLine(new QueryCommand("help", Arguments: ["channeledit"])));
+    }
+
+    [Theory]
+    [InlineData("channeledit\nserverstop")]
+    [InlineData("two words")]
+    [InlineData("")]
+    public void Rejects_an_argument_that_could_smuggle_a_second_command(string argument)
+    {
+        Assert.Throws<ArgumentException>(() =>
+            QueryCommandSerializer.ToWireLine(new QueryCommand("help", Arguments: [argument])));
+    }
+
+    [Fact]
+    public void Refuses_positional_arguments_on_the_web_query()
+    {
+        Assert.Throws<NotSupportedException>(() =>
+            QueryCommandSerializer.ToWebQueryPath(new QueryCommand("help", Arguments: ["channeledit"])));
+    }
+
+    [Fact]
     public void Rejects_a_parameter_name_that_could_smuggle_a_second_command()
     {
         var command = new QueryCommand(

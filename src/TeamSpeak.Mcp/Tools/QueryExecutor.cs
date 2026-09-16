@@ -69,6 +69,30 @@ public sealed class QueryExecutor
         QueryCommand command,
         CancellationToken cancellationToken)
     {
+        var response = await RunForResponseAsync(action, required, profile, command, cancellationToken).ConfigureAwait(false);
+        return response.Error.IsEmptyResult ? [] : response.Records;
+    }
+
+    /// <summary>
+    /// Checks safety, sends one command and returns the whole response, for commands whose answer is
+    /// prose rather than records.
+    /// </summary>
+    /// <param name="action">What is being attempted, used in refusal messages, usually the tool name.</param>
+    /// <param name="required">The safety level the command needs.</param>
+    /// <param name="profile">The profile name, or <see langword="null"/> when only one is configured.</param>
+    /// <param name="command">The command to send.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The response, including its <see cref="QueryResponse.Text"/>.</returns>
+    /// <exception cref="McpException">
+    /// Thrown when the call is not allowed, cannot reach the server, or the server refuses it.
+    /// </exception>
+    public async Task<QueryResponse> RunForResponseAsync(
+        string action,
+        SafetyLevel required,
+        string? profile,
+        QueryCommand command,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(command);
 
@@ -90,7 +114,9 @@ public sealed class QueryExecutor
                 $"'{command.Name}' did not complete on profile '{resolved.Name}': {ex.Message}", ex);
         }
 
-        return RecordsOf(resolved.Name, command.Name, response);
+        return response.Error.IsSuccess || response.Error.IsEmptyResult
+            ? response
+            : throw new McpException(DescribeRefusal(resolved.Name, command.Name, response.Error));
     }
 
     /// <summary>

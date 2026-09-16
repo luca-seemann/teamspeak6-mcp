@@ -189,7 +189,7 @@ session that is broken, or still waiting for an answer, is simply closed.
 
 ## Tools
 
-83 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
+84 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
 because privilege keys are live credentials. The changing tools are listed further down with the
 level each needs.
 
@@ -208,6 +208,7 @@ level each needs.
 | Access and logs | `ts_apikey_list`, `ts_querylogin_list`, `ts_message_list`, `ts_message_get`, `ts_log_view`, `ts_custom_info`, `ts_custom_search` | API keys and query logins, the query inbox, the server log, custom client properties. |
 | Events | `ts_events_subscribe`, `ts_events_poll`, `ts_events_wait`, `ts_events_unsubscribe`, `ts_events_status` | **What is happening right now**: messages, people connecting and moving, channel and server changes, bans. |
 | Files | `ts_file_list`, `ts_file_info`, `ts_file_transfers`, `ts_file_download` | What is stored in a channel, one file's size and age, transfers under way, and a file's content. |
+| Command reference | `ts_command_help` | How a ServerQuery command works, asked from the connected server itself: usage, permissions, description and an example, always for the version it runs. SSH only; the WebQuery does not serve help. |
 | Anything else | `ts_query_raw` | Any other ServerQuery command, at the safety level of that command. |
 
 ### Changing
