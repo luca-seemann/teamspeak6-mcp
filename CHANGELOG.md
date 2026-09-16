@@ -125,6 +125,14 @@ All notable changes to this project are documented here. The format follows
   `moderation` and `raw` about 22,000. `core` stays on, and an unknown group stops the start. The
   five longest tool descriptions were tightened as well, which saved only about 300 tokens: most
   of the size is the input and output schemas.
+- `TeamSpeak:ToolResultText=Toon` returns tool results as text only, written as TOON wherever that is
+  shorter than JSON, using Cysharp's `ToonEncoder`. Tools then declare no output schema and return no
+  `structuredContent`. Measured with Claude Code 2.1.268, the model is given the `structuredContent`
+  whenever there is some and the text block is discarded, so a TOON text block alongside it saved
+  nothing. Text only, the Server Admin group's 425 permissions cost the model 10,089 tokens instead
+  of 14,782. A channel tree or a single object stays JSON text, errors, resources and prompts are
+  unchanged, and the server instructions explain the format. `Json`, with typed results, stays the
+  default.
 - Progress notifications for `ts_file_upload` and `ts_file_download` when the client sends a
   progress token, at most four a second plus the last one. `FileTransferClient` reports the bytes
   moved through an optional `IProgress<long>`.
@@ -146,6 +154,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Tool results escaped every character outside ASCII: a channel named "🔒 Admin 🔒" came back as
+  `\uD83D\uDD12 Admin \uD83D\uDD12`, twelve characters per emoji and six per umlaut, in the text block
+  and the structured content alike. Tools, prompts and resources now write text as it is and escape
+  only what JSON requires; `ts_channel_find` on the test server shrank from 780 to 580 characters.
 - `ts_perm_assigned` and `ts_query_raw` could answer with more than Claude Code's 10,000-token
   warning threshold: measured on 6.0.0-beta12.1, about 10,900 tokens for the 425 permissions of the
   Server Admin group, and about 12,800 for the 510 records of `permissionlist`. Both now return 100

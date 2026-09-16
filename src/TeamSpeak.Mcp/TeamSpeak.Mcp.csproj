@@ -5,6 +5,8 @@
     <Description>Model Context Protocol server for administering TeamSpeak 6 servers.</Description>
     <AssemblyName>teamspeak6-mcp</AssemblyName>
     <RootNamespace>TeamSpeak.Mcp</RootNamespace>
+    <!-- Only for MinimalJsonEncoder: JavaScriptEncoder's overridable members take pointers. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <!--
@@ -49,6 +51,7 @@
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <PackageReference Include="ToonEncoder" />
   </ItemGroup>
 
   <ItemGroup>

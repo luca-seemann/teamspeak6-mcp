@@ -169,6 +169,7 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Safety` | `TSMCP_TeamSpeak__Safety` | `ReadOnly` |
 | `TeamSpeak:EventBufferSize` | `TSMCP_TeamSpeak__EventBufferSize` | `1000` events per profile |
 | `TeamSpeak:DisabledToolGroups` | `TSMCP_TeamSpeak__DisabledToolGroups` | — (every group; comma-separated, see [Tool groups](#tool-groups)) |
+| `TeamSpeak:ToolResultText` | `TSMCP_TeamSpeak__ToolResultText` | `Json` (typed results); `Toon` returns text only, as TOON where shorter, see [Tool results as TOON](#tool-results-as-toon) |
 | `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | — (file tools pass content inline only) |
 | `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `102400` (100 KiB) |
 | `TeamSpeak:Http:BearerToken` | `TSMCP_TeamSpeak__Http__BearerToken` | — (Streamable HTTP only; required when bound to a non-loopback address) |
@@ -390,6 +391,46 @@ valid ones.
 Switching a group off is not a safety measure: the safety level decides what may change, and a tool
 above it stays listed so the model can say why it was refused. Resources and prompts stay available,
 and a prompt may then suggest a tool that is not listed.
+
+### Tool results as TOON
+
+By default every tool result carries its data twice: as `structuredContent`, JSON matching the tool's
+output schema, and as a JSON text block. Claude Code gives the model the `structuredContent` whenever
+there is some and discards the text block; that was measured, it is not documented.
+
+With `TSMCP_TeamSpeak__ToolResultText=Toon`, results are text only. The tools declare no output
+schema and return no `structuredContent`, and the text is written as
+[TOON](https://github.com/toon-format/toon) wherever that is shorter than JSON. The server instructions
+explain the format. Lists of uniform records become one header and a line per record:
+
+```
+permissions[425]{id,name,value,negated,skip}:
+  26,b_virtualserver_info_view,1,false,false
+```
+
+Measured on the test server, in characters of the text:
+
+| Result | JSON | TOON |
+|---|---|---|
+| `ts_perm_assigned`, Server Admin, `limit=500` | 43,432 | 26,881 |
+| `ts_query_raw permissionlist`, `limit=1000` | 51,083 | 33,766 |
+| `ts_servergroup_list` | 1,904 | 602 |
+| `ts_channel_list`, `ts_vserver_info` | stays JSON | TOON would be longer |
+
+In Claude Code 2.1.268 (headless, Haiku), the Server Admin permissions cost the model 14,782 tokens as
+JSON and 10,089 as TOON. With the default limit of 100 entries the saving is smaller, about 700 tokens
+on a large list, and none on small results.
+
+Choose by client:
+
+- **`Json`, the default:** typed results a client can check against the output schema.
+- **`Toon`:** fewer tokens for large lists, for a client that only hands text to its model, such as
+  Claude Code.
+
+Errors, resources and prompts stay as they are in both modes.
+
+Independent of this setting, results write text as it is. Emoji and umlauts in channel names and
+nicknames used to come back as `\u` escapes, twelve characters per emoji and six per umlaut.
 
 ## Setting up
 

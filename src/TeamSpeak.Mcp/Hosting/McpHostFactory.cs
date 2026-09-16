@@ -91,17 +91,32 @@ public static class McpHostFactory
     {
         // Read here rather than when the options are first used, so a mistyped group stops the start.
         var disabled = ToolGroups.Disabled(configuration);
+        var textFormat = ToonResultText.Configured(configuration);
 
         builder
             .WithMessageFilters(filters => filters.AddOutgoingFilter(ServerIdentity.StaticLists))
-            .WithRequestFilters(filters => filters.AddCallToolFilter(ExpectedToolErrors.Filter))
-            .WithToolsFromAssembly()
-            .WithPromptsFromAssembly()
+            .WithRequestFilters(filters =>
+            {
+                filters.AddCallToolFilter(ExpectedToolErrors.Filter);
+
+                // Errors pass through untouched: the filter only rewrites successful results.
+                if (textFormat == ToolResultTextFormat.Toon)
+                {
+                    filters.AddCallToolFilter(ToonResultText.Filter);
+                }
+            })
+            .WithToolsFromAssembly(serializerOptions: ResultJson.Options)
+            .WithPromptsFromAssembly(serializerOptions: ResultJson.Options)
             .WithResourcesFromAssembly();
 
         // The SDK fills the tool collection while configuring the options; this runs after it.
         builder.Services.PostConfigure<McpServerOptions>(options =>
         {
+            if (textFormat == ToolResultTextFormat.Toon)
+            {
+                options.ServerInstructions = $"{options.ServerInstructions?.TrimEnd()}\n{ToonResultText.InstructionsNote}";
+            }
+
             foreach (var tool in options.ToolCollection?.ToArray() ?? [])
             {
                 if (ToolGroups.Of(tool.ProtocolTool.Name) is { } group && disabled.Contains(group))
@@ -111,6 +126,11 @@ public static class McpHostFactory
                 else
                 {
                     SchemaFixes.AdmitNullToEnums(tool.ProtocolTool);
+
+                    if (textFormat == ToolResultTextFormat.Toon)
+                    {
+                        ToonResultText.DropOutputSchema(tool.ProtocolTool);
+                    }
                 }
             }
         });

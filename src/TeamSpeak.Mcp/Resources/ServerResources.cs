@@ -4,6 +4,7 @@ using System.Text.Json;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
+using TeamSpeak.Mcp.Hosting;
 using TeamSpeak.Mcp.Tools;
 
 namespace TeamSpeak.Mcp.Resources;
@@ -87,7 +88,7 @@ public sealed class ServerResources(QueryExecutor executor, PermissionNameCache 
     public async Task<string> PermissionsAsync(string profile, CancellationToken cancellationToken) =>
         Json((await permissionNames.GetAsync(executor, profile, cancellationToken).ConfigureAwait(false)).All);
 
-    private static string Json<T>(T value) => JsonSerializer.Serialize(value, McpJsonUtilities.DefaultOptions);
+    private static string Json<T>(T value) => JsonSerializer.Serialize(value, ResultJson.Options);
 }
 
 /// <summary>A virtual server's groups.</summary>
