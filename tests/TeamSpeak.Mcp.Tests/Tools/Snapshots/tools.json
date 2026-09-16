@@ -2137,7 +2137,7 @@
           "default": null
         },
         "uniqueId": {
-          "description": "A unique identity, for example \u0027abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ=\u0027.",
+          "description": "A unique identity, the 44-character value ts_client_list shows as uniqueId.",
           "type": [
             "string",
             "null"

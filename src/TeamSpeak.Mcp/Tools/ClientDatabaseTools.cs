@@ -160,7 +160,7 @@ public sealed class ClientDatabaseTools(QueryExecutor executor)
     public async Task<ClientIdentity> ResolveClientAsync(
         [Description("A session id of a connected client, as in ts_client_list.")] int? clientId = null,
         [Description("A permanent database id.")] int? databaseId = null,
-        [Description("A unique identity, for example 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ='.")] string? uniqueId = null,
+        [Description("A unique identity, the 44-character value ts_client_list shows as uniqueId.")] string? uniqueId = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)

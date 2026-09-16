@@ -32,7 +32,8 @@ polling to see whether it has lifted keeps it alive.
 query from 4 172.20.0.1:49196 issued: login with account "serveradmin"
 ```
 
-— for a connection from `192.0.2.80`. Per-IP allow lists therefore cannot match anything, which
+— for a connection from a LAN client at a completely different address. Per-IP allow lists
+therefore cannot match anything, which
 is why allow-listing a real client address achieved nothing however often it was tried. Native
 Docker on Linux forwards with DNAT and preserves the source, so this is deployment-specific: read
 the log line before trusting an allow list.

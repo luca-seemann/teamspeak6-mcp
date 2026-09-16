@@ -62,7 +62,7 @@ client rather than their real addresses. Its own log gives it away:
 query from 4 172.20.0.1:49196 issued: login with account "serveradmin"
 ```
 
-That entry was a connection from `192.0.2.80` on the LAN.
+That entry was a connection from a client on the LAN, at a completely different address.
 
 It depends on how ports are published. Native Docker on Linux forwards them with iptables DNAT,
 which rewrites the destination and leaves the source intact, so real client addresses usually
