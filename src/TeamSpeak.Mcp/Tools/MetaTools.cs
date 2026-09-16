@@ -143,6 +143,7 @@ public sealed class MetaTools(QueryExecutor executor)
     /// <param name="command">The command name.</param>
     /// <param name="parameters">Key/value parameters.</param>
     /// <param name="options">Flag options.</param>
+    /// <param name="limit">How many records to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -155,7 +156,8 @@ public sealed class MetaTools(QueryExecutor executor)
                  "Write, and deleting, banning, kicking or handing out access needs Destructive, as " +
                  "does any command this server does not classify. Session commands (use, login, " +
                  "logout, quit, servernotifyregister, servernotifyunregister) are refused because the " +
-                 "connection is shared." + ToolDescriptions.UserWrittenText)]
+                 "connection is shared. At most limit records come back; totalRecords says how many the " +
+                 "server returned." + ToolDescriptions.UserWrittenText)]
     public async Task<RawQueryResult> QueryRawAsync(
         [Description("The command name alone, for example 'clientdbfind'. Parameters and options go in their own arguments.")]
         string command,
@@ -163,6 +165,7 @@ public sealed class MetaTools(QueryExecutor executor)
         IReadOnlyDictionary<string, string>? parameters = null,
         [Description("Flag options, for example [\"-uid\"]. The leading dash is optional.")]
         IReadOnlyList<string>? options = null,
+        [Description("How many records to return, from 1 to 1000. The command runs in full either way.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -191,7 +194,7 @@ public sealed class MetaTools(QueryExecutor executor)
             new QueryCommand(name, parameters, options, virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new RawQueryResult(name, required.ToString(), records.Select(QueryExecutor.ToFields).ToList());
+        return new RawQueryResult(name, required.ToString(), records.Count, records.Take(Math.Clamp(limit, 1, 1000)).Select(QueryExecutor.ToFields).ToList());
     }
 }
 
@@ -233,8 +236,10 @@ public sealed record CommandHelp(string? Command, string Text);
 /// <summary>The outcome of a raw command.</summary>
 /// <param name="Command">The command that was sent.</param>
 /// <param name="SafetyLevel">The safety level the command required.</param>
-/// <param name="Records">The records returned, by their ServerQuery field names.</param>
+/// <param name="TotalRecords">How many records the server returned; more than listed when the limit cut them off.</param>
+/// <param name="Records">The first records, by their ServerQuery field names.</param>
 public sealed record RawQueryResult(
     string Command,
     string SafetyLevel,
+    int TotalRecords,
     IReadOnlyList<IReadOnlyDictionary<string, string>> Records);

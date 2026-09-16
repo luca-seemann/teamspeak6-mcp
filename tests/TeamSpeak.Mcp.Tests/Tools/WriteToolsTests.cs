@@ -145,7 +145,7 @@ public class WriteToolsTests
         await using var harness = new ToolHarness(SafetyLevel.Destructive);
 
         var raw = await Assert.ThrowsAsync<McpException>(() => new MetaTools(harness.Executor).QueryRawAsync(
-            "serversnapshotdeploy", new Dictionary<string, string> { ["version"] = "3", ["data"] = "KLUv" }, [option], 1, cancellationToken: Ct));
+            "serversnapshotdeploy", new Dictionary<string, string> { ["version"] = "3", ["data"] = "KLUv" }, [option], virtualServerId: 1, cancellationToken: Ct));
 
         Assert.Contains("crashed", raw.Message, StringComparison.Ordinal);
         Assert.Empty(harness.Transport.SentCommands);

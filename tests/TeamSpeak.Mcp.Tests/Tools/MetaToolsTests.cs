@@ -79,6 +79,19 @@ public class MetaToolsTests
         Assert.Equal("3", Assert.Single(result.Records)["cldbid"]);
     }
 
+    [Fact]
+    public async Task Raw_query_returns_at_most_limit_records_and_says_how_many_there_were()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("permissionlist", ToolHarness.Records(
+            Enumerable.Range(1, 5).Select(id => new Dictionary<string, string> { ["permid"] = id.ToString(System.Globalization.CultureInfo.InvariantCulture) }).ToArray()));
+
+        var result = await new MetaTools(harness.Executor).QueryRawAsync(
+            "permissionlist", limit: 2, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(5, result.TotalRecords);
+        Assert.Equal(["1", "2"], result.Records.Select(record => record["permid"]));
+    }
     [Theory]
     [InlineData("")]
     [InlineData("clientdbfind pattern=Alice")]

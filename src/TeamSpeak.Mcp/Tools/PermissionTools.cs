@@ -53,6 +53,8 @@ public sealed partial class PermissionTools(QueryExecutor executor, PermissionNa
     /// <param name="channelGroupId">A channel group.</param>
     /// <param name="channelId">A channel, or with databaseId the channel of a channel-client pair.</param>
     /// <param name="databaseId">A client, or with channelId the client of a channel-client pair.</param>
+    /// <param name="search">Text to find in permission names.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -63,13 +65,17 @@ public sealed partial class PermissionTools(QueryExecutor executor, PermissionNa
                  "negate and skip flags. Pass exactly one target: serverGroupId, channelGroupId, " +
                  "channelId alone (channel permissions, mostly the powers needed to join or talk), " +
                  "databaseId alone (permissions on a client identity), or channelId together with " +
-                 "databaseId (a client's permissions in one channel). To see what a client ends up " +
-                 "with from all of these combined, use ts_perm_effective.")]
+                 "databaseId (a client's permissions in one channel). An admin group holds hundreds, so " +
+                 "at most limit come back, by id; totalMatches says how many matched, and search narrows " +
+                 "them by name. To see what a client ends up with from all of these combined, use " +
+                 "ts_perm_effective.")]
     public async Task<AssignedPermissions> AssignedPermissionsAsync(
         [Description("A server group id.")] int? serverGroupId = null,
         [Description("A channel group id.")] int? channelGroupId = null,
         [Description("A channel id; with databaseId, the channel of a channel-client pair.")] int? channelId = null,
         [Description("A client database id; with channelId, the client of a channel-client pair.")] int? databaseId = null,
+        [Description("Text to find in permission names, for example 'talk_power' or 'kick'.")] string? search = null,
+        [Description("How many assignments to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -87,16 +93,18 @@ public sealed partial class PermissionTools(QueryExecutor executor, PermissionNa
             ? null
             : await permissionNames.GetAsync(executor, profile, cancellationToken).ConfigureAwait(false);
 
-        return new AssignedPermissions(
-            target.Label,
-            records
-                .Select(record => new PermissionValue(
-                    record.GetInt32("permid"),
-                    names!.NameOf(record.GetInt32("permid")),
-                    record.GetInt32("permvalue"),
-                    record.GetBoolean("permnegated"),
-                    record.GetBoolean("permskip")))
-                .ToList());
+        var matches = records
+            .Select(record => new PermissionValue(
+                record.GetInt32("permid"),
+                names!.NameOf(record.GetInt32("permid")),
+                record.GetInt32("permvalue"),
+                record.GetBoolean("permnegated"),
+                record.GetBoolean("permskip")))
+            .Where(permission => string.IsNullOrWhiteSpace(search) || permission.Name.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase))
+            .OrderBy(permission => permission.Id)
+            .ToList();
+
+        return new AssignedPermissions(target.Label, matches.Count, matches.Take(Math.Clamp(limit, 1, 500)).ToList());
     }
 
     /// <summary>Finds everything that holds a permission.</summary>
@@ -173,8 +181,9 @@ public sealed record PermissionCatalog(int TotalMatches, IReadOnlyList<Permissio
 
 /// <summary>The permissions assigned directly to one target.</summary>
 /// <param name="Target">What they are assigned to, for example <c>server group 6</c>.</param>
-/// <param name="Permissions">The assignments.</param>
-public sealed record AssignedPermissions(string Target, IReadOnlyList<PermissionValue> Permissions);
+/// <param name="TotalMatches">How many assignments matched; more than returned when the limit cut them off.</param>
+/// <param name="Permissions">The first matching assignments, by id.</param>
+public sealed record AssignedPermissions(string Target, int TotalMatches, IReadOnlyList<PermissionValue> Permissions);
 
 /// <summary>A permission assignment.</summary>
 /// <param name="Id">The permission id.</param>

@@ -141,6 +141,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `ts_perm_assigned` and `ts_query_raw` could answer with more than Claude Code's 10,000-token
+  warning threshold: measured on 6.0.0-beta12.1, about 10,900 tokens for the 425 permissions of the
+  Server Admin group, and about 12,800 for the 510 records of `permissionlist`. Both now return 100
+  entries unless given a `limit` (up to 500 and 1000), and report `totalMatches` or `totalRecords`.
+  `ts_perm_assigned` also takes `search`, which narrows by permission name. The defaults measured
+  2,300 and 2,700 tokens.
 - 22 parameters that take one of a fixed set of values, such as `action`, `target`, `scope`, `level`
   and the event `categories`, listed the values only in their description. Their schema now carries
   an `enum`, so a client can offer and check them. `level` of `ts_log_add`, `type` of the group tools

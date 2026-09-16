@@ -225,6 +225,22 @@ public class PermissionToolsTests
     }
 
     [Fact]
+    public async Task Assigned_permissions_are_narrowed_by_name_and_cut_off_at_the_limit_with_the_total_kept()
+    {
+        await using var harness = Harness();
+        harness.Transport.Returns("servergrouppermlist", ToolHarness.Records(
+            new Dictionary<string, string> { ["permid"] = "226", ["permvalue"] = "75", ["permnegated"] = "0", ["permskip"] = "0" },
+            new Dictionary<string, string> { ["permid"] = "153", ["permvalue"] = "1", ["permnegated"] = "0", ["permskip"] = "0" },
+            new Dictionary<string, string> { ["permid"] = "89", ["permvalue"] = "1", ["permnegated"] = "0", ["permskip"] = "0" }));
+
+        var limited = await Tools(harness).AssignedPermissionsAsync(serverGroupId: 6, limit: 2, cancellationToken: TestContext.Current.CancellationToken);
+        var searched = await Tools(harness).AssignedPermissionsAsync(serverGroupId: 6, search: "TALK", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, limited.TotalMatches);
+        Assert.Equal([89, 153], limited.Permissions.Select(permission => permission.Id));
+        Assert.Equal((1, "i_client_talk_power"), (searched.TotalMatches, Assert.Single(searched.Permissions).Name));
+    }
+    [Fact]
     public async Task Refuses_an_ambiguous_target()
     {
         await using var harness = Harness();
