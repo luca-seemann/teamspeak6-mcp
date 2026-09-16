@@ -34,7 +34,7 @@ public sealed class ServerResources(QueryExecutor executor, PermissionNameCache 
     /// <returns>JSON.</returns>
     [McpServerResource(UriTemplate = "ts://{profile}/{virtualServerId}/info", Name = "virtual-server-info",
         Title = "Virtual server properties", MimeType = "application/json")]
-    [Description("Every property of one virtual server, by its ServerQuery field name.")]
+    [Description("Every property of one virtual server, by its ServerQuery field name." + ToolDescriptions.UserWrittenText)]
     public async Task<string> InfoAsync(string profile, int virtualServerId, CancellationToken cancellationToken) =>
         Json(await new VirtualServerTools(executor).VirtualServerInfoAsync(virtualServerId, profile, cancellationToken).ConfigureAwait(false));
 
@@ -45,7 +45,7 @@ public sealed class ServerResources(QueryExecutor executor, PermissionNameCache 
     /// <returns>JSON.</returns>
     [McpServerResource(UriTemplate = "ts://{profile}/{virtualServerId}/channels", Name = "channels",
         Title = "Channel tree", MimeType = "application/json")]
-    [Description("The channels of one virtual server as a tree in display order.")]
+    [Description("The channels of one virtual server as a tree in display order." + ToolDescriptions.UserWrittenText)]
     public async Task<string> ChannelsAsync(string profile, int virtualServerId, CancellationToken cancellationToken) =>
         Json(await new ChannelTools(executor).ListChannelsAsync(true, virtualServerId, profile, cancellationToken).ConfigureAwait(false));
 
@@ -56,7 +56,7 @@ public sealed class ServerResources(QueryExecutor executor, PermissionNameCache 
     /// <returns>JSON.</returns>
     [McpServerResource(UriTemplate = "ts://{profile}/{virtualServerId}/clients", Name = "clients",
         Title = "Connected clients", MimeType = "application/json")]
-    [Description("The people connected to one virtual server, with channel, groups and away state. Query clients are left out.")]
+    [Description("The people connected to one virtual server, with channel, groups and away state. Query clients are left out." + ToolDescriptions.UserWrittenText)]
     public async Task<string> ClientsAsync(string profile, int virtualServerId, CancellationToken cancellationToken) =>
         Json(await new ClientTools(executor).ListClientsAsync(false, virtualServerId, profile, cancellationToken).ConfigureAwait(false));
 

@@ -52,7 +52,7 @@ public sealed class VirtualServerTools(QueryExecutor executor)
     [Description("Checks how a virtual server is doing: status, uptime, people and query clients " +
                  "online against the slot limit, channel count, packet loss, average ping and " +
                  "bandwidth, plus findings in plain words for anything that deserves attention, such " +
-                 "as slots running out, packet loss or high ping.")]
+                 "as slots running out, packet loss or high ping." + ToolDescriptions.UserWrittenText)]
     public async Task<HealthReport> HealthReportAsync(
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,

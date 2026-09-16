@@ -116,7 +116,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
                  "nextCursor of the previous answer as 'after' to continue. Each event has TeamSpeak's " +
                  "notification name, for example notifytextmessage or notifyclientmoved, its categories " +
                  "and its fields. 'missed' counts events that were pushed out of the buffer before they " +
-                 "were read. Needs ts_events_subscribe first.")]
+                 "were read. Needs ts_events_subscribe first." + ToolDescriptions.UserWrittenText)]
     public EventPollResult Poll(
         [Description("The last cursor seen: nextCursor from an earlier answer, or the cursor from ts_events_subscribe. 0 for everything still buffered.")]
         long after = 0,
@@ -145,7 +145,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Like ts_events_poll, but when nothing new has been collected yet it waits until an " +
                  "event arrives or the timeout passes, at most 60 seconds. An empty answer means nothing " +
-                 "happened in that time; pass its nextCursor to wait again.")]
+                 "happened in that time; pass its nextCursor to wait again." + ToolDescriptions.UserWrittenText)]
     public async Task<EventPollResult> WaitAsync(
         [Description("The last cursor seen: nextCursor from an earlier answer, or the cursor from ts_events_subscribe.")]
         long after,

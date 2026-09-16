@@ -34,7 +34,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
     [Description("Lists the files and directories in one directory of a channel's file repository: name, " +
                  "size, and when each last changed. An upload that is still running or broke off shows " +
                  "incompleteSize, the size it is meant to reach. Channel 0 holds the virtual server's " +
-                 "icons and avatars." + SshOnly)]
+                 "icons and avatars." + SshOnly + ToolDescriptions.UserWrittenText)]
     public async Task<FileList> ListFilesAsync(
         [Description("The channel whose files to list; 0 for the virtual server's icons and avatars.")] int channelId,
         [Description("The directory, such as /screenshots. Omit it for the top level.")] string? path = null,
@@ -101,7 +101,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
     [Description("Lists the file transfers running or waiting on a virtual server: which client, which file, " +
                  "how many bytes have moved, and how fast. A transfer that was started but never connected " +
                  "waits here until the server drops it a few minutes later. ts_file_manage with action stop " +
-                 "ends one." + SshOnly)]
+                 "ends one." + SshOnly + ToolDescriptions.UserWrittenText)]
     public async Task<FileTransferList> ListTransfersAsync(
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -141,7 +141,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
                  "TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB unless configured); this needs ReadOnly. With " +
                  "localPath it is saved inside the directory configured as TeamSpeak:FileTransfer:LocalDirectory, " +
                  "which needs Write, and an existing local file is never replaced. The bytes travel over the " +
-                 "server's file transfer port, 30033 by default, which must be reachable from this machine." + SshOnly)]
+                 "server's file transfer port, 30033 by default, which must be reachable from this machine." + SshOnly + ToolDescriptions.UserWrittenText)]
     public async Task<FileDownload> DownloadAsync(
         [Description("The channel the file is stored in; 0 for icons and avatars.")] int channelId,
         [Description("The file's path, such as /docs/readme.txt.")] string path,

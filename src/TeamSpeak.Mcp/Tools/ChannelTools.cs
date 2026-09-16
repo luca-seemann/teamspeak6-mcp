@@ -24,7 +24,7 @@ public sealed class ChannelTools(QueryExecutor executor)
     [Description("Lists the channels of a virtual server in the order TeamSpeak clients display them, " +
                  "with topic, client counts, slot limit and whether each is the default, " +
                  "password-protected, permanent, semi-permanent or temporary. Set tree to true to nest " +
-                 "sub-channels under their parents instead of a flat list with parent ids.")]
+                 "sub-channels under their parents instead of a flat list with parent ids." + ToolDescriptions.UserWrittenText)]
     public async Task<ChannelList> ListChannelsAsync(
         [Description("Nest sub-channels under their parents. Defaults to a flat list in display order.")]
         bool tree = false,
@@ -52,7 +52,7 @@ public sealed class ChannelTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Shows every property of one channel: name, topic, description, codec, limits, " +
                  "needed talk power, flags and the rest of its configuration, by their ServerQuery " +
-                 "field names.")]
+                 "field names." + ToolDescriptions.UserWrittenText)]
     public async Task<RecordResult> ChannelInfoAsync(
         [Description("The channel id, as listed by ts_channel_list.")] int channelId,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
@@ -87,7 +87,7 @@ public sealed class ChannelTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_channel_find", Title = "Find channels by name",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Finds the channels whose name contains some text, ignoring case, and returns their " +
-                 "ids and full names, or an empty list when no name matches.")]
+                 "ids and full names, or an empty list when no name matches." + ToolDescriptions.UserWrittenText)]
     public async Task<ChannelMatches> FindChannelsAsync(
         [Description("Text to find in channel names, for example 'afk'.")] string pattern,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,

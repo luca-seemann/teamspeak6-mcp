@@ -24,7 +24,7 @@ public sealed class ClientTools(QueryExecutor executor)
     [Description("Lists the clients currently connected to a virtual server: nickname, the channel " +
                  "they are in, their session client id and permanent database id, unique identity, " +
                  "server groups, channel group and away status. Query clients, including this MCP " +
-                 "server's own session, are left out unless includeQueryClients is true.")]
+                 "server's own session, are left out unless includeQueryClients is true." + ToolDescriptions.UserWrittenText)]
     public async Task<ClientList> ListClientsAsync(
         [Description("Include ServerQuery clients such as bots and this MCP server's own session.")]
         bool includeQueryClients = false,
@@ -56,7 +56,7 @@ public sealed class ClientTools(QueryExecutor executor)
     [Description("Shows every property of one connected client: version, platform, country, " +
                  "connection time, idle time, groups, talk power, mute state and the rest, by their " +
                  "ServerQuery field names. Takes the session client id from ts_client_list, which " +
-                 "changes on every reconnect, not the permanent database id.")]
+                 "changes on every reconnect, not the permanent database id." + ToolDescriptions.UserWrittenText)]
     public async Task<RecordResult> ClientInfoAsync(
         [Description("The client's session id (clientId in ts_client_list), not its database id.")]
         int clientId,
@@ -93,7 +93,7 @@ public sealed class ClientTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Finds the currently connected clients whose nickname contains some text and returns " +
                  "their session ids and nicknames, or an empty list when no one matches. To find someone " +
-                 "who is offline, use ts_clientdb_find.")]
+                 "who is offline, use ts_clientdb_find." + ToolDescriptions.UserWrittenText)]
     public async Task<OnlineClientMatches> FindClientsAsync(
         [Description("Text to find in nicknames, for example 'alice'.")] string pattern,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,

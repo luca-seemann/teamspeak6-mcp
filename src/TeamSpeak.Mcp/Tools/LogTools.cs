@@ -27,7 +27,7 @@ public sealed class LogTools(QueryExecutor executor)
     [Description("Reads the most recent entries of a virtual server's log, or of the instance log, " +
                  "oldest first: timestamp, level, source and message. Connections, kicks, bans, " +
                  "permission and group changes and query activity all appear here. For older entries, " +
-                 "pass the previous page's position back as beforePosition.")]
+                 "pass the previous page's position back as beforePosition." + ToolDescriptions.UserWrittenText)]
     public async Task<LogPage> ViewLogAsync(
         [Description("How many entries to return, from 1 to 100.")] int lines = 50,
         [Description("Read the instance log instead of the virtual server's.")] bool instance = false,

@@ -47,3 +47,10 @@ Worth knowing when judging a report:
   symbolic link, is a vulnerability.
 - The MCP client, and therefore the model, chooses tool arguments. Assume the model can be talked
   into calling anything; the safety level, not the model's judgement, is what has to hold.
+- Much of what the tools return is written by anyone who can connect to the TeamSpeak server:
+  nicknames, channel names and descriptions, chat, offline messages, complaints, file contents.
+  The server instructions and those tools' descriptions tell the model to treat such text as data,
+  never as instructions. That lowers the risk of prompt injection but cannot rule it out, which is
+  one more reason to keep a profile at the lowest safety level that does the job. A tool that
+  returns user-written text without that notice is a bug worth reporting; a model that follows
+  injected text anyway is not a vulnerability of this server.

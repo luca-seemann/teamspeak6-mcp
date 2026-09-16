@@ -89,7 +89,7 @@ public sealed class AccessTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_message_list", Title = "List offline messages",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the offline messages in this MCP server's own query login inbox: sender, " +
-                 "subject, when it arrived and whether it was read. Use ts_message_get for a body.")]
+                 "subject, when it arrived and whether it was read. Use ts_message_get for a body." + ToolDescriptions.UserWrittenText)]
     public async Task<OfflineMessageList> ListMessagesAsync(
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -121,7 +121,7 @@ public sealed class AccessTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_message_get", Title = "Read an offline message",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Reads one offline message from this MCP server's own query login inbox, including " +
-                 "its body. Reading it does not mark it as read.")]
+                 "its body. Reading it does not mark it as read." + ToolDescriptions.UserWrittenText)]
     public async Task<RecordResult> GetMessageAsync(
         [Description("The message id, as listed by ts_message_list.")] int messageId,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,

@@ -30,7 +30,7 @@ public sealed class ClientDatabaseTools(QueryExecutor executor)
     [Description("Pages through every client identity a virtual server has ever seen, online or not: " +
                  "database id, unique identity, last nickname, when it was created and last connected, " +
                  "how often it connected, and its last IP address. Page with offset and limit; total " +
-                 "says how many identities exist.")]
+                 "says how many identities exist." + ToolDescriptions.UserWrittenText)]
     public async Task<KnownClientPage> ListKnownClientsAsync(
         [Description("How many identities to skip.")] int offset = 0,
         [Description("How many identities to return, from 1 to 200.")] int limit = 50,
@@ -81,7 +81,7 @@ public sealed class ClientDatabaseTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Shows everything a virtual server stores about one client identity, online or not: " +
                  "unique identity, nicknames, creation and last connection, connection count, traffic " +
-                 "totals, avatar and description, by their ServerQuery field names.")]
+                 "totals, avatar and description, by their ServerQuery field names." + ToolDescriptions.UserWrittenText)]
     public async Task<RecordResult> KnownClientInfoAsync(
         [Description("The client's database id.")] int databaseId,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
@@ -112,7 +112,7 @@ public sealed class ClientDatabaseTools(QueryExecutor executor)
     [Description("Finds client identities a virtual server knows, online or not, by last nickname or " +
                  "by unique identity, and returns each with its database id, unique identity, nickname " +
                  "and any online session ids. Plain text matches anywhere in the nickname; % works as a " +
-                 "wildcard. At most 10 matches are resolved in full; totalMatches says how many there were.")]
+                 "wildcard. At most 10 matches are resolved in full; totalMatches says how many there were." + ToolDescriptions.UserWrittenText)]
     public async Task<ClientIdentityMatches> FindKnownClientsAsync(
         [Description("Text to find, for example 'alice'. Use % as a wildcard; plain text matches anywhere.")]
         string pattern,
@@ -156,7 +156,7 @@ public sealed class ClientDatabaseTools(QueryExecutor executor)
                  "permanent database id (what permissions and groups use), the unique identity, the " +
                  "last nickname, and the session ids of any current connections (what moving, " +
                  "kicking and messaging use). Pass exactly one of clientId, databaseId or uniqueId. To " +
-                 "search by nickname, use ts_clientdb_find.")]
+                 "search by nickname, use ts_clientdb_find." + ToolDescriptions.UserWrittenText)]
     public async Task<ClientIdentity> ResolveClientAsync(
         [Description("A session id of a connected client, as in ts_client_list.")] int? clientId = null,
         [Description("A permanent database id.")] int? databaseId = null,
@@ -220,7 +220,7 @@ public sealed class ClientDatabaseTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_custom_info", Title = "Show a client's custom properties",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the custom properties stored for one client identity, such as a linked forum " +
-                 "account, as identifier and value pairs. Integrations set these; most clients have none.")]
+                 "account, as identifier and value pairs. Integrations set these; most clients have none." + ToolDescriptions.UserWrittenText)]
     public async Task<CustomProperties> CustomInfoAsync(
         [Description("The client's database id.")] int databaseId,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
@@ -258,7 +258,7 @@ public sealed class ClientDatabaseTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Finds the client identities whose custom property has a given value, for example " +
                  "which client is linked to a forum account. Plain text matches anywhere in the value; " +
-                 "% works as a wildcard.")]
+                 "% works as a wildcard." + ToolDescriptions.UserWrittenText)]
     public async Task<CustomPropertyMatches> CustomSearchAsync(
         [Description("The property identifier, for example 'forum_account'.")] string ident,
         [Description("The value to find. Use % as a wildcard; plain text matches anywhere.")] string pattern,

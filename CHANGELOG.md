@@ -134,6 +134,10 @@ All notable changes to this project are documented here. The format follows
   (`TeamSpeak:Http:BearerToken`). Binding to anything but a loopback address without a token is
   refused at startup, so the container needs `TSMCP_HTTP_TOKEN`, and the compose file publishes the
   port on 127.0.0.1 only.
+- Text written by the TeamSpeak server's users reached the model with nothing saying where it came
+  from: nicknames, channel names and descriptions, chat events, offline messages, complaints, log
+  lines and file contents. The 26 tools and 3 resources that return such text now say in their
+  description that it is data, never instructions, and so do the server instructions.
 
 ### Fixed
 

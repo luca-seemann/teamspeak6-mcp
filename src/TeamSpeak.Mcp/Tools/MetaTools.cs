@@ -155,7 +155,7 @@ public sealed class MetaTools(QueryExecutor executor)
                  "Write, and deleting, banning, kicking or handing out access needs Destructive, as " +
                  "does any command this server does not classify. Session commands (use, login, " +
                  "logout, quit, servernotifyregister, servernotifyunregister) are refused because the " +
-                 "connection is shared.")]
+                 "connection is shared." + ToolDescriptions.UserWrittenText)]
     public async Task<RawQueryResult> QueryRawAsync(
         [Description("The command name alone, for example 'clientdbfind'. Parameters and options go in their own arguments.")]
         string command,

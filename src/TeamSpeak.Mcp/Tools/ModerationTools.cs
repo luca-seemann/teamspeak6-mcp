@@ -25,7 +25,7 @@ public sealed class ModerationTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the active ban rules of a virtual server: what each matches (IP address, " +
                  "name pattern, unique identity or myTeamSpeak id), the reason, who created it and " +
-                 "when, when it expires, and how often it has been enforced.")]
+                 "when, when it expires, and how often it has been enforced." + ToolDescriptions.UserWrittenText)]
     public async Task<BanList> ListBansAsync(
         [Description("How many bans to skip.")] int offset = 0,
         [Description("How many bans to return, from 1 to 200.")] int limit = 100,
@@ -56,7 +56,7 @@ public sealed class ModerationTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the complaints users filed against other users on a virtual server: who " +
                  "complained about whom, the message, and when. Pass databaseId to see only " +
-                 "complaints about one client.")]
+                 "complaints about one client." + ToolDescriptions.UserWrittenText)]
     public async Task<ComplaintList> ListComplaintsAsync(
         [Description("Only complaints about this client database id.")] int? databaseId = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,

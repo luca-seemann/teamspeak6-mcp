@@ -56,7 +56,7 @@ public sealed class GroupTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_servergroup_members", Title = "List server group members",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the client identities in one server group, online or not, with database id, " +
-                 "last nickname and unique identity.")]
+                 "last nickname and unique identity." + ToolDescriptions.UserWrittenText)]
     public async Task<GroupMembers> ServerGroupMembersAsync(
         [Description("The server group id, as listed by ts_servergroup_list.")] int groupId,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
@@ -94,7 +94,7 @@ public sealed class GroupTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists which client holds which channel group in which channel. Filter by any " +
                  "combination of channelId, databaseId and groupId. Clients who only have the default " +
-                 "channel group are not stored as assignments and do not appear.")]
+                 "channel group are not stored as assignments and do not appear." + ToolDescriptions.UserWrittenText)]
     public async Task<ChannelGroupAssignments> ChannelGroupMembersAsync(
         [Description("Only assignments in this channel.")] int? channelId = null,
         [Description("Only assignments of this client database id.")] int? databaseId = null,
