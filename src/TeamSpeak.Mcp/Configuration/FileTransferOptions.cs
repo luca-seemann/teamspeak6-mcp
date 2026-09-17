@@ -9,12 +9,16 @@ namespace TeamSpeak.Mcp.Configuration;
 /// </remarks>
 public sealed class FileTransferOptions
 {
-    /// <summary>The default limit for content passed inline, 100 KiB.</summary>
+    /// <summary>The default limit for content passed inline, 32 KiB.</summary>
     /// <remarks>
-    /// Inline content lands in the model's context, and as base64 it grows by a third. A mebibyte
-    /// would be well over a million characters, more than a model can make use of.
+    /// Inline content lands in the model's context, and as base64 it grows by a third. 32 KiB of text
+    /// is about 10,000 tokens, where Claude Code starts warning about a large tool result; the former
+    /// 100 KiB came close to its 25,000-token limit.
     /// </remarks>
-    public const int DefaultMaxInlineBytes = 100 * 1024;
+    public const int DefaultMaxInlineBytes = 32 * 1024;
+
+    /// <summary>The default limit for a download saved to a local file, 1 GiB.</summary>
+    public const long DefaultMaxLocalBytes = 1024L * 1024 * 1024;
 
     /// <summary>
     /// Gets or sets the directory <c>localPath</c> arguments are resolved in. Unset, local paths are
@@ -27,4 +31,13 @@ public sealed class FileTransferOptions
     /// rather than a local file.
     /// </summary>
     public int MaxInlineBytes { get; set; } = DefaultMaxInlineBytes;
+
+    /// <summary>
+    /// Gets or sets the largest download, in bytes, saved to a local file; 0 for no limit.
+    /// </summary>
+    /// <remarks>
+    /// Any user allowed to upload decides how large the stored files are, so without a limit a model
+    /// could fill this machine's disk with one call.
+    /// </remarks>
+    public long MaxLocalBytes { get; set; } = DefaultMaxLocalBytes;
 }

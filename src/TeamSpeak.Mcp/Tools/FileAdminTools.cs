@@ -28,7 +28,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
     [McpServerTool(Name = "ts_file_upload", Title = "Upload a file",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Uploads a file into a channel's file repository from exactly one of content (UTF-8 text), " +
-                 "contentBase64, both up to TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB by default), or " +
+                 "contentBase64, both up to TeamSpeak:FileTransfer:MaxInlineBytes (32 KiB by default), or " +
                  "localPath inside TeamSpeak:FileTransfer:LocalDirectory. The target directory must exist " +
                  "(ts_file_manage createdir). The stored size is checked afterwards: a broken-off upload is " +
                  "reported, and resume=true continues it with the same content. Needs Write; overwrite=true " +
@@ -135,7 +135,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         {
             var source = inline is not null
                 ? (Stream)new MemoryStream(inline, writable: false)
-                : new FileStream(local!, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+                : LocalFileGuard.OpenRead(LocalRoot(options), local!);
 
             await using (source.ConfigureAwait(false))
             {
@@ -394,7 +394,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
             }
             else
             {
-                var file = new FileStream(local!, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+                var file = LocalFileGuard.OpenRead(LocalRoot(options), local!);
                 await using (file.ConfigureAwait(false))
                 {
                     file.Position = start;

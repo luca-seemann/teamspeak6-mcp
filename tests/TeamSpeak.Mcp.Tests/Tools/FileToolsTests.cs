@@ -162,6 +162,19 @@ public sealed class FileToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task A_download_larger_than_the_local_limit_is_refused_before_a_byte_moves()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.Write, Loopback());
+        harness.Transport.Returns("ftinitdownload", ToolHarness.Records(Fields(("ftkey", Key), ("port", Port), ("size", "5000"))));
+        var options = new FileTransferOptions { LocalDirectory = _localDirectory, MaxLocalBytes = 4096 };
+
+        var refused = await Assert.ThrowsAsync<McpException>(() =>
+            new FileTools(harness.Executor, options).DownloadAsync(1, "/big.bin", localPath: "big.bin", cancellationToken: Ct));
+
+        Assert.Contains("MaxLocalBytes", refused.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(_localDirectory, "big.bin.partial")));
+    }
+    [Fact]
     public async Task A_stored_file_that_ends_differently_is_not_resumed()
     {
         await using var harness = new ToolHarness(SafetyLevel.Destructive, Loopback());

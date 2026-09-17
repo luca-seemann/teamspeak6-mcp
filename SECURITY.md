@@ -47,8 +47,10 @@ Worth knowing when judging a report:
   will not start on anything but a loopback address. A request that reaches a tool without meeting
   these checks, such as a browser page through DNS rebinding, is a vulnerability.
 - File tools may read and write local files, but only inside the directory configured as
-  `TeamSpeak:FileTransfer:LocalDirectory`. A path that escapes that directory, including through a
-  symbolic link, is a vulnerability.
+  `TeamSpeak:FileTransfer:LocalDirectory`. Every open is checked on the opened file: its real location
+  must lie inside the directory, and it must have no second name. Reading or writing outside that
+  directory, through a symbolic link, a junction, a hard link or a link swapped in during the open, is
+  a vulnerability.
 - Deleting for good needs `confirmName`, the target's current name read from the server, through the
   dedicated tools and `ts_query_raw` alike. A deletion that reaches TeamSpeak without it is a bug.
 - The MCP client, and therefore the model, chooses tool arguments. Assume the model can be talked

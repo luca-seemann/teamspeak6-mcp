@@ -146,7 +146,10 @@ internal static class FileTransferSupport
     private static StringComparison PathComparison =>
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
-    private static string LocalRoot(FileTransferOptions options)
+    /// <summary>Gets the configured local directory, checked to be usable.</summary>
+    /// <param name="options">The file transfer settings.</param>
+    /// <returns>The full path, without a trailing separator.</returns>
+    public static string LocalRoot(FileTransferOptions options)
     {
         var configured = options.LocalDirectory;
         if (string.IsNullOrWhiteSpace(configured))

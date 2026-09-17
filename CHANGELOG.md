@@ -139,6 +139,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Local file paths were checked, but not the file that was then opened. A `.partial` file planted as
+  a link let `ts_file_download` with `resume` append to a file outside `LocalDirectory`, a hard link
+  let an upload send a file from elsewhere, and a link swapped in between check and open went
+  unnoticed. Every local file is now opened first and then checked through its handle: its final
+  path must lie inside the directory and its link count must be 1, on Windows and Linux. Saving a
+  download is capped by `TeamSpeak:FileTransfer:MaxLocalBytes`, 1 GiB by default, and the inline
+  limit `MaxInlineBytes` defaults to 32 KiB instead of 100 KiB, about Claude Code's 10,000-token
+  warning.
 - Only three tools asked for `confirmName`, and `ts_query_raw` sent the same commands without it,
   although the server instructions said every irreversible tool asks for it. Now every tool that
   deletes for good requires the target's current name, read from the server at the deletion's own

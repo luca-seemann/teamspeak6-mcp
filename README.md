@@ -171,7 +171,8 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:DisabledToolGroups` | `TSMCP_TeamSpeak__DisabledToolGroups` | — (every group; comma-separated, see [Tool groups](#tool-groups)) |
 | `TeamSpeak:ToolResultText` | `TSMCP_TeamSpeak__ToolResultText` | `Json` (typed results); `Toon` returns text only, as TOON where shorter, see [Tool results as TOON](#tool-results-as-toon) |
 | `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | — (file tools pass content inline only) |
-| `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `102400` (100 KiB) |
+| `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `32768` (32 KiB, about 10,000 tokens) |
+| `TeamSpeak:FileTransfer:MaxLocalBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxLocalBytes` | `1073741824` (1 GiB); `0` for no limit |
 | `TeamSpeak:Http:BearerToken` | `TSMCP_TeamSpeak__Http__BearerToken` | — (Streamable HTTP only; required when bound to a non-loopback address) |
 | `TeamSpeak:Http:AllowedOrigins:<n>` | `TSMCP_TeamSpeak__Http__AllowedOrigins__<n>` | — (only loopback origins) |
 | `TeamSpeak:Http:AllowedHosts:<n>` | `TSMCP_TeamSpeak__Http__AllowedHosts__<n>` | — (only loopback host names; checked when no token is set) |
@@ -342,14 +343,19 @@ and out. `ts_file_manage` creates directories, renames or moves files between ch
 a transfer. `ts_file_delete` removes files, and a directory together with everything in it.
 
 The content comes in one of two ways:
-- **Inline**, up to `MaxInlineBytes` (100 KiB by default). A download comes back as text when it is
+- **Inline**, up to `MaxInlineBytes` (32 KiB by default). A download comes back as text when it is
   valid UTF-8 and as base64 otherwise. An upload takes `content` or `contentBase64`. Inline content
   lands in the model's context, which is why the default is small.
 - **As a local file**, through `localPath`, only once `TeamSpeak:FileTransfer:LocalDirectory` is set
   to an absolute path that exists and is not the root of a drive. Every local path is resolved inside
   that directory, and a path leading outside it is refused. So is a path through a symbolic link or
   junction inside it. The model chooses these paths, and over Streamable HTTP it does so from another
-  machine. A download never replaces an existing local file.
+  machine. A download never replaces an existing local file, and saves at most `MaxLocalBytes`
+  (1 GiB by default), since whoever uploaded the file decides how large it is.
+- **The opened file is checked, not only its path.** After opening, the file the operating system
+  actually opened must lie inside the directory and have no second name. So a link planted between
+  the check and the open, a `.partial` file that is really a link, and a hard link to a file elsewhere
+  are all refused before a byte is read or written.
 
 A few things to know:
 - **SSH and port 30033.** The tickets come from the SSH query, and the bytes travel over the file

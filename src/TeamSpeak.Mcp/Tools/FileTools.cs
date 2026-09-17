@@ -138,8 +138,9 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Downloads a file from a channel's file repository. Without localPath the content comes back " +
                  "inline, as text when valid UTF-8 and as base64 otherwise, up to " +
-                 "TeamSpeak:FileTransfer:MaxInlineBytes (100 KiB by default); needs ReadOnly. With localPath " +
-                 "it is saved inside TeamSpeak:FileTransfer:LocalDirectory, never replacing a file; needs " +
+                 "TeamSpeak:FileTransfer:MaxInlineBytes (32 KiB by default); needs ReadOnly. With localPath " +
+                 "it is saved inside TeamSpeak:FileTransfer:LocalDirectory, never replacing a file and at most " +
+                 "TeamSpeak:FileTransfer:MaxLocalBytes (1 GiB by default); needs " +
                  "Write. The bytes travel over the file transfer port, 30033 by default, which must be " +
                  "reachable from here." + SshOnly + ToolDescriptions.UserWrittenText)]
     public async Task<FileDownload> DownloadAsync(
@@ -204,6 +205,13 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
                 "belongs to another file. Download without resume to start over.");
         }
 
+        if (target is not null && options.MaxLocalBytes > 0 && ticket.Size - offset > options.MaxLocalBytes)
+        {
+            throw new McpException(
+                $"Nothing was downloaded: {name} is {ticket.Size} bytes, and saving {ticket.Size - offset} of them would exceed " +
+                $"TeamSpeak:FileTransfer:MaxLocalBytes ({options.MaxLocalBytes}).");
+        }
+
         if (target is null && ticket.Size > options.MaxInlineBytes)
         {
             throw new McpException(
@@ -226,7 +234,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
                     : new FileDownload(channelId, name, bytes.Length, "base64", Convert.ToBase64String(bytes), null);
             }
 
-            await SaveAsync(ticket, resolved.Host, target, offset, reporter, cancellationToken).ConfigureAwait(false);
+            await SaveAsync(LocalRoot(options), ticket, resolved.Host, target, offset, reporter, cancellationToken).ConfigureAwait(false);
             return new FileDownload(channelId, name, ticket.Size, "file", null, target, offset > 0 ? offset : null);
         }
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException)
@@ -238,14 +246,13 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         }
     }
 
-    private static async Task SaveAsync(FileTransferTicket ticket, string host, string target, long offset, IProgress<long> progress, CancellationToken cancellationToken)
+    private static async Task SaveAsync(string root, FileTransferTicket ticket, string host, string target, long offset, IProgress<long> progress, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-
         // Written under another name first, so a transfer that breaks off leaves no file that looks complete,
         // and what arrived stays there for resume to continue. A fresh download never opens an existing one.
+        // The guard checks the opened file itself, so a .partial planted as a link is refused.
         var partial = target + ".partial";
-        var file = new FileStream(partial, offset > 0 ? FileMode.Append : FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+        var file = offset > 0 ? LocalFileGuard.OpenAppend(root, partial) : LocalFileGuard.CreateNew(root, partial);
         await using (file.ConfigureAwait(false))
         {
             await FileTransferClient.DownloadAsync(ticket, host, file, ticket.Size - offset, cancellationToken, progress: progress).ConfigureAwait(false);
