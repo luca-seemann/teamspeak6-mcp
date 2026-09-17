@@ -247,9 +247,24 @@ revoking a server group's or an identity's permissions (removing a needed power 
 a grant), changing a default group with `ts_vserver_edit`, and, through `ts_query_raw`, copying a group
 over an existing one or an upload that overwrites a stored file.
 
-The three actions that cannot be undone and reach a whole virtual server — `ts_vserver_delete`,
-`ts_vserver_snapshot_deploy` and `ts_perm_reset` — also require `confirmName`, the virtual server's
-exact name. `ts_vserver_create` needs `Destructive` because the key it returns grants full control
+Every tool that deletes something for good requires `confirmName`, the current name of what it
+deletes, read from the server. A mistyped or mixed-up id then refuses instead of deleting the wrong
+thing:
+
+| Tool | `confirmName` is |
+|---|---|
+| `ts_vserver_delete`, `ts_vserver_snapshot_deploy`, `ts_perm_reset` | the virtual server's name |
+| `ts_channel_delete` | the channel's name |
+| `ts_servergroup_delete`, `ts_channelgroup_delete` | the group's name |
+| `ts_clientdb_delete` | the identity's last nickname |
+| `ts_file_delete` | the channel's name, or the virtual server's for channel 0 |
+| `ts_file_upload` with `overwrite` | the existing file's name, when there is one |
+| `ts_querylogin_manage` delete | the login name |
+| `ts_apikey_manage` delete | the owner's nickname, or this login's name for its own keys |
+
+`ts_query_raw` asks for the same name when it sends one of these commands, so it is no way around the
+confirmation. Deleting bans, complaints, offline messages, custom properties and temporary passwords
+needs no name. `ts_vserver_create` needs `Destructive` because the key it returns grants full control
 of the new server.
 
 A snapshot deploy restarts the virtual server and gives every channel, group and client database id

@@ -53,42 +53,44 @@ public sealed class GroupAdminTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_servergroup_delete", Title = "Delete a server group",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Deletes a server group with its permissions. Without force it refuses while the group " +
-                 "has members; with force the members simply lose it. Needs Destructive.")]
+                 "has members; with force the members simply lose it. As a safeguard, confirmName must repeat " +
+                 "the group's current name, as ts_servergroup_list shows it. Needs Destructive.")]
     public async Task<ActionResult> DeleteServerGroupAsync(
         [Description("The server group to delete.")] int groupId,
+        [Description("The group's current name, exactly as the server shows it.")] string confirmName,
         [Description("Delete even though it has members.")] bool force = false,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var records = await executor.RunCommandAsync(
-            "ts_servergroup_delete",
-            profile,
-            new QueryCommand("servergroupdel", new Dictionary<string, string> { ["sgid"] = Text(groupId), ["force"] = force ? "1" : "0" }, VirtualServerId: virtualServerId),
-            cancellationToken).ConfigureAwait(false);
+        var command = new QueryCommand("servergroupdel", new Dictionary<string, string> { ["sgid"] = Text(groupId), ["force"] = force ? "1" : "0" }, VirtualServerId: virtualServerId);
+        var target = await new DeletionTargets(executor).ConfirmAsync("ts_servergroup_delete", profile, command, confirmName, cancellationToken).ConfigureAwait(false);
 
-        return ActionResult.From($"Deleted server group {groupId}.", records);
+        var records = await executor.RunCommandAsync("ts_servergroup_delete", profile, command, cancellationToken).ConfigureAwait(false);
+
+        return ActionResult.From($"Deleted server group {groupId} '{target!.Name}'.", records);
     }
 
     /// <summary>Deletes a channel group.</summary>
     [McpServerTool(Name = "ts_channelgroup_delete", Title = "Delete a channel group",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Deletes a channel group with its permissions. Without force it refuses while anyone holds " +
-                 "it in a channel. Needs Destructive.")]
+                 "it in a channel. As a safeguard, confirmName must repeat the group's current name, as " +
+                 "ts_channelgroup_list shows it. Needs Destructive.")]
     public async Task<ActionResult> DeleteChannelGroupAsync(
         [Description("The channel group to delete.")] int groupId,
+        [Description("The group's current name, exactly as the server shows it.")] string confirmName,
         [Description("Delete even though clients hold it.")] bool force = false,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var records = await executor.RunCommandAsync(
-            "ts_channelgroup_delete",
-            profile,
-            new QueryCommand("channelgroupdel", new Dictionary<string, string> { ["cgid"] = Text(groupId), ["force"] = force ? "1" : "0" }, VirtualServerId: virtualServerId),
-            cancellationToken).ConfigureAwait(false);
+        var command = new QueryCommand("channelgroupdel", new Dictionary<string, string> { ["cgid"] = Text(groupId), ["force"] = force ? "1" : "0" }, VirtualServerId: virtualServerId);
+        var target = await new DeletionTargets(executor).ConfirmAsync("ts_channelgroup_delete", profile, command, confirmName, cancellationToken).ConfigureAwait(false);
 
-        return ActionResult.From($"Deleted channel group {groupId}.", records);
+        var records = await executor.RunCommandAsync("ts_channelgroup_delete", profile, command, cancellationToken).ConfigureAwait(false);
+
+        return ActionResult.From($"Deleted channel group {groupId} '{target!.Name}'.", records);
     }
 
     /// <summary>Adds a client identity to a server group or removes it.</summary>

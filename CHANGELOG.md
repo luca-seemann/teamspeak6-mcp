@@ -139,6 +139,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Only three tools asked for `confirmName`, and `ts_query_raw` sent the same commands without it,
+  although the server instructions said every irreversible tool asks for it. Now every tool that
+  deletes for good requires the target's current name, read from the server at the deletion's own
+  level: channels, server and channel groups, identities, files, query logins, API keys, and an
+  upload that overwrites an existing file. `ts_query_raw` asks for the same name for the same
+  commands, and refuses a known crash before reading anything.
 - A `Write` profile could hand out server-wide power: adding an identity to Server Admin, granting a
   server group's or client's permissions, changing the default server group, or copying a group over
   an existing one, although the command catalog's own rule reserves granting access for `Destructive`.

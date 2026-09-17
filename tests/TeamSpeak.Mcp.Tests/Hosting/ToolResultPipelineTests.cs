@@ -28,7 +28,11 @@ public class ToolResultPipelineTests
     ];
 
     /// <summary>Starts the HTTP app, lists the tools and calls ts_profiles_list.</summary>
-    private static async Task<(JsonArray Tools, JsonObject Result)> CallProfilesListAsync(params string[] extraArgs)
+    private static Task<(JsonArray Tools, JsonObject Result)> CallProfilesListAsync(params string[] extraArgs) =>
+        CallAsync("ts_profiles_list", new { }, extraArgs);
+
+    /// <summary>Starts the HTTP app, lists the tools and calls one tool.</summary>
+    private static async Task<(JsonArray Tools, JsonObject Result)> CallAsync(string toolName, object arguments, params string[] extraArgs)
     {
         await using var app = McpHostFactory.CreateHttpApp([.. TwoProfiles, .. extraArgs], "http://127.0.0.1:0");
         await app.StartAsync(Ct);
@@ -70,7 +74,7 @@ public class ToolResultPipelineTests
             await SendAsync(new { jsonrpc = "2.0", id = 1, method = "initialize", @params = new { protocolVersion = "2025-11-25", capabilities = new { }, clientInfo = new { name = "test", version = "1" } } });
             await SendAsync(new { jsonrpc = "2.0", method = "notifications/initialized" });
             var tools = (await SendAsync(new { jsonrpc = "2.0", id = 2, method = "tools/list" }))!["result"]!["tools"]!.AsArray();
-            var call = (await SendAsync(new { jsonrpc = "2.0", id = 3, method = "tools/call", @params = new { name = "ts_profiles_list", arguments = new { } } }))!;
+            var call = (await SendAsync(new { jsonrpc = "2.0", id = 3, method = "tools/call", @params = new { name = toolName, arguments } }))!;
 
             return (tools, call["result"]!.AsObject());
         }
@@ -104,5 +108,15 @@ public class ToolResultPipelineTests
         Assert.Null(result["structuredContent"]);
         Assert.StartsWith("profiles[2]{name,host,", Text(result), StringComparison.Ordinal);
         Assert.Contains("alpha,alpha.example.com,", Text(result), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_deletion_without_a_confirmation_name_is_refused_before_anything_is_sent()
+    {
+        // The profile's host does not exist: a refusal that needed the server would fail differently.
+        var (_, result) = await CallAsync("ts_channel_delete", new { channelId = 7 });
+
+        Assert.True((bool?)result["isError"]);
+        Assert.Contains("'confirmName' is required", Text(result), StringComparison.Ordinal);
     }
 }

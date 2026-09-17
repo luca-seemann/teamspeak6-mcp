@@ -156,7 +156,8 @@ public static class AdminPrompts
 
             Phase 2, the plan: present a table of proposed changes, one row per change, with the channel, the
             change (rename, move, edit, delete), the reason, and the tool (ts_channel_edit, ts_channel_move or
-            ts_channel_delete). Put deletions last and mark them clearly. Never touch the default channel.
+            ts_channel_delete). Put deletions last and mark them clearly, with each channel's current name:
+            ts_channel_delete asks for it as confirmName. Never touch the default channel.
 
             Stop after the plan and ask which changes to make. Do not change anything before the person
             confirms. Then carry out only the confirmed rows, one at a time, and report each result. Renames

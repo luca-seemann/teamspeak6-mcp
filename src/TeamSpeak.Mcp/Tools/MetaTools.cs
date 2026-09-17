@@ -153,6 +153,7 @@ public sealed class MetaTools(QueryExecutor executor)
     /// <param name="parameters">Key/value parameters.</param>
     /// <param name="options">Flag options.</param>
     /// <param name="limit">How many records to return.</param>
+    /// <param name="confirmName">The name of what a deleting command removes.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -165,7 +166,10 @@ public sealed class MetaTools(QueryExecutor executor)
                  "Write, and deleting, banning, kicking or handing out access needs Destructive, as " +
                  "does any command this server does not classify. Session commands (use, login, " +
                  "logout, quit, servernotifyregister, servernotifyunregister) are refused because the " +
-                 "connection is shared. At most limit records come back; totalRecords says how many the " +
+                 "connection is shared. Commands that delete what a dedicated tool asks a name for " +
+                 "(channeldelete, servergroupdel, channelgroupdel, clientdbdelete, querylogindel, apikeydel, " +
+                 "ftdeletefile, ftinitupload with overwrite, serverdelete, serversnapshotdeploy, permreset) need " +
+                 "the same confirmName here. At most limit records come back; totalRecords says how many the " +
                  "server returned." + ToolDescriptions.UserWrittenText)]
     public async Task<RawQueryResult> QueryRawAsync(
         [Description("The command name alone, for example 'clientdbfind'. Parameters and options go in their own arguments.")]
@@ -175,6 +179,7 @@ public sealed class MetaTools(QueryExecutor executor)
         [Description("Flag options, for example [\"-uid\"]. The leading dash is optional.")]
         IReadOnlyList<string>? options = null,
         [Description("How many records to return, from 1 to 1000. The command runs in full either way.")] int limit = 100,
+        [Description("For a command that deletes something a dedicated tool confirms: the current name of what it deletes.")] string? confirmName = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -195,12 +200,19 @@ public sealed class MetaTools(QueryExecutor executor)
                 "refused. To address a virtual server, pass virtualServerId instead of sending 'use'.");
         }
 
-        var required = CommandCatalog.RequiredLevel(new QueryCommand(name, parameters, options, virtualServerId));
+        var raw = new QueryCommand(name, parameters, options, virtualServerId);
+        var required = CommandCatalog.RequiredLevel(raw);
+
+        // A command known to crash the server is refused before anything is read for its confirmation,
+        // and the raw tool must not be the way around the confirmation the dedicated tools ask for.
+        KnownCrashes.Refuse(raw);
+        executor.Demand($"ts_query_raw with '{name}'", required, profile);
+        await new DeletionTargets(executor).ConfirmAsync($"ts_query_raw with '{name}'", profile, raw, confirmName, cancellationToken).ConfigureAwait(false);
         var records = await executor.RunAsync(
             $"ts_query_raw with '{name}'",
             required,
             profile,
-            new QueryCommand(name, parameters, options, virtualServerId),
+            raw,
             cancellationToken).ConfigureAwait(false);
 
         return new RawQueryResult(name, required.ToString(), records.Count, records.Take(Math.Clamp(limit, 1, 1000)).Select(QueryExecutor.ToFields).ToList());

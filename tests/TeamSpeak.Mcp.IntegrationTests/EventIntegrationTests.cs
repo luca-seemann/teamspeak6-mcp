@@ -54,7 +54,8 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
             }
             finally
             {
-                await new ChannelAdminTools(executor).DeleteAsync(int.Parse(created.Details["cid"], System.Globalization.CultureInfo.InvariantCulture), force: true, virtualServerId: 1, cancellationToken: Ct);
+                var createdId = int.Parse(created.Details["cid"], System.Globalization.CultureInfo.InvariantCulture);
+                await new ChannelAdminTools(executor).DeleteAsync(createdId, await LiveNames.ChannelAsync(executor, createdId), force: true, virtualServerId: 1, cancellationToken: Ct);
             }
         }
         finally

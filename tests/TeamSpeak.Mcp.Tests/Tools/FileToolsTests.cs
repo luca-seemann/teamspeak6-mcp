@@ -70,7 +70,7 @@ public sealed class FileToolsTests : IDisposable
         await Assert.ThrowsAsync<McpException>(() => admin.UploadAsync(1, "/a.txt", content: "x", cancellationToken: Ct));
         await Assert.ThrowsAsync<McpException>(() => admin.ManageAsync("createdir", 1, "/docs", cancellationToken: Ct));
         await Assert.ThrowsAsync<McpException>(() => admin.ManageAsync("stop", transferId: 3, cancellationToken: Ct));
-        await Assert.ThrowsAsync<McpException>(() => admin.DeleteAsync(1, ["/a.txt"], cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => admin.DeleteAsync(1, ["/a.txt"], "x", cancellationToken: Ct));
 
         Assert.Empty(harness.Transport.SentCommands);
     }
@@ -285,19 +285,22 @@ public sealed class FileToolsTests : IDisposable
         harness.Transport
             .Returns("ftgetfilelist", ToolHarness.Records(Fields(("name", "icon_123"), ("type", "1"), ("size", "5"))))
             .Returns("ftgetfileinfo", ToolHarness.Records(Fields(("size", "5"))))
-            .Returns("ftdeletefile", ToolHarness.Records());
+            .Returns("ftdeletefile", ToolHarness.Records())
+            .Returns("serverinfo", ToolHarness.Records(Fields(("virtualserver_name", "Main"))));
         var files = new FileTools(harness.Executor, Options());
         var admin = new FileAdminTools(harness.Executor, Options());
 
         var listed = Assert.Single((await files.ListFilesAsync(0, "/icons", cancellationToken: Ct)).Entries);
         await files.FileInfoAsync(0, "/icons/icon_123", cancellationToken: Ct);
-        await admin.DeleteAsync(0, ["/icons/icon_123"], cancellationToken: Ct);
+
+        // Channel 0 has no name of its own, so deleting from it confirms the virtual server's name.
+        await admin.DeleteAsync(0, ["/icons/icon_123"], "Main", cancellationToken: Ct);
         await files.FileInfoAsync(4, "/icons/icon_123", cancellationToken: Ct);
 
         Assert.Equal("/icon_123", listed.Path);
         Assert.Equal(
             ["/icon_123", "/icon_123", "/icons/icon_123"],
-            harness.Transport.SentCommands.Where(command => command.Name != "ftgetfilelist").Select(command => command.Parameters!["name"]));
+            harness.Transport.SentCommands.Where(command => command.Name is "ftgetfileinfo" or "ftdeletefile").Select(command => command.Parameters!["name"]));
     }
 
     [Fact]
@@ -575,15 +578,17 @@ public sealed class FileToolsTests : IDisposable
     public async Task Deleting_stops_at_the_first_failure_and_names_what_was_already_deleted()
     {
         await using var harness = new ToolHarness(SafetyLevel.Destructive);
-        harness.Transport.Returns("ftdeletefile", command => command.Parameters!["name"] == "/b"
-            ? ToolHarness.Error(QueryErrorCode.InvalidFilePath, "invalid file path")
-            : ToolHarness.Records());
+        harness.Transport
+            .Returns("channelinfo", ToolHarness.Records(Fields(("channel_name", "Lobby"))))
+            .Returns("ftdeletefile", command => command.Parameters!["name"] == "/b"
+                ? ToolHarness.Error(QueryErrorCode.InvalidFilePath, "invalid file path")
+                : ToolHarness.Records());
 
         var ex = await Assert.ThrowsAsync<McpException>(() =>
-            new FileAdminTools(harness.Executor, Options()).DeleteAsync(1, ["/a", "b", "/c"], cancellationToken: Ct));
+            new FileAdminTools(harness.Executor, Options()).DeleteAsync(1, ["/a", "b", "/c"], "Lobby", cancellationToken: Ct));
 
         Assert.Contains("Deleted before that: /a.", ex.Message, StringComparison.Ordinal);
-        Assert.Equal(2, harness.Transport.SentCommands.Count);
+        Assert.Equal(2, harness.Transport.SentCommands.Count(command => command.Name == "ftdeletefile"));
     }
 
     [Fact]

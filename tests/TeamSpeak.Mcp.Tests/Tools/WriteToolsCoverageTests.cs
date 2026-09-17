@@ -14,17 +14,22 @@ public class WriteToolsCoverageTests
     public async Task Deleting_an_identity_needs_destructive_and_sends_its_database_id()
     {
         await using var write = new ToolHarness(SafetyLevel.Write);
-        await Assert.ThrowsAsync<McpException>(() => new ClientAdminTools(write.Executor).DeleteIdentityAsync(4, cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => new ClientAdminTools(write.Executor).DeleteIdentityAsync(4, "Alice", cancellationToken: Ct));
         Assert.Empty(write.Transport.SentCommands);
 
         await using var destructive = new ToolHarness(SafetyLevel.Destructive);
-        destructive.Transport.Returns("clientdbdelete", ToolHarness.Records());
+        destructive.Transport
+            .Returns("clientdbinfo", ToolHarness.Records(new Dictionary<string, string> { ["client_nickname"] = "Alice" }))
+            .Returns("clientdbdelete", ToolHarness.Records());
 
-        var result = await new ClientAdminTools(destructive.Executor).DeleteIdentityAsync(4, 2, cancellationToken: Ct);
+        await Assert.ThrowsAsync<McpException>(() => new ClientAdminTools(destructive.Executor).DeleteIdentityAsync(4, "Bob", 2, cancellationToken: Ct));
+        Assert.DoesNotContain(destructive.Transport.SentCommands, command => command.Name == "clientdbdelete");
 
-        var sent = Assert.Single(destructive.Transport.SentCommands);
-        Assert.Equal(("clientdbdelete", "4", 2), (sent.Name, sent.Parameters!["cldbid"], sent.VirtualServerId));
-        Assert.Equal("Deleted identity 4.", result.Done);
+        var result = await new ClientAdminTools(destructive.Executor).DeleteIdentityAsync(4, "Alice", 2, cancellationToken: Ct);
+
+        var sent = destructive.Transport.SentCommands.Single(command => command.Name == "clientdbdelete");
+        Assert.Equal(("4", 2), (sent.Parameters!["cldbid"], sent.VirtualServerId));
+        Assert.Equal("Deleted identity 4 'Alice'.", result.Done);
     }
 
     [Fact]

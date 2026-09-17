@@ -49,6 +49,8 @@ Worth knowing when judging a report:
 - File tools may read and write local files, but only inside the directory configured as
   `TeamSpeak:FileTransfer:LocalDirectory`. A path that escapes that directory, including through a
   symbolic link, is a vulnerability.
+- Deleting for good needs `confirmName`, the target's current name read from the server, through the
+  dedicated tools and `ts_query_raw` alike. A deletion that reaches TeamSpeak without it is a bug.
 - The MCP client, and therefore the model, chooses tool arguments. Assume the model can be talked
   into calling anything; the safety level, not the model's judgement, is what has to hold.
 - Much of what the tools return is written by anyone who can connect to the TeamSpeak server:

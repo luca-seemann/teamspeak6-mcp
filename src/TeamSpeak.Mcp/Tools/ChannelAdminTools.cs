@@ -126,24 +126,25 @@ public sealed class ChannelAdminTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_channel_delete", Title = "Delete a channel",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Deletes a channel with all its sub-channels and files. Without force it refuses while " +
-                 "anyone is inside; with force the people inside are moved to the default channel. Needs " +
-                 "Destructive.")]
+                 "anyone is inside; with force the people inside are moved to the default channel. As a " +
+                 "safeguard, confirmName must repeat the channel's current name, as ts_channel_info shows it. " +
+                 "Needs Destructive.")]
     public async Task<ActionResult> DeleteAsync(
         [Description("The channel to delete.")] int channelId,
+        [Description("The channel's current name, exactly as the server shows it.")] string confirmName,
         [Description("Delete even if clients are inside, moving them to the default channel.")] bool force = false,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var records = await executor.RunCommandAsync(
-            "ts_channel_delete",
-            profile,
-            new QueryCommand(
-                "channeldelete",
-                new Dictionary<string, string> { ["cid"] = Text(channelId), ["force"] = force ? "1" : "0" },
-                VirtualServerId: virtualServerId),
-            cancellationToken).ConfigureAwait(false);
+        var command = new QueryCommand(
+            "channeldelete",
+            new Dictionary<string, string> { ["cid"] = Text(channelId), ["force"] = force ? "1" : "0" },
+            VirtualServerId: virtualServerId);
+        var target = await new DeletionTargets(executor).ConfirmAsync("ts_channel_delete", profile, command, confirmName, cancellationToken).ConfigureAwait(false);
 
-        return ActionResult.From($"Deleted channel {channelId}.", records);
+        var records = await executor.RunCommandAsync("ts_channel_delete", profile, command, cancellationToken).ConfigureAwait(false);
+
+        return ActionResult.From($"Deleted channel {channelId} '{target!.Name}'.", records);
     }
 }

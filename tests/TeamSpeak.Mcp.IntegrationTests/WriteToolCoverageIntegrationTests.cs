@@ -112,11 +112,11 @@ public sealed class WriteToolCoverageIntegrationTests(LiveServerFixture server)
         {
             try
             {
-                await groups.DeleteChannelGroupAsync(channelGroup, force: true, virtualServerId: 1, cancellationToken: Ct);
+                await groups.DeleteChannelGroupAsync(channelGroup, await LiveNames.ChannelGroupAsync(executor, channelGroup), force: true, virtualServerId: 1, cancellationToken: Ct);
             }
             finally
             {
-                await channels.DeleteAsync(channel, force: true, virtualServerId: 1, cancellationToken: Ct);
+                await channels.DeleteAsync(channel, await LiveNames.ChannelAsync(executor, channel), force: true, virtualServerId: 1, cancellationToken: Ct);
             }
         }
     }
@@ -147,7 +147,7 @@ public sealed class WriteToolCoverageIntegrationTests(LiveServerFixture server)
         }
         finally
         {
-            await groups.DeleteChannelGroupAsync(channelGroup, force: true, virtualServerId: 1, cancellationToken: Ct);
+            await groups.DeleteChannelGroupAsync(channelGroup, await LiveNames.ChannelGroupAsync(executor, channelGroup), force: true, virtualServerId: 1, cancellationToken: Ct);
         }
 
         var identity = (await new ClientDatabaseTools(executor).ListKnownClientsAsync(limit: 50, virtualServerId: 1, cancellationToken: Ct)).Clients
@@ -293,9 +293,9 @@ public sealed class WriteToolCoverageIntegrationTests(LiveServerFixture server)
                 }
                 finally
                 {
-                    await groups.DeleteChannelGroupAsync(channelGroup, force: true, virtualServerId: 1, cancellationToken: Ct);
-                    await groups.DeleteServerGroupAsync(serverGroup, force: true, virtualServerId: 1, cancellationToken: Ct);
-                    await channels.DeleteAsync(channel, force: true, virtualServerId: 1, cancellationToken: Ct);
+                    await groups.DeleteChannelGroupAsync(channelGroup, await LiveNames.ChannelGroupAsync(executor, channelGroup), force: true, virtualServerId: 1, cancellationToken: Ct);
+                    await groups.DeleteServerGroupAsync(serverGroup, await LiveNames.ServerGroupAsync(executor, serverGroup), force: true, virtualServerId: 1, cancellationToken: Ct);
+                    await channels.DeleteAsync(channel, await LiveNames.ChannelAsync(executor, channel), force: true, virtualServerId: 1, cancellationToken: Ct);
                 }
             }
         }

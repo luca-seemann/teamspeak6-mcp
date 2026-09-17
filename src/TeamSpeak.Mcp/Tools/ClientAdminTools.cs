@@ -181,20 +181,21 @@ public sealed class ClientAdminTools(QueryExecutor executor)
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Deletes a client identity from the virtual server's database, with its group " +
                  "memberships, permissions and custom properties. If the person connects again they come " +
-                 "back as a new, ungrouped identity. It does not ban them. Needs Destructive.")]
+                 "back as a new, ungrouped identity. It does not ban them. As a safeguard, confirmName must " +
+                 "repeat the identity's last nickname, as ts_clientdb_info shows it. Needs Destructive.")]
     public async Task<ActionResult> DeleteIdentityAsync(
         [Description("The identity's database id.")] int databaseId,
+        [Description("The identity's last nickname, exactly as the server shows it.")] string confirmName,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        var records = await executor.RunCommandAsync(
-            "ts_clientdb_delete",
-            profile,
-            new QueryCommand("clientdbdelete", new Dictionary<string, string> { ["cldbid"] = Text(databaseId) }, VirtualServerId: virtualServerId),
-            cancellationToken).ConfigureAwait(false);
+        var command = new QueryCommand("clientdbdelete", new Dictionary<string, string> { ["cldbid"] = Text(databaseId) }, VirtualServerId: virtualServerId);
+        var target = await new DeletionTargets(executor).ConfirmAsync("ts_clientdb_delete", profile, command, confirmName, cancellationToken).ConfigureAwait(false);
 
-        return ActionResult.From($"Deleted identity {databaseId}.", records);
+        var records = await executor.RunCommandAsync("ts_clientdb_delete", profile, command, cancellationToken).ConfigureAwait(false);
+
+        return ActionResult.From($"Deleted identity {databaseId} '{target!.Name}'.", records);
     }
 
     /// <summary>Sends a text message.</summary>

@@ -40,7 +40,8 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         [Description("The file's content as text.")] string? content = null,
         [Description("The file's content, base64-encoded, for binary files.")] string? contentBase64 = null,
         [Description("A local file to upload: a path relative to, or inside, the configured local directory.")] string? localPath = null,
-        [Description("Replace a file that already exists at path. Needs Destructive.")] bool overwrite = false,
+        [Description("Replace a file that already exists at path. Needs Destructive, and confirmName.")] bool overwrite = false,
+        [Description("With overwrite, when a file already exists at path: its file name, such as readme.txt.")] string? confirmName = null,
         [Description("Continue an upload that broke off: only the bytes the partial file at path lacks are sent. Give the same, complete content as before; the last bytes stored are compared with it first. Needs Destructive, since TeamSpeak would extend a finished file just the same. Cannot be combined with overwrite.")] bool resume = false,
         [Description(ToolDescriptions.ChannelPassword)] string? channelPassword = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
@@ -67,6 +68,16 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
 
         var (inline, local, length) = Source(content, contentBase64, localPath);
         var resolved = executor.ResolveProfile(profile);
+
+        if (overwrite)
+        {
+            var existing = ChannelParameters(channelId, channelPassword);
+            existing["name"] = name;
+            existing["overwrite"] = "1";
+            await new DeletionTargets(executor).ConfirmAsync(
+                "ts_file_upload", profile, new QueryCommand("ftinitupload", existing, VirtualServerId: virtualServerId), confirmName, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         var offset = 0L;
         if (resume)
@@ -258,10 +269,12 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Deletes files or directories from a channel's file repository. A directory goes with " +
                  "everything in it. The paths are deleted one at a time; the first that fails stops the rest, " +
-                 "and the error names what was already deleted. Needs Destructive." + SshOnly)]
+                 "and the error names what was already deleted. As a safeguard, confirmName must repeat the " +
+                 "channel's current name, or the virtual server's name for channel 0. Needs Destructive." + SshOnly)]
     public async Task<ActionResult> DeleteAsync(
         [Description("The channel the files are stored in; 0 for icons and avatars.")] int channelId,
         [Description("The paths to delete, such as [\"/old.txt\", \"/archive\"].")] IReadOnlyList<string> paths,
+        [Description("The channel's current name, or for channel 0 the virtual server's name, exactly as the server shows it.")] string confirmName,
         [Description(ToolDescriptions.ChannelPassword)] string? channelPassword = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -274,6 +287,12 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
 
         var names = paths.Select(path => EntryPath(channelId, path, nameof(paths))).Distinct(StringComparer.Ordinal).ToList();
         executor.Demand("ts_file_delete", SafetyLevel.Destructive, profile);
+
+        var confirmation = ChannelParameters(channelId, channelPassword);
+        confirmation["name"] = names[0];
+        await new DeletionTargets(executor).ConfirmAsync(
+            "ts_file_delete", profile, new QueryCommand("ftdeletefile", confirmation, VirtualServerId: virtualServerId), confirmName, cancellationToken)
+            .ConfigureAwait(false);
 
         var deleted = new List<string>();
         foreach (var name in names)

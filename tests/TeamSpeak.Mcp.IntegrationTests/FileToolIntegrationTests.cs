@@ -112,7 +112,7 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
                 admin.UploadAsync(channel, $"{directory}/hello.txt", content: "again", virtualServerId: 1, cancellationToken: Ct));
             Assert.Contains("2050", refused.Message, StringComparison.Ordinal);
 
-            await admin.UploadAsync(channel, $"{directory}/hello.txt", content: "replaced", overwrite: true, virtualServerId: 1, cancellationToken: Ct);
+            await admin.UploadAsync(channel, $"{directory}/hello.txt", content: "replaced", overwrite: true, confirmName: "hello.txt", virtualServerId: 1, cancellationToken: Ct);
             Assert.Equal("replaced", (await files.DownloadAsync(channel, $"{directory}/hello.txt", virtualServerId: 1, cancellationToken: Ct)).Content);
 
             var missing = await Assert.ThrowsAsync<McpException>(() =>
@@ -126,10 +126,10 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
             await admin.ManageAsync("rename", channel, $"{directory}/data.bin", moved, targetChannelId: otherChannel, virtualServerId: 1, cancellationToken: Ct);
             Assert.Contains((await files.ListFilesAsync(otherChannel, virtualServerId: 1, cancellationToken: Ct)).Entries, file => file.Path == moved && file.Size == binary.Length);
 
-            await admin.DeleteAsync(otherChannel, [moved], virtualServerId: 1, cancellationToken: Ct);
+            await admin.DeleteAsync(otherChannel, [moved], await LiveNames.ChannelAsync(executor, otherChannel), virtualServerId: 1, cancellationToken: Ct);
 
             // A directory is deleted with what it holds.
-            await admin.DeleteAsync(channel, [directory], virtualServerId: 1, cancellationToken: Ct);
+            await admin.DeleteAsync(channel, [directory], await LiveNames.ChannelAsync(executor, channel), virtualServerId: 1, cancellationToken: Ct);
             Assert.DoesNotContain((await files.ListFilesAsync(channel, virtualServerId: 1, cancellationToken: Ct)).Entries, file => file.Path == directory);
             Assert.DoesNotContain((await files.ListFilesAsync(otherChannel, virtualServerId: 1, cancellationToken: Ct)).Entries, file => file.Path == moved);
         }
@@ -162,7 +162,7 @@ public sealed class FileToolIntegrationTests(LiveServerFixture server) : IDispos
             Assert.Equal(4, (await files.FileInfoAsync(0, "/icons" + name, virtualServerId: 1, cancellationToken: Ct)).Size);
             Assert.Equal("icon", (await files.DownloadAsync(0, listed.Path, virtualServerId: 1, cancellationToken: Ct)).Content);
 
-            await admin.DeleteAsync(0, ["/icons" + name], virtualServerId: 1, cancellationToken: Ct);
+            await admin.DeleteAsync(0, ["/icons" + name], await LiveNames.VirtualServerAsync(executor), virtualServerId: 1, cancellationToken: Ct);
             Assert.DoesNotContain((await files.ListFilesAsync(0, "/icons", virtualServerId: 1, cancellationToken: Ct)).Entries, entry => entry.Name == name[1..]);
         }
         finally

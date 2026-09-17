@@ -238,13 +238,15 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
     [Description("add creates a WebQuery API key with a scope (read, write or manage) and a lifetime in days, " +
                  "for this query login or another identity; the key itself is returned once and never shown " +
                  "again. delete removes a key by the id ts_apikey_list shows; deleting the key a profile of " +
-                 "this server uses cuts that profile off. Both need Destructive.")]
+                 "this server uses cuts that profile off, and confirmName must repeat the owner's name: the " +
+                 "identity's nickname, or the login name for a key of this query login. Both need Destructive.")]
     public async Task<ActionResult> ManageApiKeyAsync(
         [Description("add or delete.")][AllowedValues("add", "delete")] string action,
         [Description("For add: read, write, or manage.")][AllowedValues("read", "write", "manage")] string? scope = null,
         [Description("For add: lifetime in days. 0 means the key never expires. Omitted, the server's default of 14 days.")] int? lifetimeDays = null,
         [Description("For add: the identity to own the key. Omit for this query login.")] int? databaseId = null,
         [Description("For delete: the key id.")] int? keyId = null,
+        [Description("For delete: the key owner's nickname, or this query login's name for its own keys.")] string? confirmName = null,
         [Description("The virtual server the key belongs to. " + ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -271,7 +273,10 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
             parameters = new() { ["id"] = Text(keyId ?? throw new McpException("delete needs keyId.")) };
         }
 
-        var records = await executor.RunCommandAsync("ts_apikey_manage", profile, new QueryCommand(add ? "apikeyadd" : "apikeydel", parameters, VirtualServerId: virtualServerId), cancellationToken)
+        var command = new QueryCommand(add ? "apikeyadd" : "apikeydel", parameters, VirtualServerId: virtualServerId);
+        await new DeletionTargets(executor).ConfirmAsync("ts_apikey_manage", profile, command, confirmName, cancellationToken).ConfigureAwait(false);
+
+        var records = await executor.RunCommandAsync("ts_apikey_manage", profile, command, cancellationToken)
             .ConfigureAwait(false);
 
         return ActionResult.From(add ? "Created the API key; details holds it, and it will not be shown again." : $"Deleted API key {keyId}.", records);
@@ -282,12 +287,13 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("add enables ServerQuery login for an existing client identity on this virtual server, " +
                  "under a login name, and returns its generated password once. delete removes an " +
-                 "identity's query login. Query logins act with that identity's permissions, so both need " +
-                 "Destructive.")]
+                 "identity's query login, and confirmName must repeat its login name. Query logins act with " +
+                 "that identity's permissions, so both need Destructive.")]
     public async Task<ActionResult> ManageQueryLoginAsync(
         [Description("add or delete.")][AllowedValues("add", "delete")] string action,
         [Description("The identity's database id.")] int databaseId,
         [Description("For add: the login name.")] string? loginName = null,
+        [Description("For delete: the login name to remove, exactly as ts_querylogin_list shows it.")] string? confirmName = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -300,8 +306,10 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
             parameters["client_login_name"] = RequireText(loginName, nameof(loginName));
         }
 
-        var records = await executor.RunCommandAsync(
-            "ts_querylogin_manage", profile, new QueryCommand(add ? "queryloginadd" : "querylogindel", parameters, VirtualServerId: virtualServerId), cancellationToken)
+        var command = new QueryCommand(add ? "queryloginadd" : "querylogindel", parameters, VirtualServerId: virtualServerId);
+        await new DeletionTargets(executor).ConfirmAsync("ts_querylogin_manage", profile, command, confirmName, cancellationToken).ConfigureAwait(false);
+
+        var records = await executor.RunCommandAsync("ts_querylogin_manage", profile, command, cancellationToken)
             .ConfigureAwait(false);
 
         return ActionResult.From(add ? "Created the query login; details holds its password, shown only this once." : $"Deleted the query login of identity {databaseId}.", records);

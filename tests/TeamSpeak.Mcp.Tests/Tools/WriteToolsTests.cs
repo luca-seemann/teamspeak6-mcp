@@ -30,7 +30,7 @@ public class WriteToolsTests
             () => new VirtualServerAdminTools(harness.Executor).TempPasswordAsync("list", cancellationToken: Ct),
             () => new ChannelAdminTools(harness.Executor).CreateAsync("x", cancellationToken: Ct),
             () => new ChannelAdminTools(harness.Executor).MoveAsync(1, 0, cancellationToken: Ct),
-            () => new ChannelAdminTools(harness.Executor).DeleteAsync(1, cancellationToken: Ct),
+            () => new ChannelAdminTools(harness.Executor).DeleteAsync(1, "x", cancellationToken: Ct),
             () => new ClientAdminTools(harness.Executor).MoveAsync(1, 2, cancellationToken: Ct),
             () => new ClientAdminTools(harness.Executor).KickAsync(1, "server", cancellationToken: Ct),
             () => new ClientAdminTools(harness.Executor).SendMessageAsync("client", "hi", clientId: 2, cancellationToken: Ct),
@@ -69,7 +69,7 @@ public class WriteToolsTests
         await Assert.ThrowsAsync<McpException>(() => new VirtualServerAdminTools(harness.Executor).CreateAsync("x", cancellationToken: Ct));
         await Assert.ThrowsAsync<McpException>(() => new ModerationAdminTools(harness.Executor).ManageTokenAsync("add", serverGroupId: 6, cancellationToken: Ct));
         await Assert.ThrowsAsync<McpException>(() => new ClientAdminTools(harness.Executor).KickAsync(5, "server", cancellationToken: Ct));
-        await Assert.ThrowsAsync<McpException>(() => new ChannelAdminTools(harness.Executor).DeleteAsync(3, cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => new ChannelAdminTools(harness.Executor).DeleteAsync(3, "x", cancellationToken: Ct));
 
         Assert.Equal(["serverstart", "privilegekeydelete"], harness.Transport.SentCommands.Select(command => command.Name));
     }

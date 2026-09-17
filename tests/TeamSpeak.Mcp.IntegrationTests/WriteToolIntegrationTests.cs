@@ -80,7 +80,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         }
         finally
         {
-            await admin.DeleteAsync(channelId, force: true, virtualServerId: 1, cancellationToken: Ct);
+            await admin.DeleteAsync(channelId, await LiveNames.ChannelAsync(executor, channelId), force: true, virtualServerId: 1, cancellationToken: Ct);
         }
 
         Assert.DoesNotContain((await channels.ListChannelsAsync(virtualServerId: 1, cancellationToken: Ct)).Channels, channel => channel.Id == channelId);
@@ -129,10 +129,10 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         {
             if (copyId is { } copy)
             {
-                await groups.DeleteServerGroupAsync(copy, force: true, virtualServerId: 1, cancellationToken: Ct);
+                await groups.DeleteServerGroupAsync(copy, await LiveNames.ServerGroupAsync(executor, copy), force: true, virtualServerId: 1, cancellationToken: Ct);
             }
 
-            await groups.DeleteServerGroupAsync(groupId, force: true, virtualServerId: 1, cancellationToken: Ct);
+            await groups.DeleteServerGroupAsync(groupId, await LiveNames.ServerGroupAsync(executor, groupId), force: true, virtualServerId: 1, cancellationToken: Ct);
         }
 
         Assert.DoesNotContain((await new GroupTools(executor).ListServerGroupsAsync(1, cancellationToken: Ct)).Groups, group => group.Id == groupId);
@@ -173,7 +173,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         finally
         {
             await groups.SetChannelGroupAsync(identity.DatabaseId, channel, originalGroup, 1, cancellationToken: Ct);
-            await groups.DeleteChannelGroupAsync(groupId, force: true, virtualServerId: 1, cancellationToken: Ct);
+            await groups.DeleteChannelGroupAsync(groupId, await LiveNames.ChannelGroupAsync(executor, groupId), force: true, virtualServerId: 1, cancellationToken: Ct);
         }
     }
 
@@ -214,7 +214,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         }
         finally
         {
-            await groups.DeleteServerGroupAsync(groupId, force: true, virtualServerId: 1, cancellationToken: Ct);
+            await groups.DeleteServerGroupAsync(groupId, await LiveNames.ServerGroupAsync(executor, groupId), force: true, virtualServerId: 1, cancellationToken: Ct);
         }
 
         var passwords = new VirtualServerAdminTools(executor);
@@ -264,7 +264,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         }
         finally
         {
-            await access.ManageApiKeyAsync("delete", keyId: keyId, cancellationToken: Ct);
+            await access.ManageApiKeyAsync("delete", keyId: keyId, confirmName: "serveradmin", cancellationToken: Ct);
         }
 
         Assert.DoesNotContain((await new AccessTools(executor).ListApiKeysAsync(cancellationToken: Ct)).Keys, listed => listed.Id == keyId);
@@ -276,7 +276,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         {
             // Query login names are refused at 23 characters already; nine is well inside the limit.
             var login = "mcp" + Guid.NewGuid().ToString("N")[..6];
-            var created = await access.ManageQueryLoginAsync("add", identity.DatabaseId, login, 1, cancellationToken: Ct);
+            var created = await access.ManageQueryLoginAsync("add", identity.DatabaseId, login, virtualServerId: 1, cancellationToken: Ct);
             try
             {
                 Assert.False(string.IsNullOrEmpty(created.Details["client_login_password"]));
@@ -284,7 +284,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
             }
             finally
             {
-                await access.ManageQueryLoginAsync("delete", identity.DatabaseId, virtualServerId: 1, cancellationToken: Ct);
+                await access.ManageQueryLoginAsync("delete", identity.DatabaseId, confirmName: login, virtualServerId: 1, cancellationToken: Ct);
             }
         }
     }
@@ -443,7 +443,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
             }
             finally
             {
-                await channelAdmin.DeleteAsync(moderated, force: true, virtualServerId: 1, cancellationToken: Ct);
+                await channelAdmin.DeleteAsync(moderated, await LiveNames.ChannelAsync(executor, moderated), force: true, virtualServerId: 1, cancellationToken: Ct);
             }
         }
     }
