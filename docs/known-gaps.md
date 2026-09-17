@@ -19,7 +19,6 @@ closes a gap once something becomes available, such as a Git remote or an arm64 
   sequences, publish and pack among them, work locally.
 - **The packages are verified locally only.**
   - `dnx` ran the tool package from a local folder, not from nuget.org, where nothing is published.
-  - `.mcp/server.json` names a placeholder repository.
   - The win-x64 binary ran over stdio and Streamable HTTP against the test server, and the linux-x64
     binary over stdio in WSL.
   - The linux-arm64 binary was built but never run, for lack of an arm64 machine.
