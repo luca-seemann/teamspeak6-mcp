@@ -32,6 +32,10 @@ Worth knowing when judging a report:
 
 - It holds TeamSpeak query credentials, as `serveradmin` passwords or WebQuery API keys, taken from
   configuration or the environment.
+- Over SSH it checks the server's host key before sending the password: against a pinned
+  fingerprint, or against the key remembered on the first connection. Connecting despite a changed
+  key is a vulnerability. Two limits are accepted: the very first connection to an unpinned server
+  is trusted without proof, and the WebQuery over plain `http://` is not encrypted at all.
 - With those credentials, and a high enough safety level, it can change or destroy everything on a
   TeamSpeak server: channels, groups, permissions, bans, stored files.
 - **Safety levels are the main defence.** A server starts at `ReadOnly`, `Write` and `Destructive`

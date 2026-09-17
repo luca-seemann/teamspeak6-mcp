@@ -139,6 +139,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- The SSH host key was never checked, so anyone on the network path could answer in the TeamSpeak
+  server's place and receive the `serveradmin` password. The key is now remembered on the first
+  connection in `TeamSpeak:KnownHostsFile`, or pinned per profile with `HostKeyFingerprint`, and a
+  different key refuses the connection before the password is sent. A refusal is not retried, so it
+  cannot earn a flood block. `ts_profiles_list` reports the trusted fingerprint, and the container
+  keeps the file on a volume.
 - Streamable HTTP accepted requests from any web page and any host name. A page open in the user's
   browser could reach a server listening on localhost through DNS rebinding and call every tool the
   safety level allows: a request with `Origin: http://evil.example` and a forged `Host` was answered

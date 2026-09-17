@@ -15,13 +15,21 @@ namespace TeamSpeak.Mcp.Tools;
 [McpServerToolType]
 public sealed class MetaTools(QueryExecutor executor)
 {
+    private static string? HostKeyOf(QueryProfile profile, PreferredTransport transport) =>
+        transport != PreferredTransport.Ssh
+            ? null
+            : profile.HostKeyFingerprint is { } pinned
+                ? Query.Transport.HostKeyFingerprint.Normalize(pinned)
+                : (profile.HostKeyVerifier as Query.Transport.KnownHostsFile)?.Find(profile.Host, profile.SshPort);
+
     /// <summary>Lists the configured profiles.</summary>
     /// <returns>The profiles, without credentials.</returns>
     [McpServerTool(Name = "ts_profiles_list", Title = "List TeamSpeak profiles",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the TeamSpeak servers this MCP server is configured to administer, with the " +
-                 "interface and safety level each uses. Does not contact any server. Call this first " +
-                 "when several profiles exist and a tool needs a profile name.")]
+                 "interface and safety level each uses, and the SSH host key fingerprint each server is " +
+                 "trusted with. Does not contact any server. Call this first when several profiles exist " +
+                 "and a tool needs a profile name.")]
     public ProfileList ListProfiles()
     {
         var registry = executor.Connections.Profiles;
@@ -37,7 +45,8 @@ public sealed class MetaTools(QueryExecutor executor)
                     transport == PreferredTransport.Ssh ? "ssh" : "webquery",
                     EventsAvailable: transport == PreferredTransport.Ssh,
                     executor.Safety.LevelFor(profile.Name).ToString(),
-                    profile.DefaultVirtualServerId);
+                    profile.DefaultVirtualServerId,
+                    HostKeyOf(profile, transport));
             })
             .ToList());
     }
@@ -209,13 +218,18 @@ public sealed record ProfileList(IReadOnlyList<ProfileSummary> Profiles);
 /// <param name="EventsAvailable">Whether the interface can deliver server events.</param>
 /// <param name="Safety">The highest safety level tools may use on this profile.</param>
 /// <param name="DefaultVirtualServerId">The virtual server addressed when a tool call names none.</param>
+/// <param name="HostKeyFingerprint">
+/// The SSH host key the server must present: pinned in configuration, or remembered from the first
+/// connection. <see langword="null"/> before the first SSH connection, and for the WebQuery.
+/// </param>
 public sealed record ProfileSummary(
     string Name,
     string Host,
     string Interface,
     bool EventsAvailable,
     string Safety,
-    int DefaultVirtualServerId);
+    int DefaultVirtualServerId,
+    string? HostKeyFingerprint);
 
 /// <summary>A summary of a server instance.</summary>
 /// <param name="Version">The <c>version</c> fields.</param>

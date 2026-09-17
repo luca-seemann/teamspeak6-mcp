@@ -30,6 +30,11 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/teamspeak6-mcp .
 
+# Holds the remembered SSH host keys. A named volume mounted here takes this directory's owner, so
+# the unprivileged user can write to it.
+RUN mkdir /state && chown "$APP_UID" /state
+ENV TSMCP_TeamSpeak__KnownHostsFile=/state/known_hosts
+
 # The container serves remote clients, so HTTP is the only transport that makes sense here.
 EXPOSE 7801
 USER $APP_UID

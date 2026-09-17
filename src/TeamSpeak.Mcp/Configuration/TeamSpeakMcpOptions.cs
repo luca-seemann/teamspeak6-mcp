@@ -35,11 +35,34 @@ public sealed class TeamSpeakMcpOptions
     /// <summary>Gets or sets who may use the Streamable HTTP endpoint.</summary>
     public HttpOptions Http { get; set; } = new();
 
+    /// <summary>Gets or sets the file remembering each server's SSH host key.</summary>
+    /// <remarks>
+    /// Defaults to <c>teamspeak6-mcp/known_hosts</c> in the user's local application data folder:
+    /// <c>%LOCALAPPDATA%</c> on Windows, <c>~/.local/share</c> on Linux. A server's first key is
+    /// remembered, and a different key later refuses the connection.
+    /// </remarks>
+    public string KnownHostsFile { get; set; } = DefaultKnownHostsFile;
+
+    /// <summary>Gets the default location of <see cref="KnownHostsFile"/>.</summary>
+    public static string DefaultKnownHostsFile { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify),
+        "teamspeak6-mcp",
+        "known_hosts");
+
     /// <summary>Turns the bound options into validated profiles.</summary>
     /// <returns>The profile registry.</returns>
     /// <exception cref="InvalidOperationException">Thrown when a profile is unusable.</exception>
-    public ProfileRegistry BuildRegistry() =>
-        new(Profiles.Select(entry => entry.Value.ToProfile(entry.Key)));
+    public ProfileRegistry BuildRegistry()
+    {
+        var knownHosts = new Query.Transport.KnownHostsFile(KnownHostsFile);
+
+        return new(Profiles.Select(entry =>
+        {
+            var profile = entry.Value.ToProfile(entry.Key);
+            profile.HostKeyVerifier = knownHosts;
+            return profile;
+        }));
+    }
 
     /// <summary>Builds the safety policy from the global level and each profile's own setting.</summary>
     /// <returns>The policy.</returns>
@@ -78,6 +101,10 @@ public sealed class QueryProfileOptions
 
     /// <summary>Gets or sets the query admin password.</summary>
     public string? Password { get; set; }
+
+    /// <summary>Gets or sets the SSH host key fingerprint the server must present, such as <c>SHA256:AbC…</c>.</summary>
+    /// <remarks>When set, it replaces the remembered key; when not, the first key seen is remembered.</remarks>
+    public string? HostKeyFingerprint { get; set; }
 
     /// <summary>Gets or sets the WebQuery base address.</summary>
     public string? WebQueryUrl { get; set; }
@@ -147,6 +174,7 @@ public sealed class QueryProfileOptions
             SshPort = SshPort,
             Username = Username,
             Password = Password,
+            HostKeyFingerprint = string.IsNullOrWhiteSpace(HostKeyFingerprint) ? null : HostKeyFingerprint.Trim(),
             WebQueryUrl = webQueryUrl,
             ApiKey = ApiKey,
             Transport = Transport,

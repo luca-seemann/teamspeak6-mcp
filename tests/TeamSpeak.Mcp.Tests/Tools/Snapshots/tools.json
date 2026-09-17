@@ -5902,7 +5902,7 @@
   {
     "name": "ts_profiles_list",
     "title": "List TeamSpeak profiles",
-    "description": "Lists the TeamSpeak servers this MCP server is configured to administer, with the interface and safety level each uses. Does not contact any server. Call this first when several profiles exist and a tool needs a profile name.",
+    "description": "Lists the TeamSpeak servers this MCP server is configured to administer, with the interface and safety level each uses, and the SSH host key fingerprint each server is trusted with. Does not contact any server. Call this first when several profiles exist and a tool needs a profile name.",
     "inputSchema": {
       "type": "object",
       "properties": {}
@@ -5932,6 +5932,12 @@
               },
               "defaultVirtualServerId": {
                 "type": "integer"
+              },
+              "hostKeyFingerprint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -5940,7 +5946,8 @@
               "interface",
               "eventsAvailable",
               "safety",
-              "defaultVirtualServerId"
+              "defaultVirtualServerId",
+              "hostKeyFingerprint"
             ]
           }
         }

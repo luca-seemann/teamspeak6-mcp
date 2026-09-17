@@ -175,8 +175,10 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Http:BearerToken` | `TSMCP_TeamSpeak__Http__BearerToken` | — (Streamable HTTP only; required when bound to a non-loopback address) |
 | `TeamSpeak:Http:AllowedOrigins:<n>` | `TSMCP_TeamSpeak__Http__AllowedOrigins__<n>` | — (only loopback origins) |
 | `TeamSpeak:Http:AllowedHosts:<n>` | `TSMCP_TeamSpeak__Http__AllowedHosts__<n>` | — (only loopback host names; checked when no token is set) |
+| `TeamSpeak:KnownHostsFile` | `TSMCP_TeamSpeak__KnownHostsFile` | `teamspeak6-mcp/known_hosts` in `%LOCALAPPDATA%` (Windows) or `~/.local/share` (Linux) |
 | `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | — |
 | `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | — (enables SSH) |
+| `TeamSpeak:Profiles:<name>:HostKeyFingerprint` | `TSMCP_TeamSpeak__Profiles__<name>__HostKeyFingerprint` | — (the first key seen is remembered) |
 | `TeamSpeak:Profiles:<name>:SshPort` | `TSMCP_TeamSpeak__Profiles__<name>__SshPort` | `10022` |
 | `TeamSpeak:Profiles:<name>:WebQueryUrl` | `TSMCP_TeamSpeak__Profiles__<name>__WebQueryUrl` | — |
 | `TeamSpeak:Profiles:<name>:ApiKey` | `TSMCP_TeamSpeak__Profiles__<name>__ApiKey` | — (enables the WebQuery) |
@@ -184,6 +186,13 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Profiles:<name>:DefaultVirtualServerId` | `TSMCP_TeamSpeak__Profiles__<name>__DefaultVirtualServerId` | `1` |
 | `TeamSpeak:Profiles:<name>:Safety` | `TSMCP_TeamSpeak__Profiles__<name>__Safety` | the global level |
 | `TeamSpeak:Profiles:<name>:KeepAliveSeconds` | `TSMCP_TeamSpeak__Profiles__<name>__KeepAliveSeconds` | `15`; keep it below the server's idle timeout, about 30 seconds on 6.0.0-beta12.1 |
+
+**SSH host keys are checked**, as OpenSSH does. The first connection to a server remembers the key it
+presents in `TeamSpeak:KnownHostsFile`, and a different key later refuses the connection before the
+password is sent: someone may be answering in the server's place. `ts_profiles_list` shows the
+fingerprint each server is trusted with. To leave nothing to the first connection, pin the key per
+profile with `HostKeyFingerprint`, for example `SHA256:ohD8VZEXGWo6Ez8GSEJQ9WpafgLFsOfLOtGGQCQo6Og`.
+After a server is reinstalled and gets a new key, remove its line from the file or pin the new key.
 
 Each profile keeps one long-lived connection, opened on the first tool call that needs it. If that
 connection breaks, the tool call waiting on it fails at once and says that it is unknown whether its

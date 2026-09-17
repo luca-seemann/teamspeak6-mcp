@@ -257,6 +257,34 @@ public class MetaToolsTests
     }
 
     [Fact]
+    public async Task Lists_the_host_key_each_ssh_server_is_trusted_with()
+    {
+        var directory = Directory.CreateTempSubdirectory("tsmcp-profiles-");
+        try
+        {
+            var knownHosts = new Query.Transport.KnownHostsFile(Path.Combine(directory.FullName, "known_hosts"));
+            knownHosts.Verify("seen.example.com", 10022, "ssh-ed25519", "SHA256:remembered");
+
+            await using var connections = new QueryConnectionManager(
+                new ProfileRegistry(
+                [
+                    new QueryProfile { Name = "pinned", Host = "pinned.example.com", Password = "x", HostKeyFingerprint = "pinnedkey=" },
+                    new QueryProfile { Name = "seen", Host = "seen.example.com", Password = "x", HostKeyVerifier = knownHosts },
+                    new QueryProfile { Name = "new", Host = "new.example.com", Password = "x", HostKeyVerifier = knownHosts },
+                ]),
+                (_, _, _) => throw new InvalidOperationException("must not connect"));
+
+            var result = new MetaTools(new QueryExecutor(connections, new SafetyPolicy())).ListProfiles();
+
+            Assert.Equal(["SHA256:pinnedkey", "SHA256:remembered", null], result.Profiles.Select(profile => profile.HostKeyFingerprint));
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Instance_info_combines_four_commands_in_one_call()
     {
         await using var harness = new ToolHarness();

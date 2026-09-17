@@ -264,8 +264,38 @@ public sealed class SshQueryTransport : IQueryTransport
             Timeout = TimeSpan.FromSeconds(30),
         };
 
+        var verifier = profile.HostKeyFingerprint is { Length: > 0 } pinned
+            ? new PinnedHostKey(pinned, $"TeamSpeak:Profiles:{profile.Name}:HostKeyFingerprint")
+            : profile.HostKeyVerifier;
+
         var client = new SshClient(connectionInfo);
-        await client.ConnectAsync(cancellationToken).ConfigureAwait(false);
+        HostKeyVerdict? refusal = null;
+
+        if (verifier is not null)
+        {
+            // Runs during the key exchange, before the password is sent.
+            client.HostKeyReceived += (_, e) =>
+            {
+                var verdict = verifier.Verify(profile.Host, profile.SshPort, e.HostKeyName, "SHA256:" + e.FingerPrintSHA256);
+                e.CanTrust = verdict.Trusted;
+                refusal = verdict.Trusted ? null : verdict;
+            };
+        }
+
+        try
+        {
+            await client.ConnectAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (refusal is { Reason: { } reason })
+        {
+            client.Dispose();
+            throw new SshHostKeyMismatchException(reason, ex);
+        }
+        catch
+        {
+            client.Dispose();
+            throw;
+        }
 
         ShellStream? shell = null;
         try
@@ -582,9 +612,10 @@ public sealed class SshQueryTransport : IQueryTransport
 
                     break;
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex) when (ex is not OperationCanceledException and not SshHostKeyMismatchException)
                 {
-                    // Fall through to the next attempt.
+                    // Fall through to the next attempt. A refused host key is not retried: it will
+                    // not change, and every further connection counts towards a flood block.
                 }
             }
         }

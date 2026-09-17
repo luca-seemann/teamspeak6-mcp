@@ -78,6 +78,17 @@ public sealed class QueryProfile
     /// </remarks>
     public TimeSpan KeepAliveInterval { get; set; } = TimeSpan.FromSeconds(15);
 
+    /// <summary>Gets or sets the SSH host key fingerprint the server must present, as <c>SHA256:</c> plus base64.</summary>
+    /// <remarks>When set, it alone decides, and <see cref="HostKeyVerifier"/> is not consulted.</remarks>
+    public string? HostKeyFingerprint { get; set; }
+
+    /// <summary>Gets or sets what checks the SSH host key when no fingerprint is pinned.</summary>
+    /// <remarks>
+    /// <see langword="null"/> accepts any key, which leaves the password open to whoever answers in the
+    /// server's place. Applications should set a <see cref="Transport.KnownHostsFile"/> here.
+    /// </remarks>
+    public Transport.IHostKeyVerifier? HostKeyVerifier { get; set; }
+
     /// <summary>Gets a value indicating whether this profile can use the SSH interface.</summary>
     public bool CanUseSsh => !string.IsNullOrEmpty(Password);
 

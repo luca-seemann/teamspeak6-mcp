@@ -50,13 +50,19 @@ services:
       # Inside the container the server listens on all interfaces, so it refuses to start without a
       # bearer token. Clients send it as "Authorization: Bearer <token>".
       TSMCP_TeamSpeak__Http__BearerToken: ${TSMCP_HTTP_TOKEN:?Set TSMCP_HTTP_TOKEN to a random value of at least 32 characters}
+      # The SSH host key of each server is remembered on first connection and checked afterwards.
+      # Keep the file on a volume, or a recreated container trusts whatever key it meets first.
+      TSMCP_TeamSpeak__KnownHostsFile: /state/known_hosts
       # File tools pass content inline unless given a directory for local files; mount a volume
       # there. The bytes travel over port 30033 of the teamspeak service.
       # TSMCP_TeamSpeak__FileTransfer__LocalDirectory: /data/files
     ports:
       # Published on the loopback address only; publish more widely only behind your own network controls.
       - "127.0.0.1:7801:7801"
+    volumes:
+      - teamspeak6-mcp-state:/state
     restart: unless-stopped
 
 volumes:
   teamspeak-data:
+  teamspeak6-mcp-state:
