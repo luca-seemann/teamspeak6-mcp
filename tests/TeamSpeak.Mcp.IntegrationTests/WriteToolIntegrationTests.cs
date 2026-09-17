@@ -516,8 +516,19 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
         var floodCommands = instance.Instance["serverinstance_serverquery_flood_commands"];
         await admin.InstanceEditAsync(new Dictionary<string, string> { ["serverinstance_serverquery_flood_commands"] = floodCommands }, cancellationToken: Ct);
 
-        var snapshot = await admin.SnapshotCreateAsync(virtualServerId: 1, cancellationToken: Ct);
-        Assert.False(string.IsNullOrEmpty(snapshot.Details["data"]));
+        // Saved to a file, as a real server's snapshot is larger than what comes back inline.
+        var snapshots = Directory.CreateTempSubdirectory("tsmcp-live-snapshot-");
+        try
+        {
+            var saved = await new VirtualServerAdminTools(executor, new FileTransferOptions { LocalDirectory = snapshots.FullName })
+                .SnapshotCreateAsync(localPath: "live.json", virtualServerId: 1, cancellationToken: Ct);
+            Assert.True(long.Parse(saved.Details["bytes"], System.Globalization.CultureInfo.InvariantCulture) > 0);
+            Assert.Contains("\"data\"", await File.ReadAllTextAsync(saved.Details["path"], Ct), StringComparison.Ordinal);
+        }
+        finally
+        {
+            snapshots.Delete(recursive: true);
+        }
 
         // The license may cap the number of virtual servers; a refusal saying so is also a correct answer.
         ActionResult? created = null;

@@ -26,7 +26,7 @@ public class WriteToolsTests
             () => new VirtualServerAdminTools(harness.Executor).EditAsync(new Dictionary<string, string> { ["virtualserver_name"] = "x" }, cancellationToken: Ct),
             () => new VirtualServerAdminTools(harness.Executor).PowerAsync("start", 1, cancellationToken: Ct),
             () => new VirtualServerAdminTools(harness.Executor).DeleteAsync(1, "x", cancellationToken: Ct),
-            () => new VirtualServerAdminTools(harness.Executor).SnapshotDeployAsync("3", "data", "x", cancellationToken: Ct),
+            () => new VirtualServerAdminTools(harness.Executor).SnapshotDeployAsync("x", version: "3", data: "data", cancellationToken: Ct),
             () => new VirtualServerAdminTools(harness.Executor).TempPasswordAsync("list", cancellationToken: Ct),
             () => new ChannelAdminTools(harness.Executor).CreateAsync("x", cancellationToken: Ct),
             () => new ChannelAdminTools(harness.Executor).MoveAsync(1, 0, cancellationToken: Ct),
@@ -152,9 +152,9 @@ public class WriteToolsTests
             .Returns("serversnapshotdeploy", ToolHarness.Records(Fields(("ocid", "36"), ("ncid", "40")), Fields(("ocid", "37"), ("ncid", "41"))));
         var tools = new VirtualServerAdminTools(harness.Executor);
 
-        await Assert.ThrowsAsync<McpException>(() => tools.SnapshotDeployAsync("3", "KLUv", "Other", cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => tools.SnapshotDeployAsync("Other", version: "3", data: "KLUv", cancellationToken: Ct));
 
-        var result = await tools.SnapshotDeployAsync("3", "KLUv", "Main", salt: "s", cancellationToken: Ct);
+        var result = await tools.SnapshotDeployAsync("Main", version: "3", data: "KLUv", salt: "s", cancellationToken: Ct);
 
         var deploy = harness.Transport.SentCommands.Single(command => command.Name == "serversnapshotdeploy");
         Assert.Equal(["-mapping"], deploy.Options);
@@ -163,6 +163,42 @@ public class WriteToolsTests
         Assert.Equal(2, result.Records.Count);
     }
 
+    [Fact]
+    public async Task A_snapshot_is_saved_to_a_local_file_and_deployed_from_it()
+    {
+        var directory = Directory.CreateTempSubdirectory("tsmcp-snapshots-");
+        try
+        {
+            await using var harness = new ToolHarness(SafetyLevel.Destructive);
+            harness.Transport
+                .Returns("serversnapshotcreate", ToolHarness.Records(Fields(("version", "3"), ("data", new string('A', 50_000)), ("salt", "pepper"))))
+                .Returns("serverinfo", ToolHarness.Records(Fields(("virtualserver_name", "Main"))))
+                .Returns("serversnapshotdeploy", ToolHarness.Records(Fields(("ocid", "1"), ("ncid", "2"))));
+            var tools = new VirtualServerAdminTools(harness.Executor, new FileTransferOptions { LocalDirectory = directory.FullName });
+
+            // Too large to come back inline at the default limit.
+            var inline = await Assert.ThrowsAsync<McpException>(() => tools.SnapshotCreateAsync(password: "secret", cancellationToken: Ct));
+            Assert.Contains("localPath", inline.Message, StringComparison.Ordinal);
+
+            var saved = await tools.SnapshotCreateAsync(password: "secret", localPath: "snapshots/main.json", virtualServerId: 1, cancellationToken: Ct);
+            Assert.Equal("true", saved.Details["encrypted"]);
+            Assert.DoesNotContain(saved.Details.Values, value => value.Contains("AAAA", StringComparison.Ordinal));
+            Assert.True(File.Exists(Path.Combine(directory.FullName, "snapshots", "main.json")));
+
+            await Assert.ThrowsAsync<McpException>(() => tools.SnapshotCreateAsync(localPath: "snapshots/main.json", cancellationToken: Ct));
+            await Assert.ThrowsAsync<McpException>(() => tools.SnapshotDeployAsync("Main", localPath: "snapshots/main.json", data: "x", cancellationToken: Ct));
+            await Assert.ThrowsAsync<McpException>(() => tools.SnapshotDeployAsync("Main", localPath: "../outside.json", cancellationToken: Ct));
+
+            await tools.SnapshotDeployAsync("Main", localPath: "snapshots/main.json", password: "secret", cancellationToken: Ct);
+
+            var deploy = harness.Transport.SentCommands.Single(command => command.Name == "serversnapshotdeploy").Parameters!;
+            Assert.Equal(("3", 50_000, "pepper", "secret"), (deploy["version"], deploy["data"].Length, deploy["salt"], deploy["password"]));
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
     [Theory]
     [InlineData("-keepfiles")]
     [InlineData("keepfiles")]

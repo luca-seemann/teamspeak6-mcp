@@ -7409,12 +7409,20 @@
   {
     "name": "ts_vserver_snapshot_create",
     "title": "Snapshot a virtual server",
-    "description": "Takes a snapshot of a virtual server\u0027s configuration, channels, groups, permissions and known identities, returned as version, data and, when a password was given, salt. Keep all three to deploy it later with ts_vserver_snapshot_deploy. The snapshot contains the server\u0027s whole configuration, so it needs Write even though nothing changes.",
+    "description": "Takes a snapshot of a virtual server\u0027s configuration, channels, groups, permissions and known identities. With localPath it is saved as a file inside TeamSpeak:FileTransfer:LocalDirectory, which ts_vserver_snapshot_deploy can read back, and only its size comes back. Without localPath it comes back as version, data and, with a password, salt, but only up to TeamSpeak:FileTransfer:MaxInlineBytes: a real server\u0027s snapshot is usually larger, so prefer localPath. The snapshot contains the server\u0027s whole configuration, so it needs Write even though nothing changes.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "password": {
           "description": "A password to encrypt the snapshot with; the same one is needed to deploy it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "localPath": {
+          "description": "Save the snapshot here instead of returning it: a new file inside the configured local directory, such as snapshots/main.json.",
           "type": [
             "string",
             "null"
@@ -7478,24 +7486,40 @@
   {
     "name": "ts_vserver_snapshot_deploy",
     "title": "Deploy a snapshot over a virtual server",
-    "description": "Replaces a virtual server\u0027s configuration, channels, groups and permissions with a snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. TeamSpeak checks no permissions while deploying, so a snapshot can grant anything: deploy only snapshots from a trusted source. The virtual server shuts down meanwhile, disconnecting everyone; this tool waits up to 10 minutes. Afterwards every channel, group and client database id is new. Channel files are lost: -keepfiles crashed TeamSpeak 6.0.0-beta12.1 beyond repair and is refused. Snapshot the target first. confirmName must repeat the target\u0027s exact name. Needs Destructive.",
+    "description": "Replaces a virtual server\u0027s configuration, channels, groups and permissions with a snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. TeamSpeak checks no permissions while deploying, so a snapshot can grant anything: deploy only snapshots from a trusted source. The virtual server shuts down meanwhile, disconnecting everyone; this tool waits up to 10 minutes. Afterwards every channel, group and client database id is new. Channel files are lost: -keepfiles crashed TeamSpeak 6.0.0-beta12.1 beyond repair and is refused. Snapshot the target first. Give the snapshot either as localPath, a file ts_vserver_snapshot_create saved, or as version and data (and salt). confirmName must repeat the target\u0027s exact name. Needs Destructive.",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "version": {
-          "description": "The snapshot\u0027s version field.",
-          "type": "string"
-        },
-        "data": {
-          "description": "The snapshot\u0027s data field.",
-          "type": "string"
-        },
         "confirmName": {
           "description": "The virtual server\u0027s exact name, as a safeguard against acting on the wrong one.",
           "type": "string"
         },
+        "localPath": {
+          "description": "A snapshot file inside the configured local directory, as ts_vserver_snapshot_create saved it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "version": {
+          "description": "Without localPath: the snapshot\u0027s version field.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "data": {
+          "description": "Without localPath: the snapshot\u0027s data field.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
         "salt": {
-          "description": "The snapshot\u0027s salt field, present when it was created with a password.",
+          "description": "Without localPath: the snapshot\u0027s salt field, present when it was created with a password.",
           "type": [
             "string",
             "null"
@@ -7528,8 +7552,6 @@
         }
       },
       "required": [
-        "version",
-        "data",
         "confirmName"
       ]
     },

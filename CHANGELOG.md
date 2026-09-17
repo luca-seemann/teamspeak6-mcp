@@ -181,6 +181,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `ts_vserver_snapshot_create` returned the whole snapshot inline, with no size limit, and deploying
+  meant passing all of it back as an argument. It now saves the snapshot with `localPath` to a file
+  inside `LocalDirectory`, which `ts_vserver_snapshot_deploy` reads back; inline it returns a snapshot
+  only up to `MaxInlineBytes`. The deploy's parameters changed: `confirmName` comes first, then either
+  `localPath` or `version` and `data`.
 - Tool results escaped every character outside ASCII: a channel named "🔒 Admin 🔒" came back as
   `\uD83D\uDD12 Admin \uD83D\uDD12`, twelve characters per emoji and six per umlaut, in the text block
   and the structured content alike. Tools, prompts and resources now write text as it is and escape

@@ -268,6 +268,11 @@ confirmation. Deleting bans, complaints, offline messages, custom properties and
 needs no name. `ts_vserver_create` needs `Destructive` because the key it returns grants full control
 of the new server.
 
+A snapshot holds a virtual server's whole configuration and is usually larger than a tool answer
+should be, so `ts_vserver_snapshot_create` saves it with `localPath` inside
+`TeamSpeak:FileTransfer:LocalDirectory`, and `ts_vserver_snapshot_deploy` reads it back from there.
+Without `localPath`, a snapshot comes back inline only up to `MaxInlineBytes`.
+
 A snapshot deploy restarts the virtual server and gives every channel, group and client database id
 a new number, so ids read before it are stale. It also drops the files stored in channels. This
 server never deploys with `-keepfiles`, not even through `ts_query_raw`. On TeamSpeak 6.0.0-beta12.1

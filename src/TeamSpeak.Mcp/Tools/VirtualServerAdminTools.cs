@@ -13,9 +13,12 @@ namespace TeamSpeak.Mcp.Tools;
 
 /// <summary>Tools that change virtual servers and the instance.</summary>
 /// <param name="executor">The shared path to the server.</param>
+/// <param name="files">Where snapshots may be saved and read, and how large one may come back inline.</param>
 [McpServerToolType]
-public sealed class VirtualServerAdminTools(QueryExecutor executor)
+public sealed class VirtualServerAdminTools(QueryExecutor executor, FileTransferOptions? files = null)
 {
+    private readonly FileTransferOptions _files = files ?? new FileTransferOptions();
+
     /// <summary>Creates a virtual server.</summary>
     [McpServerTool(Name = "ts_vserver_create", Title = "Create a virtual server",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
@@ -122,15 +125,28 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_vserver_snapshot_create", Title = "Snapshot a virtual server",
         ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Takes a snapshot of a virtual server's configuration, channels, groups, permissions and " +
-                 "known identities, returned as version, data and, when a password was given, salt. Keep " +
-                 "all three to deploy it later with ts_vserver_snapshot_deploy. The snapshot contains the " +
-                 "server's whole configuration, so it needs Write even though nothing changes.")]
+                 "known identities. With localPath it is saved as a file inside " +
+                 "TeamSpeak:FileTransfer:LocalDirectory, which ts_vserver_snapshot_deploy can read back, and " +
+                 "only its size comes back. Without localPath it comes back as version, data and, with a " +
+                 "password, salt, but only up to TeamSpeak:FileTransfer:MaxInlineBytes: a real server's " +
+                 "snapshot is usually larger, so prefer localPath. The snapshot contains the server's whole " +
+                 "configuration, so it needs Write even though nothing changes.")]
     public async Task<ActionResult> SnapshotCreateAsync(
         [Description("A password to encrypt the snapshot with; the same one is needed to deploy it.")] string? password = null,
+        [Description("Save the snapshot here instead of returning it: a new file inside the configured local directory, such as snapshots/main.json.")] string? localPath = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
+        executor.Demand("ts_vserver_snapshot_create", SafetyLevel.Write, profile);
+
+        // Checked before the snapshot is taken, so a wrong path costs no round trip.
+        var target = localPath is null ? null : FileTransferSupport.LocalPath(_files, localPath);
+        if (target is not null && (File.Exists(target) || Directory.Exists(target)))
+        {
+            throw new McpException($"Nothing was saved: {target} already exists, and a snapshot never replaces a local file.");
+        }
+
         var parameters = string.IsNullOrWhiteSpace(password)
             ? null
             : new Dictionary<string, string> { ["password"] = password };
@@ -139,7 +155,40 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
             "ts_vserver_snapshot_create", profile, new QueryCommand("serversnapshotcreate", parameters, VirtualServerId: virtualServerId), cancellationToken)
             .ConfigureAwait(false);
 
-        return ActionResult.From("Created a snapshot.", records);
+        var snapshot = records.Count > 0 ? records[0] : throw new McpException("The server returned no snapshot.");
+        var data = snapshot.GetString("data");
+
+        if (target is null)
+        {
+            return data.Length <= _files.MaxInlineBytes
+                ? ActionResult.From("Created a snapshot.", records)
+                : throw new McpException(
+                    $"The snapshot is {data.Length} characters, more than the {_files.MaxInlineBytes} returned inline " +
+                    "(TeamSpeak:FileTransfer:MaxInlineBytes). Pass localPath to save it to a file instead.");
+        }
+
+        var file = new SnapshotFile(
+            virtualServerId,
+            DateTimeOffset.UtcNow,
+            snapshot.GetString("version"),
+            data,
+            snapshot.ContainsKey("salt") ? snapshot.GetString("salt") : null);
+
+        var stream = LocalFileGuard.CreateNew(FileTransferSupport.LocalRoot(_files), target);
+        await using (stream.ConfigureAwait(false))
+        {
+            await System.Text.Json.JsonSerializer.SerializeAsync(stream, file, SnapshotFile.JsonOptions, cancellationToken).ConfigureAwait(false);
+        }
+
+        return new ActionResult(
+            $"Saved the snapshot to {target}.",
+            new Dictionary<string, string>
+            {
+                ["path"] = target,
+                ["bytes"] = new FileInfo(target).Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["encrypted"] = file.Salt is null ? "false" : "true",
+            },
+            []);
     }
 
     /// <summary>
@@ -157,13 +206,15 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
                  "only snapshots from a trusted source. The virtual server shuts down meanwhile, " +
                  "disconnecting everyone; this tool waits up to 10 minutes. Afterwards every channel, group " +
                  "and client database id is new. Channel files are lost: -keepfiles crashed TeamSpeak " +
-                 "6.0.0-beta12.1 beyond repair and is refused. Snapshot the target first. confirmName must " +
-                 "repeat the target's exact name. Needs Destructive.")]
+                 "6.0.0-beta12.1 beyond repair and is refused. Snapshot the target first. Give the snapshot " +
+                 "either as localPath, a file ts_vserver_snapshot_create saved, or as version and data (and " +
+                 "salt). confirmName must repeat the target's exact name. Needs Destructive.")]
     public async Task<ActionResult> SnapshotDeployAsync(
-        [Description("The snapshot's version field.")] string version,
-        [Description("The snapshot's data field.")] string data,
         [Description(ToolDescriptions.ConfirmVirtualServer)] string confirmName,
-        [Description("The snapshot's salt field, present when it was created with a password.")] string? salt = null,
+        [Description("A snapshot file inside the configured local directory, as ts_vserver_snapshot_create saved it.")] string? localPath = null,
+        [Description("Without localPath: the snapshot's version field.")] string? version = null,
+        [Description("Without localPath: the snapshot's data field.")] string? data = null,
+        [Description("Without localPath: the snapshot's salt field, present when it was created with a password.")] string? salt = null,
         [Description("The password the snapshot was created with.")] string? password = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -174,6 +225,36 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
             .ConfigureAwait(false);
 
         RequireConfirmation(confirmName, info.Count > 0 ? info[0].GetString("virtualserver_name") : string.Empty, "virtual server");
+
+        if (localPath is not null == (version is not null || data is not null || salt is not null))
+        {
+            throw new McpException("Give the snapshot either as localPath or as version and data, not both and not neither.");
+        }
+
+        if (localPath is not null)
+        {
+            var source = FileTransferSupport.LocalPath(_files, localPath);
+            if (!File.Exists(source))
+            {
+                throw new McpException($"There is no snapshot file at {source}.");
+            }
+
+            SnapshotFile? file;
+            var stream = LocalFileGuard.OpenRead(FileTransferSupport.LocalRoot(_files), source);
+            await using (stream.ConfigureAwait(false))
+            {
+                try
+                {
+                    file = await System.Text.Json.JsonSerializer.DeserializeAsync<SnapshotFile>(stream, SnapshotFile.JsonOptions, cancellationToken).ConfigureAwait(false);
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    throw new McpException($"{source} is not a snapshot file ts_vserver_snapshot_create saved: {ex.Message}", ex);
+                }
+            }
+
+            (version, data, salt) = (file?.Version, file?.Data, file?.Salt);
+        }
 
         var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -290,4 +371,16 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
 
         return parameters;
     }
+}
+
+/// <summary>A snapshot as <c>ts_vserver_snapshot_create</c> saves it to a local file.</summary>
+/// <param name="VirtualServerId">The virtual server it was taken from, or <see langword="null"/> for the profile's default.</param>
+/// <param name="CreatedAt">When it was taken.</param>
+/// <param name="Version">The snapshot's version field.</param>
+/// <param name="Data">The snapshot's data field.</param>
+/// <param name="Salt">The salt, present when it was taken with a password.</param>
+public sealed record SnapshotFile(int? VirtualServerId, DateTimeOffset CreatedAt, string Version, string Data, string? Salt)
+{
+    /// <summary>Gets the options the file is written and read with.</summary>
+    public static System.Text.Json.JsonSerializerOptions JsonOptions { get; } = new(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true };
 }
