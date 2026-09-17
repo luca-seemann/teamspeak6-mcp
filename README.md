@@ -517,7 +517,7 @@ dotnet pack src/TeamSpeak.Mcp -c Release -o artifacts/nuget
 
 claude mcp add teamspeak \
   -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com \
-  -e TSMCP_TeamSpeak__Profiles__home__Password=<query admin password> \
+  -e TSMCP_TeamSpeak__Profiles__home__Password='<query admin password>' \
   -- dnx TeamSpeak6.Mcp --version 0.1.0-beta --yes --add-source /path/to/artifacts/nuget
 ```
 
@@ -540,26 +540,12 @@ release, with checksums. No release is tagged yet, and that workflow has never r
 ```bash
 claude mcp add teamspeak \
   -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com \
-  -e TSMCP_TeamSpeak__Profiles__home__Password=<query admin password> \
+  -e TSMCP_TeamSpeak__Profiles__home__Password='<query admin password>' \
   -- /opt/teamspeak6-mcp/teamspeak6-mcp
 ```
 
-Other clients take the same command and environment in their JSON configuration, for example a
-project's `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "teamspeak": {
-      "command": "/opt/teamspeak6-mcp/teamspeak6-mcp",
-      "env": {
-        "TSMCP_TeamSpeak__Profiles__home__Host": "ts.example.com",
-        "TSMCP_TeamSpeak__Profiles__home__Password": "<query admin password>"
-      }
-    }
-  }
-}
-```
+See [Connecting a client](#connecting-a-client) for scopes, a shared `.mcp.json`, Windows and Claude
+Desktop.
 
 #### As a container, over Streamable HTTP
 
@@ -598,6 +584,88 @@ On Windows, a start-up failure with `An attempt was made to access a socket in a
 access permissions` (socket error 10013) means the port lies in a range Windows has reserved, often
 for Hyper-V or WSL. `netsh interface ipv4 show excludedportrange protocol=tcp` lists the ranges;
 pick a port outside them.
+
+### Connecting a client
+
+**Claude Code.** `claude mcp add` registers the server with a scope:
+- `--scope local`, the default, for you in the current project only;
+- `--scope user` for you in every project;
+- `--scope project` writes `.mcp.json` into the project, to be committed and shared.
+
+Check it with `/mcp` inside Claude Code, or `claude mcp list`: the server should show as connected.
+Ask *"Which TeamSpeak profiles are configured?"* to see the profiles, their safety level and the SSH host
+key each server is trusted with.
+
+**Never commit a password.** A shared `.mcp.json` takes environment variables instead, which Claude
+Code expands when it starts the server; each person sets `TS_QUERY_PASSWORD` in their own environment:
+
+```json
+{
+  "mcpServers": {
+    "teamspeak": {
+      "command": "/opt/teamspeak6-mcp/teamspeak6-mcp",
+      "env": {
+        "TSMCP_TeamSpeak__Profiles__home__Host": "ts.example.com",
+        "TSMCP_TeamSpeak__Profiles__home__Password": "${TS_QUERY_PASSWORD}"
+      }
+    }
+  }
+}
+```
+
+**On Windows**, in PowerShell, with the binary from above:
+
+```powershell
+claude mcp add teamspeak `
+  -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com `
+  -e 'TSMCP_TeamSpeak__Profiles__home__Password=<query admin password>' `
+  -- C:\Tools\teamspeak6-mcp\teamspeak6-mcp.exe
+```
+
+**Optional settings** go in as further `-e` pairs, for example:
+- `TSMCP_TeamSpeak__Profiles__home__Safety=Write` to allow changes on that profile (see [Safety](#safety));
+- `TSMCP_TeamSpeak__DisabledToolGroups=files,events` to leave groups out (see [Tool groups](#tool-groups));
+- `TSMCP_TeamSpeak__ToolResultText=Toon` for fewer tokens on large lists (see
+  [Tool results as TOON](#tool-results-as-toon)).
+
+**Claude Desktop** reads `claude_desktop_config.json`, in `%APPDATA%\Claude\` on Windows and
+`~/Library/Application Support/Claude/` on macOS. It takes the same `mcpServers` entry as the
+`.mcp.json` above, with the password written into `env` directly, since that file stays on your
+machine. Restart Claude Desktop after changing it.
+
+### Running over HTTP for longer
+
+For a server several people or machines use, run the Streamable HTTP transport as a service, bound
+to loopback behind your own reverse proxy with TLS, or on a private address with a bearer token. A
+systemd unit on Linux, with the secrets in a file only root can read:
+
+```ini
+# /etc/systemd/system/teamspeak6-mcp.service
+[Unit]
+Description=TeamSpeak MCP server
+After=network-online.target
+
+[Service]
+ExecStart=/opt/teamspeak6-mcp/teamspeak6-mcp --transport http --url http://127.0.0.1:7801
+EnvironmentFile=/etc/teamspeak6-mcp.env
+DynamicUser=yes
+StateDirectory=teamspeak6-mcp
+Environment=TSMCP_TeamSpeak__KnownHostsFile=/var/lib/teamspeak6-mcp/known_hosts
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```ini
+# /etc/teamspeak6-mcp.env, chmod 600
+TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com
+TSMCP_TeamSpeak__Profiles__home__Password=<query admin password>
+TSMCP_TeamSpeak__Http__BearerToken=<at least 32 random characters, e.g. openssl rand -hex 32>
+```
+
+`StateDirectory` keeps the remembered host keys across restarts. Clients connect with
+`claude mcp add --transport http teamspeak https://mcp.example.com/ --header "Authorization: Bearer <token>"`.
 
 ## Building and testing
 

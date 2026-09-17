@@ -136,6 +136,7 @@ public class EventToolsTests
         Assert.Contains("Write", refused.Message, StringComparison.Ordinal);
         Assert.Empty(sessions.Opened);
     }
+
     [Fact]
     public void The_tool_categories_name_exactly_the_hub_categories()
     {

@@ -181,6 +181,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- The README's dnx and binary examples left `<query admin password>` unquoted, which a shell reads as a
+  redirection. A new "Connecting a client" section covers Claude Code's scopes, checking with `/mcp`,
+  a shared `.mcp.json` that takes the password from the environment instead of committing it, Windows,
+  optional settings and Claude Desktop, and "Running over HTTP for longer" shows a systemd unit.
 - Several tools that delete, lift or replace something reported `destructiveHint: false`, which the MCP
   specification defines as "performs only additive updates": `ts_ban_delete`, `ts_complaint_delete`,
   `ts_custom_property`, `ts_offline_message`, `ts_client_channelgroup_set`, and before the rights change
