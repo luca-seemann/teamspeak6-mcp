@@ -42,10 +42,10 @@ All notable changes to this project are documented here. The format follows
   logins, offline messages, custom properties and the server log complete the set.
 - MCP resources for profiles, the permission catalog, and each virtual server's info, channels,
   clients and groups.
-- The write and destructive surface, 35 tools, for 71 in all. The tools cover virtual servers and
-  instance settings, channels, moving, kicking, poking and messaging people, groups and memberships,
-  granting and revoking permissions, bans, privilege keys, temporary passwords, custom properties,
-  API keys, query logins and log entries. Each action takes its safety level from the command
+- The write and destructive surface, 35 tools, bringing the total to 71 at that point. The tools
+  cover virtual servers and instance settings, channels, moving, kicking, poking and messaging
+  people, groups and memberships, granting and revoking permissions, bans, privilege keys, temporary
+  passwords, custom properties, API keys, query logins and log entries. Each action takes its safety level from the command
   catalog. Deleting a virtual server, deploying a snapshot and resetting permissions also require the
   virtual server's exact name. Channel messages move the query session into the channel and back as
   one uninterrupted sequence on the session, over SSH and the WebQuery alike.
@@ -54,7 +54,7 @@ All notable changes to this project are documented here. The format follows
 - A readable explanation for `1541 invalid parameter size`, which the server returns for names that
   are too long.
 - Events: `ts_events_subscribe`, `ts_events_poll`, `ts_events_wait`, `ts_events_unsubscribe` and
-  `ts_events_status`, for 76 tools in all.
+  `ts_events_status`, bringing the total to 76 tools at that point.
   - Each subscribed virtual server gets a dedicated SSH session, and the events go into a numbered
     buffer per profile, read with a cursor.
   - Categories follow what each registration was measured to deliver on 6.0.0-beta12.1.
@@ -67,7 +67,8 @@ All notable changes to this project are documented here. The format follows
 - `ts_events_subscribe` takes `textChannelId`: it moves the event session into that channel so its
   `textchannel` events are that channel's chat, re-applied after a reconnect.
 - File transfer: `ts_file_list`, `ts_file_info`, `ts_file_transfers`, `ts_file_download`,
-  `ts_file_upload`, `ts_file_manage` and `ts_file_delete`, for 83 tools in all.
+  `ts_file_upload`, `ts_file_manage` and `ts_file_delete`, bringing the total to 83 tools at that
+  point.
   - Content travels inline (text or base64, up to `TeamSpeak:FileTransfer:MaxInlineBytes`, 100 KiB by
     default), or as a local file inside `TeamSpeak:FileTransfer:LocalDirectory`. Local files are off
     until that is set, and saving a download to one needs `Write`.
@@ -109,10 +110,10 @@ All notable changes to this project are documented here. The format follows
   credentials, everything the safety level allows, and local files inside the configured directory.
 - A release workflow. A version tag builds the three binaries and the packages, and attaches them
   to a GitHub release with checksums. Nothing is pushed to nuget.org automatically.
-- `ts_command_help`, for 84 tools in all. It asks the connected server for its own documentation of
-  a ServerQuery command, or for the overview of all commands, so a model can get command and
-  parameter names right before using `ts_query_raw`, for exactly the version that runs. SSH only:
-  the WebQuery answers `/help` with 404.
+- `ts_command_help`, bringing the total to the current 84 tools. It asks the connected server for
+  its own documentation of a ServerQuery command, or for the overview of all commands, so a model can
+  get command and parameter names right before using `ts_query_raw`, for exactly the version that
+  runs. SSH only: the WebQuery answers `/help` with 404.
 - `QueryCommand.Arguments`, for bare words after the command name such as `help channeledit`, held to
   the same rules as names so none can smuggle in a second command, and `QueryResponse.Text`, the
   payload as the server wrote it.

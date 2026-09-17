@@ -102,6 +102,32 @@ closes a gap once something becomes available, such as a Git remote or an arm64 
   either gap are lost. There is no always-on test with a tight time bound, because the reopen time
   depends on backoff and server load; the behaviour is covered instead by the idle-survival and the
   reconnect-re-registration tests.
+- **The SSH host key check has never met a genuinely changed key.** Live, against the test server:
+  - the first connection remembered the key in a fresh `known_hosts` file;
+  - a deliberately wrong pinned fingerprint was refused during the key exchange, after one attempt;
+  - the right pin connected.
+
+  A server whose key really changed, after a reinstall or behind an interception, was simulated only
+  through that wrong pin. Two processes meeting a new server at the same moment were tried in unit
+  tests, not across two real processes.
+- **The check of opened local files ran on two platforms only.** Windows, and Linux x64 with glibc in
+  WSL, where a self-contained build of the unit tests covered symbolic links, hard links and a
+  directory swapped for a link. It uses `statx`, `realpath` and `/proc/self/fd` on Linux, which were
+  not run on arm64, on musl or inside the container image.
+- **Deletion confirmations are live-tested for some targets only.** The live suite confirmed deleting
+  channels, server groups, channel groups and stored files, overwriting a file, deleting this query
+  login's own API key by the login name `serveradmin`, and deleting a query login it created, which
+  it does only when some identity has no login yet. Confirming a key of another identity by that
+  identity's nickname, and deleting an identity, have unit tests only: the test server has no key of
+  another identity, and deleting an identity was refused live while its client was online.
+- **TOON results were measured in one client.** That Claude Code gives the model `structuredContent`
+  and drops the text block, and that the TOON mode saves about a third of the tokens on a large list,
+  was measured with Claude Code 2.1.268 and Haiku, headless. Other clients, and later Claude Code
+  versions, may choose differently.
+- **Some documented setups were never tried.** The README's systemd unit for a long-running HTTP
+  server and its Claude Desktop configuration are written from the documentation of systemd and
+  Claude Desktop, not run. The Claude Code commands and the `.mcp.json` variable expansion follow the
+  Claude Code documentation; the `claude mcp add` form was used throughout development.
 - **File transfer is verified on the LAN only.** Some cases are unverified:
   - **Transfer paths:** the `ip` field a server sends when it thinks port 30033 is unreachable from
     the query address, which the test server never did. The client tries such addresses first and

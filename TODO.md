@@ -12,7 +12,10 @@ lists everything that is unverified, including what cannot be checked on the tes
   was run locally for linux-x64 (the linux-arm64 one was only built), but the image itself has never
   been built.
   Build it for both architectures, start it with `docker/docker-compose.yml` against the test server,
-  and call a tool over Streamable HTTP.
+  and call a tool over Streamable HTTP. Check as well what was added since without a build: the
+  container refuses to start without `TSMCP_HTTP_TOKEN`, and the unprivileged user can write the
+  remembered host keys to `/state/known_hosts` on the named volume, so a recreated container keeps
+  trusting the same key.
 - **Run the CI workflow once.** Waiting for the push to GitHub. `.github/workflows/ci.yml` has never
   run, its package job included. Push, let build and test pass on Linux and Windows, then start the
   workflow by hand and check the package artifacts.
