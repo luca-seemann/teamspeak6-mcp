@@ -8,6 +8,10 @@ on:
     branches: [master]
   workflow_dispatch:
 
+# Nothing here writes to the repository; the release workflow asks for more on its own.
+permissions:
+  contents: read
+
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   # Without this the test host hangs for minutes after the run, flushing telemetry.
