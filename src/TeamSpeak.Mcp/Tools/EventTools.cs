@@ -29,7 +29,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The subscription and the cursor to read from.</returns>
     [McpServerTool(Name = "ts_events_subscribe", Title = "Subscribe to server events",
-        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Starts collecting events from a virtual server for ts_events_poll and ts_events_wait. " +
                  "Categories: server (clients connecting and leaving, settings changed), channel (channels " +
                  "changed, clients moving, connecting and leaving), textserver (server chat), textchannel " +
@@ -41,13 +41,15 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
     public async Task<EventSubscribeResult> SubscribeAsync(
         [Description("Categories to add. Omit for all.")] EventCategoryName[]? categories = null,
         [Description("Limit the channel category to one channel id; omit for every channel.")] int? channelId = null,
-        [Description("For textchannel: the channel whose chat to receive. The event session moves there, shows as a query client, and returns there after a reconnect. Omitted, it stays where it is, at first the default channel.")]
+        [Description("For textchannel: the channel whose chat to receive. The event session moves there, shows as a query client, and returns there after a reconnect; moving it needs Write. Omitted, it stays where it is, at first the default channel.")]
         int? textChannelId = null,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
-        executor.Demand("ts_events_subscribe", SafetyLevel.ReadOnly, profile);
+        // Registering for events changes nothing others see, but moving the event session into a channel
+        // is a clientmove: the session shows up there as a query client.
+        executor.Demand("ts_events_subscribe", textChannelId is null ? SafetyLevel.ReadOnly : SafetyLevel.Write, profile);
         var resolved = executor.ResolveProfile(profile);
         var serverId = virtualServerId ?? resolved.DefaultVirtualServerId;
         var wanted = ParseCategories(categories) ?? Enum.GetValues<EventCategory>();
@@ -72,7 +74,7 @@ public sealed class EventTools(QueryExecutor executor, QueryEventHub hub)
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>What is still subscribed.</returns>
     [McpServerTool(Name = "ts_events_unsubscribe", Title = "Unsubscribe from server events",
-        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Stops collecting some or all event categories from a virtual server. Without " +
                  "categories, or when none would be left, the event session is closed. Events already " +
                  "collected stay readable until newer ones push them out.")]

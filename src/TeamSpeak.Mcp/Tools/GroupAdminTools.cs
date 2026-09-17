@@ -123,7 +123,7 @@ public sealed class GroupAdminTools(QueryExecutor executor)
 
     /// <summary>Sets a client's channel group in a channel.</summary>
     [McpServerTool(Name = "ts_client_channelgroup_set", Title = "Set a client's channel group",
-        ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Sets which channel group a client identity holds in one channel, such as making someone " +
                  "channel admin of their team's channel. Each identity holds exactly one channel group per " +
                  "channel, so this replaces the previous one; set the server's default channel group to " +

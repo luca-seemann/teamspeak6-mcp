@@ -181,6 +181,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Several tools that delete, lift or replace something reported `destructiveHint: false`, which the MCP
+  specification defines as "performs only additive updates": `ts_ban_delete`, `ts_complaint_delete`,
+  `ts_custom_property`, `ts_offline_message`, `ts_client_channelgroup_set`, and before the rights change
+  `ts_perm_set`, `ts_servergroup_membership` and `ts_vserver_edit`. They are now marked destructive.
+  `ts_events_subscribe` and `ts_events_unsubscribe` reported `readOnlyHint: true` although they change
+  the shared subscriptions, and moving the event session with `textChannelId`, a `clientmove`, now
+  needs `Write`.
 - Nine list tools returned every entry the server had, with no limit: `ts_servergroup_members`,
   `ts_channelgroup_members`, `ts_client_list`, `ts_file_list`, `ts_complaint_list`,
   `ts_token_list`, `ts_message_list`, `ts_apikey_list` and `ts_querylogin_list`. They now return

@@ -124,6 +124,19 @@ public class EventToolsTests
     }
 
     [Fact]
+    public async Task Moving_the_event_session_into_a_channel_needs_write()
+    {
+        await using var harness = new ToolHarness(SafetyLevel.ReadOnly);
+        var sessions = new Sessions();
+        await using var hub = new QueryEventHub(harness.Executor.Connections.Profiles, 100, sessions.OpenAsync);
+
+        var refused = await Assert.ThrowsAsync<McpException>(() =>
+            new EventTools(harness.Executor, hub).SubscribeAsync([EventCategoryName.TextChannel], textChannelId: 5, cancellationToken: Ct));
+
+        Assert.Contains("Write", refused.Message, StringComparison.Ordinal);
+        Assert.Empty(sessions.Opened);
+    }
+    [Fact]
     public void The_tool_categories_name_exactly_the_hub_categories()
     {
         Assert.Equal(Enum.GetNames<EventCategory>(), Enum.GetNames<EventCategoryName>());

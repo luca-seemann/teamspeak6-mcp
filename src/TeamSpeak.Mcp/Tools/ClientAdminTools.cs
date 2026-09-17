@@ -251,7 +251,7 @@ public sealed class ClientAdminTools(QueryExecutor executor)
 
     /// <summary>Sends an offline message, or deletes one from this server's inbox.</summary>
     [McpServerTool(Name = "ts_offline_message", Title = "Send or delete an offline message",
-        ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("send leaves an offline message for a client identity, which they see the next time they " +
                  "connect; it needs a real client's unique identity, not a query login. delete removes a " +
                  "message from this server's own inbox, as listed by ts_message_list. Needs Write.")]

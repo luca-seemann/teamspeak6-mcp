@@ -86,7 +86,7 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
 
     /// <summary>Lifts a ban.</summary>
     [McpServerTool(Name = "ts_ban_delete", Title = "Lift a ban",
-        ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lifts one ban rule by its id from ts_ban_list. Banning a client creates several rules, one " +
                  "each for the IP address and the identity; lift all of them to let the person back. Needs " +
                  "Write.")]
@@ -105,7 +105,7 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
 
     /// <summary>Deletes a complaint.</summary>
     [McpServerTool(Name = "ts_complaint_delete", Title = "Delete a complaint",
-        ReadOnly = false, Destructive = false, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true)]
     [Description("Deletes one complaint, identified by who it is about and who filed it, as ts_complaint_list " +
                  "shows. Needs Write.")]
     public async Task<ActionResult> DeleteComplaintAsync(
@@ -175,7 +175,7 @@ public sealed class ModerationAdminTools(QueryExecutor executor)
 
     /// <summary>Sets or deletes a custom property.</summary>
     [McpServerTool(Name = "ts_custom_property", Title = "Set or delete a custom property",
-        ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Sets a custom property on a client identity, such as a linked forum account, or deletes " +
                  "one. Integrations use these to tie TeamSpeak identities to other systems; ts_custom_search " +
                  "finds them again. Needs Write.")]

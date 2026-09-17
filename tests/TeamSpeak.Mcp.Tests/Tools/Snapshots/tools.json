@@ -398,7 +398,7 @@
     },
     "annotations": {
       "title": "Lift a ban",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false
@@ -1560,7 +1560,7 @@
     },
     "annotations": {
       "title": "Set a client\u0027s channel group",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": false
@@ -2767,7 +2767,7 @@
     },
     "annotations": {
       "title": "Delete a complaint",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false
@@ -3020,7 +3020,7 @@
     },
     "annotations": {
       "title": "Set or delete a custom property",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": false
@@ -3443,7 +3443,7 @@
           "default": null
         },
         "textChannelId": {
-          "description": "For textchannel: the channel whose chat to receive. The event session moves there, shows as a query client, and returns there after a reconnect. Omitted, it stays where it is, at first the default channel.",
+          "description": "For textchannel: the channel whose chat to receive. The event session moves there, shows as a query client, and returns there after a reconnect; moving it needs Write. Omitted, it stays where it is, at first the default channel.",
           "type": [
             "integer",
             "null"
@@ -3550,7 +3550,7 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false,
-      "readOnlyHint": true
+      "readOnlyHint": false
     }
   },
   {
@@ -3678,7 +3678,7 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false,
-      "readOnlyHint": true
+      "readOnlyHint": false
     }
   },
   {
@@ -5397,7 +5397,7 @@
     },
     "annotations": {
       "title": "Send or delete an offline message",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false

@@ -66,7 +66,10 @@ public class ToolSchemaSnapshotTests
         Assert.Equal(File.ReadAllText(path).ReplaceLineEndings("\n"), actual);
     }
 
-    /// <summary>Tools annotated as destructive: every one that needs Destructive for at least one action.</summary>
+    /// <summary>
+    /// Tools annotated as destructive: every one that needs Destructive for at least one action, and every one
+    /// that deletes, lifts or replaces something, as the MCP specification defines the hint.
+    /// </summary>
     private static readonly string[] DestructiveTools =
     [
         "ts_query_raw", "ts_vserver_create", "ts_vserver_power", "ts_vserver_delete", "ts_vserver_snapshot_deploy", "ts_instance_edit",
@@ -74,18 +77,23 @@ public class ToolSchemaSnapshotTests
         "ts_channelgroup_delete", "ts_perm_reset", "ts_ban_add", "ts_token_manage", "ts_apikey_manage",
         "ts_querylogin_manage", "ts_file_upload", "ts_file_delete", "ts_file_manage",
         "ts_perm_set", "ts_servergroup_membership", "ts_vserver_edit",
+
+        // Need only Write, but delete, lift or replace something, which is what the hint means.
+        "ts_ban_delete", "ts_complaint_delete", "ts_custom_property", "ts_offline_message", "ts_client_channelgroup_set",
     ];
 
     /// <summary>Tools that change something but never need more than Write.</summary>
     private static readonly string[] WriteTools =
     [
         "ts_vserver_snapshot_create", "ts_channel_create", "ts_channel_edit",
-        "ts_channel_move", "ts_client_move", "ts_client_poke", "ts_client_edit", "ts_message_send", "ts_offline_message",
-        "ts_servergroup_manage", "ts_channelgroup_manage", "ts_client_channelgroup_set",
-        "ts_ban_delete", "ts_complaint_delete", "ts_custom_property", "ts_log_add",
+        "ts_channel_move", "ts_client_move", "ts_client_poke", "ts_client_edit", "ts_message_send",
+        "ts_servergroup_manage", "ts_channelgroup_manage", "ts_log_add",
 
         // Needs only ReadOnly on the server, but can write a file on this machine.
         "ts_file_download",
+
+        // Change what is subscribed for everyone using this server, and can move the event session.
+        "ts_events_subscribe", "ts_events_unsubscribe",
     ];
 
     [Fact]
@@ -110,7 +118,7 @@ public class ToolSchemaSnapshotTests
                 "ts_channelgroup_list", "ts_channelgroup_members", "ts_client_find", "ts_client_groups",
                 "ts_client_info", "ts_client_list", "ts_client_resolve", "ts_clientdb_find", "ts_clientdb_info",
                 "ts_clientdb_list", "ts_command_help", "ts_complaint_list", "ts_custom_info", "ts_custom_search",
-                "ts_events_poll", "ts_events_status", "ts_events_subscribe", "ts_events_unsubscribe", "ts_events_wait",
+                "ts_events_poll", "ts_events_status", "ts_events_wait",
                 "ts_file_info", "ts_file_list", "ts_file_transfers",
                 "ts_health_report",
                 "ts_instance_info", "ts_log_view", "ts_message_get", "ts_message_list", "ts_perm_assigned",

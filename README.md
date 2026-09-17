@@ -232,7 +232,12 @@ all, usually as `total`.
 ### Changing
 
 Each tool needs the level of what it actually sends; a tool with several actions checks each
-action separately. Tools that can need `Destructive` carry the MCP `destructiveHint`.
+action separately. The MCP annotations follow the specification rather than the safety level: a tool
+carries `readOnlyHint` only if it changes nothing, and `destructiveHint` if any of its actions can
+delete, lift, revoke or replace something, or needs `Destructive`. So lifting a ban is marked
+destructive although it needs only `Write`. Subscribing to events is not read-only either: it changes
+what is collected for everyone, and moving the event session into a channel with `textChannelId`
+needs `Write`.
 
 | Area | `Write` | `Destructive` |
 |---|---|---|
