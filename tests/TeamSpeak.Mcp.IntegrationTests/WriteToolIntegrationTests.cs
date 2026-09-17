@@ -116,7 +116,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
             if (await SomeIdentityAsync(executor) is { } identity)
             {
                 await groups.ServerGroupMembershipAsync("add", groupId, identity.DatabaseId, 1, cancellationToken: Ct);
-                Assert.Contains((await new GroupTools(executor).ServerGroupMembersAsync(groupId, 1, cancellationToken: Ct)).Members,
+                Assert.Contains((await new GroupTools(executor).ServerGroupMembersAsync(groupId, virtualServerId: 1, cancellationToken: Ct)).Members,
                     member => member.DatabaseId == identity.DatabaseId);
 
                 await groups.ServerGroupMembershipAsync("remove", groupId, identity.DatabaseId, 1, cancellationToken: Ct);
@@ -205,7 +205,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
             var token = (await moderation.ManageTokenAsync("add", serverGroupId: groupId, description: description, virtualServerId: 1, cancellationToken: Ct)).Details["token"];
             try
             {
-                Assert.Contains((await reading.ListPrivilegeKeysAsync(1, cancellationToken: Ct)).Keys, key => key.Token == token && key.GroupId == groupId);
+                Assert.Contains((await reading.ListPrivilegeKeysAsync(virtualServerId: 1, cancellationToken: Ct)).Keys, key => key.Token == token && key.GroupId == groupId);
             }
             finally
             {
@@ -271,7 +271,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
 
         // An identity that already has a query login is left alone: adding would replace its login and
         // the cleanup would then delete the original.
-        var existingLogins = (await new AccessTools(executor).ListQueryLoginsAsync(1, cancellationToken: Ct)).Logins;
+        var existingLogins = (await new AccessTools(executor).ListQueryLoginsAsync(virtualServerId: 1, cancellationToken: Ct)).Logins;
         if (await SomeIdentityAsync(executor) is { } identity && existingLogins.All(existing => existing.DatabaseId != identity.DatabaseId))
         {
             // Query login names are refused at 23 characters already; nine is well inside the limit.
@@ -280,7 +280,7 @@ public sealed class WriteToolIntegrationTests(LiveServerFixture server)
             try
             {
                 Assert.False(string.IsNullOrEmpty(created.Details["client_login_password"]));
-                Assert.Contains((await new AccessTools(executor).ListQueryLoginsAsync(1, cancellationToken: Ct)).Logins, listed => listed.LoginName == login);
+                Assert.Contains((await new AccessTools(executor).ListQueryLoginsAsync(virtualServerId: 1, cancellationToken: Ct)).Logins, listed => listed.LoginName == login);
             }
             finally
             {

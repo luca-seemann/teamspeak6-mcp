@@ -176,11 +176,23 @@ All notable changes to this project are documented here. The format follows
   port on 127.0.0.1 only.
 - Text written by the TeamSpeak server's users reached the model with nothing saying where it came
   from: nicknames, channel names and descriptions, chat events, offline messages, complaints, log
-  lines and file contents. The 26 tools and 3 resources that return such text now say in their
+  lines and file contents. The 34 tools and 4 resources that return such text now say in their
   description that it is data, never instructions, and so do the server instructions.
 
 ### Fixed
 
+- Nine list tools returned every entry the server had, with no limit: `ts_servergroup_members`,
+  `ts_channelgroup_members`, `ts_client_list`, `ts_file_list`, `ts_complaint_list`,
+  `ts_token_list`, `ts_message_list`, `ts_apikey_list` and `ts_querylogin_list`. They now return
+  100 entries from `offset` unless given a `limit` (up to 500), and report `total` and `offset`.
+  `ts_channel_list` returns 500 channels unless given a `limit` (up to 1000) and pages its flat
+  list the same way, but never cuts a tree: with `tree` set it refuses an `offset`, and refuses
+  outright when the server has more channels than `limit`. `ts_ban_list`, which already paged, now
+  asks `banlist -count` and reports `total` as well.
+- The note that user-written text is data, never instructions, was missing from `ts_vserver_info`,
+  `ts_instance_info`, `ts_servergroup_list`, `ts_channelgroup_list`, `ts_client_groups`,
+  `ts_perm_find`, `ts_file_info`, `ts_token_list` and the `groups` resource, all of which return
+  names or descriptions users wrote.
 - `ts_vserver_snapshot_create` returned the whole snapshot inline, with no size limit, and deploying
   meant passing all of it back as an argument. It now saves the snapshot with `localPath` to a file
   inside `LocalDirectory`, which `ts_vserver_snapshot_deploy` reads back; inline it returns a snapshot

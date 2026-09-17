@@ -201,6 +201,44 @@ public class ReadSurfaceToolsTests
     }
 
     [Fact]
+    public async Task Pages_api_keys_and_counts_all_of_them()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("apikeylist", ToolHarness.Records(
+            new Dictionary<string, string> { ["id"] = "2", ["sid"] = "1", ["cldbid"] = "1", ["scope"] = "manage", ["time_left"] = "unlimited" },
+            new Dictionary<string, string> { ["id"] = "3", ["sid"] = "1", ["cldbid"] = "1", ["scope"] = "read", ["time_left"] = "85590" },
+            new Dictionary<string, string> { ["id"] = "4", ["sid"] = "1", ["cldbid"] = "1", ["scope"] = "write", ["time_left"] = "85590" }));
+
+        var tools = new AccessTools(harness.Executor);
+        var page = await tools.ListApiKeysAsync(offset: 1, limit: 5, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal([3, 4], page.Keys.Select(key => key.Id));
+        Assert.Equal((3, 1), (page.Total, page.Offset));
+
+        var first = await tools.ListApiKeysAsync(limit: 0, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, Assert.Single(first.Keys).Id);
+        Assert.Equal((3, 0), (first.Total, first.Offset));
+    }
+
+    [Fact]
+    public async Task Reads_the_ban_total_from_the_first_record_and_asks_for_it()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("banlist", ToolHarness.Records(
+            new Dictionary<string, string> { ["count"] = "7", ["banid"] = "2", ["ip"] = "203.0.113.7", ["duration"] = "0" }));
+
+        var bans = await new ModerationTools(harness.Executor).ListBansAsync(
+            offset: 6,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(7, bans.Total);
+        var sent = Assert.Single(harness.Transport.SentCommands);
+        Assert.Equal("-count", Assert.Single(sent.Options!));
+        Assert.Equal("6", sent.Parameters!["start"]);
+    }
+
+    [Fact]
     public void Splits_a_log_line_into_its_columns()
     {
         var entry = LogTools.ParseLine("2026-09-14 08:05:53.383146|INFO    |VirtualServer |1  |query client connected 'serveradmin'(id:1)");

@@ -15,6 +15,8 @@ namespace TeamSpeak.Mcp.Tools;
 public sealed class AccessTools(QueryExecutor executor)
 {
     /// <summary>Lists WebQuery API keys.</summary>
+    /// <param name="offset">How many to skip.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -23,8 +25,11 @@ public sealed class AccessTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the WebQuery API keys of every query login: id, owner, virtual server, scope " +
                  "(read, write or manage), and when each expires. The secret key values are never " +
-                 "shown; the server does not reveal them after creation.")]
+                 "shown; the server does not reveal them after creation. At most limit come back, from " +
+                 "offset; total says how many keys there are.")]
     public async Task<ApiKeyList> ListApiKeysAsync(
+        [Description("How many keys to skip.")] int offset = 0,
+        [Description("How many keys to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -36,7 +41,7 @@ public sealed class AccessTools(QueryExecutor executor)
             new QueryCommand("apikeylist", new Dictionary<string, string> { ["cldbid"] = "*" }, VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new ApiKeyList(records
+        var keys = records
             .Select(record =>
             {
                 // "unlimited" is written instead of a number for a key that never expires, and such
@@ -51,10 +56,15 @@ public sealed class AccessTools(QueryExecutor executor)
                     unlimited ? null : record.GetUnixTime("expires_at"),
                     unlimited);
             })
-            .ToList());
+            .ToList();
+
+        var (page, total, skipped) = Page(keys, offset, limit, 500);
+        return new ApiKeyList(total, skipped, page);
     }
 
     /// <summary>Lists query logins.</summary>
+    /// <param name="offset">How many to skip.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -63,8 +73,11 @@ public sealed class AccessTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the ServerQuery logins created for a virtual server, such as those of bots " +
                  "and integrations, with the client database id each belongs to. The built-in " +
-                 "serveradmin login is not listed.")]
+                 "serveradmin login is not listed. At most limit come back, from offset; total says how " +
+                 "many logins there are.")]
     public async Task<QueryLoginList> ListQueryLoginsAsync(
+        [Description("How many logins to skip.")] int offset = 0,
+        [Description("How many logins to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -76,12 +89,17 @@ public sealed class AccessTools(QueryExecutor executor)
             new QueryCommand("queryloginlist", VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new QueryLoginList(records
+        var logins = records
             .Select(record => new QueryLogin(record.GetString("client_login_name"), record.GetInt32("cldbid"), record.GetInt32("sid")))
-            .ToList());
+            .ToList();
+
+        var (page, total, skipped) = Page(logins, offset, limit, 500);
+        return new QueryLoginList(total, skipped, page);
     }
 
     /// <summary>Lists the query login's offline messages.</summary>
+    /// <param name="offset">How many to skip.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -89,8 +107,11 @@ public sealed class AccessTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_message_list", Title = "List offline messages",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the offline messages in this MCP server's own query login inbox: sender, " +
-                 "subject, when it arrived and whether it was read. Use ts_message_get for a body." + ToolDescriptions.UserWrittenText)]
+                 "subject, when it arrived and whether it was read. Use ts_message_get for a body. At most " +
+                 "limit come back, from offset; total says how many messages there are." + ToolDescriptions.UserWrittenText)]
     public async Task<OfflineMessageList> ListMessagesAsync(
+        [Description("How many messages to skip.")] int offset = 0,
+        [Description("How many messages to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -102,14 +123,17 @@ public sealed class AccessTools(QueryExecutor executor)
             new QueryCommand("messagelist", VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new OfflineMessageList(records
+        var messages = records
             .Select(record => new OfflineMessageSummary(
                 record.GetInt32("msgid"),
                 record.GetString("cluid"),
                 record.GetString("subject"),
                 record.GetUnixTime("timestamp"),
                 record.GetBoolean("flag_read")))
-            .ToList());
+            .ToList();
+
+        var (page, total, skipped) = Page(messages, offset, limit, 500);
+        return new OfflineMessageList(total, skipped, page);
     }
 
     /// <summary>Reads an offline message.</summary>
@@ -140,8 +164,10 @@ public sealed class AccessTools(QueryExecutor executor)
 }
 
 /// <summary>WebQuery API keys.</summary>
-/// <param name="Keys">One entry per key.</param>
-public sealed record ApiKeyList(IReadOnlyList<ApiKey> Keys);
+/// <param name="Total">How many keys there are.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Keys">This page, one entry per key.</param>
+public sealed record ApiKeyList(int Total, int Offset, IReadOnlyList<ApiKey> Keys);
 
 /// <summary>A WebQuery API key, without its secret.</summary>
 /// <param name="Id">The key id.</param>
@@ -161,8 +187,10 @@ public sealed record ApiKey(
     bool NeverExpires);
 
 /// <summary>Query logins.</summary>
-/// <param name="Logins">One entry per login.</param>
-public sealed record QueryLoginList(IReadOnlyList<QueryLogin> Logins);
+/// <param name="Total">How many logins there are.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Logins">This page, one entry per login.</param>
+public sealed record QueryLoginList(int Total, int Offset, IReadOnlyList<QueryLogin> Logins);
 
 /// <summary>A ServerQuery login.</summary>
 /// <param name="LoginName">The login name.</param>
@@ -171,8 +199,10 @@ public sealed record QueryLoginList(IReadOnlyList<QueryLogin> Logins);
 public sealed record QueryLogin(string LoginName, int DatabaseId, int VirtualServerId);
 
 /// <summary>Offline messages.</summary>
-/// <param name="Messages">One entry per message.</param>
-public sealed record OfflineMessageList(IReadOnlyList<OfflineMessageSummary> Messages);
+/// <param name="Total">How many messages there are.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Messages">This page, one entry per message.</param>
+public sealed record OfflineMessageList(int Total, int Offset, IReadOnlyList<OfflineMessageSummary> Messages);
 
 /// <summary>An offline message without its body.</summary>
 /// <param name="Id">The message id.</param>

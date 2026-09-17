@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
 using TeamSpeak.Mcp.Configuration;
@@ -13,8 +14,13 @@ namespace TeamSpeak.Mcp.Tools;
 [McpServerToolType]
 public sealed class ChannelTools(QueryExecutor executor)
 {
+    /// <summary>The most channels <c>ts_channel_list</c> returns at once.</summary>
+    internal const int MaxLimit = 1000;
+
     /// <summary>Lists the channels of a virtual server.</summary>
     /// <param name="tree">Whether to nest channels under their parents.</param>
+    /// <param name="offset">How many to skip, in a flat list.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -24,14 +30,24 @@ public sealed class ChannelTools(QueryExecutor executor)
     [Description("Lists the channels of a virtual server in the order TeamSpeak clients display them, " +
                  "with topic, client counts, slot limit and whether each is the default, " +
                  "password-protected, permanent, semi-permanent or temporary. Set tree to true to nest " +
-                 "sub-channels under their parents instead of a flat list with parent ids." + ToolDescriptions.UserWrittenText)]
+                 "sub-channels under their parents instead of a flat list with parent ids. A flat list " +
+                 "returns at most limit channels, from offset; total says how many there are. A tree is " +
+                 "never cut: it is refused when there are more channels than limit." + ToolDescriptions.UserWrittenText)]
     public async Task<ChannelList> ListChannelsAsync(
         [Description("Nest sub-channels under their parents. Defaults to a flat list in display order.")]
         bool tree = false,
+        [Description("How many channels to skip. Flat lists only; a tree always starts at 0.")] int offset = 0,
+        [Description("How many channels to return, from 1 to 1000.")] int limit = 500,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
     {
+        if (tree && offset > 0)
+        {
+            throw new McpException(
+                "offset works only on a flat list; a tree is never cut. Pass offset 0, or set tree to false to page.");
+        }
+
         var records = await executor.RunAsync(
             "ts_channel_list",
             SafetyLevel.ReadOnly,
@@ -39,7 +55,18 @@ public sealed class ChannelTools(QueryExecutor executor)
             new QueryCommand("channellist", Options: ["-topic", "-flags", "-limits"], VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new ChannelList(ChannelTree.Build(records, tree));
+        if (!tree)
+        {
+            var (page, total, skipped) = ToolArguments.Page(ChannelTree.Build(records, nested: false), offset, limit, MaxLimit);
+            return new ChannelList(total, skipped, page);
+        }
+
+        limit = Math.Clamp(limit, 1, MaxLimit);
+        return records.Count > limit
+            ? throw new McpException(
+                $"The server has {records.Count} channels, more than limit {limit}, and a tree is not cut. " +
+                $"Raise limit, up to {MaxLimit}, or set tree to false and page with offset.")
+            : new ChannelList(records.Count, 0, ChannelTree.Build(records, nested: true));
     }
 
     /// <summary>Shows every property of a channel.</summary>
@@ -121,8 +148,10 @@ public sealed record ChannelMatches(IReadOnlyList<ChannelMatch> Channels);
 public sealed record ChannelMatch(int Id, string Name);
 
 /// <summary>The channels of a virtual server.</summary>
+/// <param name="Total">How many channels the virtual server has.</param>
+/// <param name="Offset">How many were skipped; always 0 for a tree.</param>
 /// <param name="Channels">The channels in display order, nested when a tree was requested.</param>
-public sealed record ChannelList(IReadOnlyList<ChannelNode> Channels);
+public sealed record ChannelList(int Total, int Offset, IReadOnlyList<ChannelNode> Channels);
 
 /// <summary>A channel.</summary>
 /// <param name="Id">The channel id.</param>

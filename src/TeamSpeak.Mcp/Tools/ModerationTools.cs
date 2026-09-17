@@ -25,7 +25,8 @@ public sealed class ModerationTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the active ban rules of a virtual server: what each matches (IP address, " +
                  "name pattern, unique identity or myTeamSpeak id), the reason, who created it and " +
-                 "when, when it expires, and how often it has been enforced." + ToolDescriptions.UserWrittenText)]
+                 "when, when it expires, and how often it has been enforced. At most limit come back, " +
+                 "from offset; total says how many bans there are." + ToolDescriptions.UserWrittenText)]
     public async Task<BanList> ListBansAsync(
         [Description("How many bans to skip.")] int offset = 0,
         [Description("How many bans to return, from 1 to 200.")] int limit = 100,
@@ -40,14 +41,23 @@ public sealed class ModerationTools(QueryExecutor executor)
             new QueryCommand(
                 "banlist",
                 new Dictionary<string, string> { ["start"] = Text(Math.Max(0, offset)), ["duration"] = Text(Math.Clamp(limit, 1, 200)) },
-                VirtualServerId: virtualServerId),
+                ["-count"],
+                virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new BanList(records.Select(ToBan).ToList());
+        // -count puts the total on the first record only, as it does for clientdblist, and a page
+        // past the end has no records.
+        // Measured: the count is on the first record. No records from the first page means no bans at all;
+        // from a later page it says nothing about how many there are.
+        int? total = records.Count > 0 ? records[0].GetInt32("count", -1) : offset <= 0 ? 0 : null;
+
+        return new BanList(total is -1 ? null : total, records.Select(ToBan).ToList());
     }
 
     /// <summary>Lists complaints.</summary>
     /// <param name="databaseId">Only complaints about this client.</param>
+    /// <param name="offset">How many to skip.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -56,9 +66,12 @@ public sealed class ModerationTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the complaints users filed against other users on a virtual server: who " +
                  "complained about whom, the message, and when. Pass databaseId to see only " +
-                 "complaints about one client." + ToolDescriptions.UserWrittenText)]
+                 "complaints about one client. At most limit come back, from offset; total says how " +
+                 "many complaints there are." + ToolDescriptions.UserWrittenText)]
     public async Task<ComplaintList> ListComplaintsAsync(
         [Description("Only complaints about this client database id.")] int? databaseId = null,
+        [Description("How many complaints to skip.")] int offset = 0,
+        [Description("How many complaints to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -73,7 +86,7 @@ public sealed class ModerationTools(QueryExecutor executor)
                 VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new ComplaintList(records
+        var complaints = records
             .Select(record => new Complaint(
                 record.GetInt32("tcldbid"),
                 record.GetString("tname"),
@@ -81,10 +94,15 @@ public sealed class ModerationTools(QueryExecutor executor)
                 record.GetString("fname"),
                 record.GetString("message"),
                 record.GetUnixTime("timestamp")))
-            .ToList());
+            .ToList();
+
+        var (page, total, skipped) = Page(complaints, offset, limit, 500);
+        return new ComplaintList(total, skipped, page);
     }
 
     /// <summary>Lists the unused privilege keys.</summary>
+    /// <param name="offset">How many to skip.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -94,8 +112,11 @@ public sealed class ModerationTools(QueryExecutor executor)
     [Description("Lists the unused privilege keys of a virtual server: the key itself, the server " +
                  "group or channel group it grants, when it was created and its description. The keys " +
                  "are live credentials, so this needs the Write safety level even though it changes " +
-                 "nothing.")]
+                 "nothing. At most limit come back, from offset; total says how many keys there are." +
+                 ToolDescriptions.UserWrittenText)]
     public async Task<PrivilegeKeyList> ListPrivilegeKeysAsync(
+        [Description("How many keys to skip.")] int offset = 0,
+        [Description("How many keys to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -107,7 +128,7 @@ public sealed class ModerationTools(QueryExecutor executor)
             new QueryCommand("privilegekeylist", VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new PrivilegeKeyList(records
+        var keys = records
             .Select(record =>
             {
                 var channelGroup = record.GetInt32("token_type") == 1;
@@ -119,7 +140,10 @@ public sealed class ModerationTools(QueryExecutor executor)
                     record.GetUnixTime("token_created"),
                     Optional(record, "token_description"));
             })
-            .ToList());
+            .ToList();
+
+        var (page, total, skipped) = Page(keys, offset, limit, 500);
+        return new PrivilegeKeyList(total, skipped, page);
     }
 
     private static Ban ToBan(QueryRecord record)
@@ -146,8 +170,12 @@ public sealed class ModerationTools(QueryExecutor executor)
 }
 
 /// <summary>The active bans.</summary>
-/// <param name="Bans">One entry per ban rule.</param>
-public sealed record BanList(IReadOnlyList<Ban> Bans);
+/// <param name="Total">
+/// How many bans there are, from <c>banlist -count</c>; absent when the page is past the end, since
+/// the server then returns no record to carry it, or when the server did not report it.
+/// </param>
+/// <param name="Bans">This page, one entry per ban rule.</param>
+public sealed record BanList(int? Total, IReadOnlyList<Ban> Bans);
 
 /// <summary>A ban rule.</summary>
 /// <param name="Id">The ban id.</param>
@@ -181,8 +209,10 @@ public sealed record Ban(
     int Enforcements);
 
 /// <summary>Complaints on a virtual server.</summary>
-/// <param name="Complaints">One entry per complaint.</param>
-public sealed record ComplaintList(IReadOnlyList<Complaint> Complaints);
+/// <param name="Total">How many complaints match.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Complaints">This page, one entry per complaint.</param>
+public sealed record ComplaintList(int Total, int Offset, IReadOnlyList<Complaint> Complaints);
 
 /// <summary>A complaint one client filed about another.</summary>
 /// <param name="TargetDatabaseId">The client complained about.</param>
@@ -200,8 +230,10 @@ public sealed record Complaint(
     DateTimeOffset? Timestamp);
 
 /// <summary>Unused privilege keys.</summary>
-/// <param name="Keys">One entry per key.</param>
-public sealed record PrivilegeKeyList(IReadOnlyList<PrivilegeKey> Keys);
+/// <param name="Total">How many unused keys there are.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Keys">This page, one entry per key.</param>
+public sealed record PrivilegeKeyList(int Total, int Offset, IReadOnlyList<PrivilegeKey> Keys);
 
 /// <summary>A privilege key.</summary>
 /// <param name="Token">The key a user redeems. A live credential.</param>

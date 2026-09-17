@@ -192,10 +192,10 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
         // Empty on a fresh server, which is exactly the case that has to come back as a list, not an error.
         await new ModerationTools(executor).ListBansAsync(virtualServerId: 1, cancellationToken: ct);
         await new ModerationTools(executor).ListComplaintsAsync(virtualServerId: 1, cancellationToken: ct);
-        await new ModerationTools(executor).ListPrivilegeKeysAsync(1, cancellationToken: ct);
+        await new ModerationTools(executor).ListPrivilegeKeysAsync(virtualServerId: 1, cancellationToken: ct);
         await new AccessTools(executor).ListApiKeysAsync(cancellationToken: ct);
-        await new AccessTools(executor).ListQueryLoginsAsync(1, cancellationToken: ct);
-        await new AccessTools(executor).ListMessagesAsync(1, cancellationToken: ct);
+        await new AccessTools(executor).ListQueryLoginsAsync(virtualServerId: 1, cancellationToken: ct);
+        await new AccessTools(executor).ListMessagesAsync(virtualServerId: 1, cancellationToken: ct);
     }
 
     [RequiresTeamSpeakServerFact]
@@ -240,7 +240,7 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
         await new ClientDatabaseTools(executor).CustomInfoAsync(known.DatabaseId, 1, cancellationToken: ct);
 
         var ownGroups = await new GroupTools(executor).ClientGroupsAsync(ownDatabaseId, 1, cancellationToken: ct);
-        var members = await new GroupTools(executor).ServerGroupMembersAsync(ownGroups.ServerGroups[0].Id, 1, cancellationToken: ct);
+        var members = await new GroupTools(executor).ServerGroupMembersAsync(ownGroups.ServerGroups[0].Id, virtualServerId: 1, cancellationToken: ct);
         Assert.Contains(members.Members, member => member.DatabaseId == ownDatabaseId);
 
         await new GroupTools(executor).ChannelGroupMembersAsync(channelId: 1, virtualServerId: 1, cancellationToken: ct);

@@ -30,6 +30,26 @@ public class ReadSurfaceCoverageTests
     }
 
     [Fact]
+    public async Task Pages_server_group_members_and_counts_all_of_them()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("servergroupclientlist", ToolHarness.Records(
+            new Dictionary<string, string> { ["cldbid"] = "3", ["client_nickname"] = "Alice", ["client_unique_identifier"] = "a=" },
+            new Dictionary<string, string> { ["cldbid"] = "4", ["client_nickname"] = "Bob", ["client_unique_identifier"] = "b=" },
+            new Dictionary<string, string> { ["cldbid"] = "5", ["client_nickname"] = "Carol", ["client_unique_identifier"] = "c=" }));
+
+        var page = await new GroupTools(harness.Executor).ServerGroupMembersAsync(6, offset: 1, limit: 1, cancellationToken: Ct);
+
+        Assert.Equal("Bob", Assert.Single(page.Members).Nickname);
+        Assert.Equal((6, 3, 1), (page.GroupId, page.Total, page.Offset));
+
+        var clamped = await new GroupTools(harness.Executor).ServerGroupMembersAsync(6, offset: -1, limit: 10_000, cancellationToken: Ct);
+
+        Assert.Equal(3, clamped.Members.Count);
+        Assert.Equal((3, 0), (clamped.Total, clamped.Offset));
+    }
+
+    [Fact]
     public async Task Filters_channel_group_assignments_only_by_what_was_given()
     {
         await using var harness = new ToolHarness();

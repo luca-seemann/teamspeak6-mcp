@@ -52,6 +52,30 @@ public class ClientToolsTests
     }
 
     [Fact]
+    public async Task Pages_the_clients_left_after_filtering_and_counts_them()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("clientlist", ToolHarness.Records(Online));
+
+        var all = await new ClientTools(harness.Executor).ListClientsAsync(
+            includeQueryClients: true,
+            offset: 1,
+            limit: 1,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("Alice", Assert.Single(all.Clients).Nickname);
+        Assert.Equal((2, 1), (all.Total, all.Offset));
+
+        // Without query clients only Alice is left, so offset 1 is past the end.
+        var people = await new ClientTools(harness.Executor).ListClientsAsync(
+            offset: 1,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Empty(people.Clients);
+        Assert.Equal((1, 1), (people.Total, people.Offset));
+    }
+
+    [Fact]
     public async Task Decodes_groups_away_state_and_identity()
     {
         await using var harness = new ToolHarness();

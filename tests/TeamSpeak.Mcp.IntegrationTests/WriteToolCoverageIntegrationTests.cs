@@ -137,7 +137,7 @@ public sealed class WriteToolCoverageIntegrationTests(LiveServerFixture server)
             var token = (await moderation.ManageTokenAsync("add", channelGroupId: channelGroup, channelId: defaultChannel, description: Unique("key"), virtualServerId: 1, cancellationToken: Ct)).Details["token"];
             try
             {
-                var key = Assert.Single((await new ModerationTools(executor).ListPrivilegeKeysAsync(1, cancellationToken: Ct)).Keys, listed => listed.Token == token);
+                var key = Assert.Single((await new ModerationTools(executor).ListPrivilegeKeysAsync(virtualServerId: 1, cancellationToken: Ct)).Keys, listed => listed.Token == token);
                 Assert.Equal(("channel group", channelGroup, defaultChannel), (key.GrantsA, key.GroupId, key.ChannelId!.Value));
             }
             finally
@@ -195,7 +195,7 @@ public sealed class WriteToolCoverageIntegrationTests(LiveServerFixture server)
 
         try
         {
-            var complaint = Assert.Single((await new ModerationTools(executor).ListComplaintsAsync(person.DatabaseId, 1, cancellationToken: Ct)).Complaints, listed => listed.Message == message);
+            var complaint = Assert.Single((await new ModerationTools(executor).ListComplaintsAsync(person.DatabaseId, virtualServerId: 1, cancellationToken: Ct)).Complaints, listed => listed.Message == message);
             Assert.Equal((person.DatabaseId, own), (complaint.TargetDatabaseId, complaint.FromDatabaseId));
             Assert.NotNull(complaint.Timestamp);
         }
@@ -204,7 +204,7 @@ public sealed class WriteToolCoverageIntegrationTests(LiveServerFixture server)
             await new ModerationAdminTools(executor).DeleteComplaintAsync(person.DatabaseId, own, 1, cancellationToken: Ct);
         }
 
-        Assert.DoesNotContain((await new ModerationTools(executor).ListComplaintsAsync(person.DatabaseId, 1, cancellationToken: Ct)).Complaints, listed => listed.Message == message);
+        Assert.DoesNotContain((await new ModerationTools(executor).ListComplaintsAsync(person.DatabaseId, virtualServerId: 1, cancellationToken: Ct)).Complaints, listed => listed.Message == message);
     }
 
     [RequiresTeamSpeakServerFact]

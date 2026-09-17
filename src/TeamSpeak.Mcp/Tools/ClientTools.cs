@@ -13,8 +13,13 @@ namespace TeamSpeak.Mcp.Tools;
 [McpServerToolType]
 public sealed class ClientTools(QueryExecutor executor)
 {
+    /// <summary>The most clients <c>ts_client_list</c> returns at once.</summary>
+    internal const int MaxLimit = 500;
+
     /// <summary>Lists the clients online on a virtual server.</summary>
     /// <param name="includeQueryClients">Whether to include query clients.</param>
+    /// <param name="offset">How many to skip.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -24,10 +29,13 @@ public sealed class ClientTools(QueryExecutor executor)
     [Description("Lists the clients currently connected to a virtual server: nickname, the channel " +
                  "they are in, their session client id and permanent database id, unique identity, " +
                  "server groups, channel group and away status. Query clients, including this MCP " +
-                 "server's own session, are left out unless includeQueryClients is true." + ToolDescriptions.UserWrittenText)]
+                 "server's own session, are left out unless includeQueryClients is true. At most limit " +
+                 "come back, from offset; total says how many there are." + ToolDescriptions.UserWrittenText)]
     public async Task<ClientList> ListClientsAsync(
         [Description("Include ServerQuery clients such as bots and this MCP server's own session.")]
         bool includeQueryClients = false,
+        [Description("How many clients to skip.")] int offset = 0,
+        [Description("How many clients to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -39,10 +47,13 @@ public sealed class ClientTools(QueryExecutor executor)
             new QueryCommand("clientlist", Options: ["-uid", "-away", "-groups"], VirtualServerId: virtualServerId),
             cancellationToken).ConfigureAwait(false);
 
-        return new ClientList(records
+        var clients = records
             .Select(ToClient)
             .Where(client => includeQueryClients || !client.IsQueryClient)
-            .ToList());
+            .ToList();
+
+        var (page, total, skipped) = ToolArguments.Page(clients, offset, limit, MaxLimit);
+        return new ClientList(total, skipped, page);
     }
 
     /// <summary>Shows every property of an online client.</summary>
@@ -144,8 +155,10 @@ public sealed record OnlineClientMatches(IReadOnlyList<OnlineClientMatch> Client
 public sealed record OnlineClientMatch(int ClientId, string Nickname);
 
 /// <summary>The clients online on a virtual server.</summary>
-/// <param name="Clients">One entry per connected client.</param>
-public sealed record ClientList(IReadOnlyList<OnlineClient> Clients);
+/// <param name="Total">How many clients match.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Clients">This page, one entry per connected client.</param>
+public sealed record ClientList(int Total, int Offset, IReadOnlyList<OnlineClient> Clients);
 
 /// <summary>A connected client.</summary>
 /// <param name="ClientId">The session id, which changes on every reconnect.</param>

@@ -143,7 +143,7 @@ public sealed class VirtualServerTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Shows every property of one virtual server: name, welcome message, slots, uptime, " +
                  "packet loss and ping totals, security level, default groups, and the rest of its " +
-                 "configuration, by their ServerQuery field names.")]
+                 "configuration, by their ServerQuery field names." + ToolDescriptions.UserWrittenText)]
     public async Task<RecordResult> VirtualServerInfoAsync(
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,

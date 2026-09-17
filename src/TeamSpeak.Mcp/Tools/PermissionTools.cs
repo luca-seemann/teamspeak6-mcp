@@ -117,7 +117,7 @@ public sealed partial class PermissionTools(QueryExecutor executor, PermissionNa
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Finds every place one permission is assigned on a virtual server: which server " +
                  "groups, channel groups, channels, clients and client-in-channel pairs carry it, with " +
-                 "group names. Use it to answer 'who can kick people here?'.")]
+                 "group names. Use it to answer 'who can kick people here?'." + ToolDescriptions.UserWrittenText)]
     public async Task<PermissionHolders> FindPermissionAsync(
         [Description("The permission name, for example 'i_client_kick_from_server_power'. See ts_perm_list.")]
         string permission,

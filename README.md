@@ -210,6 +210,9 @@ level each needs.
 
 ### Reading
 
+The list tools return at most `limit` entries, starting at `offset`, and say how many there are in
+all, usually as `total`.
+
 | Area | Tools | What they answer |
 |---|---|---|
 | Setup | `ts_profiles_list`, `ts_whoami` | Which servers are configured, and which login this server uses. |

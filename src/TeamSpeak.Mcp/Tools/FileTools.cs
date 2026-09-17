@@ -34,11 +34,14 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
     [Description("Lists the files and directories in one directory of a channel's file repository: name, " +
                  "size, and when each last changed. An upload that is still running or broke off shows " +
                  "incompleteSize, the size it is meant to reach. Channel 0 holds the virtual server's " +
-                 "icons and avatars." + SshOnly + ToolDescriptions.UserWrittenText)]
+                 "icons and avatars. At most limit come back, from offset; total says how many entries " +
+                 "there are." + SshOnly + ToolDescriptions.UserWrittenText)]
     public async Task<FileList> ListFilesAsync(
         [Description("The channel whose files to list; 0 for the virtual server's icons and avatars.")] int channelId,
         [Description("The directory, such as /screenshots. Omit it for the top level.")] string? path = null,
         [Description(ToolDescriptions.ChannelPassword)] string? channelPassword = null,
+        [Description("How many entries to skip.")] int offset = 0,
+        [Description("How many entries to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -51,29 +54,29 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
             "ts_file_list", SafetyLevel.ReadOnly, profile, new QueryCommand("ftgetfilelist", parameters, VirtualServerId: virtualServerId), cancellationToken)
             .ConfigureAwait(false);
 
-        return new FileList(
-            channelId,
-            directory,
-            records
-                .Select(record =>
-                {
-                    var name = record.GetString("name");
-                    return new FileEntry(
-                        name,
-                        ListedPath(channelId, directory, name),
-                        record.GetInt32("type", 1) == 0 ? "directory" : "file",
-                        record.GetInt64("size"),
-                        record.GetUnixTimeOfAnyPrecision("datetime"),
-                        record.ContainsKey("incompletesize") ? record.GetInt64("incompletesize") : null);
-                })
-                .ToList());
+        var entries = records
+            .Select(record =>
+            {
+                var name = record.GetString("name");
+                return new FileEntry(
+                    name,
+                    ListedPath(channelId, directory, name),
+                    record.GetInt32("type", 1) == 0 ? "directory" : "file",
+                    record.GetInt64("size"),
+                    record.GetUnixTimeOfAnyPrecision("datetime"),
+                    record.ContainsKey("incompletesize") ? record.GetInt64("incompletesize") : null);
+            })
+            .ToList();
+
+        var (page, total, skipped) = Page(entries, offset, limit, 500);
+        return new FileList(channelId, directory, total, skipped, page);
     }
 
     /// <summary>Shows one stored file.</summary>
     [McpServerTool(Name = "ts_file_info", Title = "Show a stored file",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Shows the size of one file in a channel's file repository and when it last changed. It " +
-                 "takes files only; ts_file_list shows directories." + SshOnly)]
+                 "takes files only; ts_file_list shows directories." + SshOnly + ToolDescriptions.UserWrittenText)]
     public async Task<FileDetails> FileInfoAsync(
         [Description("The channel the file is stored in; 0 for icons and avatars.")] int channelId,
         [Description("The file's path, such as /docs/readme.txt.")] string path,
@@ -282,8 +285,10 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
 /// <summary>One directory of a channel's files.</summary>
 /// <param name="ChannelId">The channel.</param>
 /// <param name="Directory">The directory listed.</param>
-/// <param name="Entries">Its files and directories; empty when it holds nothing.</param>
-public sealed record FileList(int ChannelId, string Directory, IReadOnlyList<FileEntry> Entries);
+/// <param name="Total">How many files and directories it holds.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Entries">This page of its files and directories; empty when it holds nothing.</param>
+public sealed record FileList(int ChannelId, string Directory, int Total, int Offset, IReadOnlyList<FileEntry> Entries);
 
 /// <summary>A file or directory in a listing.</summary>
 /// <param name="Name">Its name.</param>

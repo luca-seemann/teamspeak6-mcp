@@ -85,6 +85,22 @@ internal static class ToolArguments
         }
     }
 
+    /// <summary>Cuts one page out of a list the server returned whole.</summary>
+    /// <typeparam name="T">The entry type.</typeparam>
+    /// <param name="all">Every entry.</param>
+    /// <param name="offset">How many to skip; below 0 counts as 0.</param>
+    /// <param name="limit">How many to return; kept between 1 and <paramref name="max"/>.</param>
+    /// <param name="max">The largest page allowed.</param>
+    /// <returns>The page, how many entries there are in all, and the offset used.</returns>
+    public static (List<T> Page, int Total, int Offset) Page<T>(IReadOnlyList<T> all, int offset, int limit, int max)
+    {
+        ArgumentNullException.ThrowIfNull(all);
+
+        offset = Math.Max(0, offset);
+        limit = Math.Clamp(limit, 1, max);
+        return (all.Skip(offset).Take(limit).ToList(), all.Count, offset);
+    }
+
     /// <summary>Formats a number for a command parameter.</summary>
     public static string Text(int value) => value.ToString(CultureInfo.InvariantCulture);
 

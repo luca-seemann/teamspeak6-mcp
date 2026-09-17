@@ -24,7 +24,7 @@ public sealed class GroupTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the server groups of a virtual server with their id, name, kind (regular, " +
                  "template or query), icon, sort order and the powers needed to modify the group or " +
-                 "add and remove its members.")]
+                 "add and remove its members." + ToolDescriptions.UserWrittenText)]
     public async Task<GroupList> ListServerGroupsAsync(
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -40,7 +40,7 @@ public sealed class GroupTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the channel groups of a virtual server with their id, name, kind (regular, " +
                  "template or query), icon, sort order and the powers needed to modify the group or " +
-                 "add and remove its members.")]
+                 "add and remove its members." + ToolDescriptions.UserWrittenText)]
     public async Task<GroupList> ListChannelGroupsAsync(
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
@@ -49,6 +49,8 @@ public sealed class GroupTools(QueryExecutor executor)
 
     /// <summary>Lists the members of a server group.</summary>
     /// <param name="groupId">The server group.</param>
+    /// <param name="offset">How many to skip.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -56,9 +58,12 @@ public sealed class GroupTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_servergroup_members", Title = "List server group members",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the client identities in one server group, online or not, with database id, " +
-                 "last nickname and unique identity." + ToolDescriptions.UserWrittenText)]
+                 "last nickname and unique identity. At most limit come back, from offset; total says " +
+                 "how many members there are." + ToolDescriptions.UserWrittenText)]
     public async Task<GroupMembers> ServerGroupMembersAsync(
         [Description("The server group id, as listed by ts_servergroup_list.")] int groupId,
+        [Description("How many members to skip.")] int offset = 0,
+        [Description("How many members to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -71,21 +76,24 @@ public sealed class GroupTools(QueryExecutor executor)
             profile,
             cancellationToken).ConfigureAwait(false);
 
-        return new GroupMembers(
-            groupId,
-            records
-                .Select(record => new GroupMember(
-                    record.GetInt32("cldbid"),
-                    record.GetString("client_nickname"),
-                    record.GetString("client_unique_identifier")))
-                .Where(member => member.DatabaseId > 0)
-                .ToList());
+        var members = records
+            .Select(record => new GroupMember(
+                record.GetInt32("cldbid"),
+                record.GetString("client_nickname"),
+                record.GetString("client_unique_identifier")))
+            .Where(member => member.DatabaseId > 0)
+            .ToList();
+
+        var (page, total, skipped) = Page(members, offset, limit, 500);
+        return new GroupMembers(groupId, total, skipped, page);
     }
 
     /// <summary>Lists channel group assignments.</summary>
     /// <param name="channelId">Only this channel.</param>
     /// <param name="databaseId">Only this client.</param>
     /// <param name="groupId">Only this channel group.</param>
+    /// <param name="offset">How many to skip.</param>
+    /// <param name="limit">How many to return.</param>
     /// <param name="virtualServerId">The virtual server.</param>
     /// <param name="profile">The profile.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -94,11 +102,14 @@ public sealed class GroupTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists which client holds which channel group in which channel. Filter by any " +
                  "combination of channelId, databaseId and groupId. Clients who only have the default " +
-                 "channel group are not stored as assignments and do not appear." + ToolDescriptions.UserWrittenText)]
+                 "channel group are not stored as assignments and do not appear. At most limit come " +
+                 "back, from offset; total says how many assignments there are." + ToolDescriptions.UserWrittenText)]
     public async Task<ChannelGroupAssignments> ChannelGroupMembersAsync(
         [Description("Only assignments in this channel.")] int? channelId = null,
         [Description("Only assignments of this client database id.")] int? databaseId = null,
         [Description("Only assignments of this channel group.")] int? groupId = null,
+        [Description("How many assignments to skip.")] int offset = 0,
+        [Description("How many assignments to return, from 1 to 500.")] int limit = 100,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -122,9 +133,12 @@ public sealed class GroupTools(QueryExecutor executor)
         var records = await Run("channelgroupclientlist", parameters, null, virtualServerId, profile, cancellationToken)
             .ConfigureAwait(false);
 
-        return new ChannelGroupAssignments(records
+        var assignments = records
             .Select(record => new ChannelGroupAssignment(record.GetInt32("cid"), record.GetInt32("cldbid"), record.GetInt32("cgid")))
-            .ToList());
+            .ToList();
+
+        var (page, total, skipped) = Page(assignments, offset, limit, 500);
+        return new ChannelGroupAssignments(total, skipped, page);
     }
 
     /// <summary>Lists every group a client identity belongs to.</summary>
@@ -136,7 +150,7 @@ public sealed class GroupTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_client_groups", Title = "Show a client's groups",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Shows every group one client identity belongs to, online or not: its server groups " +
-                 "by id and name, and the channel groups it holds in particular channels.")]
+                 "by id and name, and the channel groups it holds in particular channels." + ToolDescriptions.UserWrittenText)]
     public async Task<ClientGroupMemberships> ClientGroupsAsync(
         [Description("The client's database id.")] int databaseId,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
@@ -249,8 +263,10 @@ public sealed record GroupSummary(
 
 /// <summary>The members of a server group.</summary>
 /// <param name="GroupId">The server group.</param>
-/// <param name="Members">Its members.</param>
-public sealed record GroupMembers(int GroupId, IReadOnlyList<GroupMember> Members);
+/// <param name="Total">How many members the group has.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Members">This page of its members.</param>
+public sealed record GroupMembers(int GroupId, int Total, int Offset, IReadOnlyList<GroupMember> Members);
 
 /// <summary>A member of a group.</summary>
 /// <param name="DatabaseId">The client's database id.</param>
@@ -259,8 +275,10 @@ public sealed record GroupMembers(int GroupId, IReadOnlyList<GroupMember> Member
 public sealed record GroupMember(int DatabaseId, string Nickname, string UniqueId);
 
 /// <summary>Channel group assignments.</summary>
-/// <param name="Assignments">One entry per client, channel and group.</param>
-public sealed record ChannelGroupAssignments(IReadOnlyList<ChannelGroupAssignment> Assignments);
+/// <param name="Total">How many assignments match.</param>
+/// <param name="Offset">How many were skipped.</param>
+/// <param name="Assignments">This page, one entry per client, channel and group.</param>
+public sealed record ChannelGroupAssignments(int Total, int Offset, IReadOnlyList<ChannelGroupAssignment> Assignments);
 
 /// <summary>A client holding a channel group in a channel.</summary>
 /// <param name="ChannelId">The channel.</param>

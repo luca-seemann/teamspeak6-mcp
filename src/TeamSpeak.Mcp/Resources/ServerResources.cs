@@ -48,7 +48,7 @@ public sealed class ServerResources(QueryExecutor executor, PermissionNameCache 
         Title = "Channel tree", MimeType = "application/json")]
     [Description("The channels of one virtual server as a tree in display order." + ToolDescriptions.UserWrittenText)]
     public async Task<string> ChannelsAsync(string profile, int virtualServerId, CancellationToken cancellationToken) =>
-        Json(await new ChannelTools(executor).ListChannelsAsync(true, virtualServerId, profile, cancellationToken).ConfigureAwait(false));
+        Json(await new ChannelTools(executor).ListChannelsAsync(true, 0, ChannelTools.MaxLimit, virtualServerId, profile, cancellationToken).ConfigureAwait(false));
 
     /// <summary>The people connected to a virtual server.</summary>
     /// <param name="profile">The profile.</param>
@@ -59,7 +59,7 @@ public sealed class ServerResources(QueryExecutor executor, PermissionNameCache 
         Title = "Connected clients", MimeType = "application/json")]
     [Description("The people connected to one virtual server, with channel, groups and away state. Query clients are left out." + ToolDescriptions.UserWrittenText)]
     public async Task<string> ClientsAsync(string profile, int virtualServerId, CancellationToken cancellationToken) =>
-        Json(await new ClientTools(executor).ListClientsAsync(false, virtualServerId, profile, cancellationToken).ConfigureAwait(false));
+        Json(await new ClientTools(executor).ListClientsAsync(false, 0, ClientTools.MaxLimit, virtualServerId, profile, cancellationToken).ConfigureAwait(false));
 
     /// <summary>A virtual server's groups.</summary>
     /// <param name="profile">The profile.</param>
@@ -68,7 +68,7 @@ public sealed class ServerResources(QueryExecutor executor, PermissionNameCache 
     /// <returns>JSON.</returns>
     [McpServerResource(UriTemplate = "ts://{profile}/{virtualServerId}/groups", Name = "groups",
         Title = "Server and channel groups", MimeType = "application/json")]
-    [Description("The server groups and channel groups of one virtual server.")]
+    [Description("The server groups and channel groups of one virtual server." + ToolDescriptions.UserWrittenText)]
     public async Task<string> GroupsAsync(string profile, int virtualServerId, CancellationToken cancellationToken)
     {
         var groups = new GroupTools(executor);

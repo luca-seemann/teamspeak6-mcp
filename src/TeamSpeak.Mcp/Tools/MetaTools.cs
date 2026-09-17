@@ -79,7 +79,7 @@ public sealed class MetaTools(QueryExecutor executor)
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Summarises a TeamSpeak server instance in one call: the server version and platform, " +
                  "uptime and totals across all virtual servers, instance-wide settings such as the " +
-                 "file transfer port and query flood limits, and the IP addresses it listens on.")]
+                 "file transfer port and query flood limits, and the IP addresses it listens on." + ToolDescriptions.UserWrittenText)]
     public async Task<InstanceInfo> InstanceInfoAsync(
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)

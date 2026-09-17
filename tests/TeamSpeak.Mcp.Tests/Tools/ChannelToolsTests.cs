@@ -1,3 +1,5 @@
+using ModelContextProtocol;
+
 using TeamSpeak.Mcp.Tools;
 using TeamSpeak.Query.Protocol;
 
@@ -51,6 +53,80 @@ public class ChannelToolsTests
         Assert.Equal(["Lobby", "Games", "AFK"], result.Channels.Select(channel => channel.Name));
         Assert.Equal(["CS", "LoL"], result.Channels[1].Children!.Select(channel => channel.Name));
         Assert.Null(result.Channels[0].Children);
+    }
+
+    [Fact]
+    public async Task Pages_a_flat_list_in_display_order_and_counts_every_channel()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("channellist", ToolHarness.Records(Server));
+
+        var result = await new ChannelTools(harness.Executor).ListChannelsAsync(
+            offset: 1,
+            limit: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(["Games", "CS"], result.Channels.Select(channel => channel.Name));
+        Assert.Equal((5, 1), (result.Total, result.Offset));
+    }
+
+    [Fact]
+    public async Task Clamps_a_negative_offset_and_a_zero_limit()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("channellist", ToolHarness.Records(Server));
+
+        var result = await new ChannelTools(harness.Executor).ListChannelsAsync(
+            offset: -3,
+            limit: 0,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("Lobby", Assert.Single(result.Channels).Name);
+        Assert.Equal((5, 0), (result.Total, result.Offset));
+    }
+
+    [Fact]
+    public async Task Refuses_to_cut_a_tree_with_more_channels_than_the_limit()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("channellist", ToolHarness.Records(Server));
+
+        var ex = await Assert.ThrowsAsync<McpException>(() => new ChannelTools(harness.Executor).ListChannelsAsync(
+            tree: true,
+            limit: 4,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("5 channels", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("limit 4", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Returns_a_whole_tree_within_the_limit_with_the_channel_count()
+    {
+        await using var harness = new ToolHarness();
+        harness.Transport.Returns("channellist", ToolHarness.Records(Server));
+
+        var result = await new ChannelTools(harness.Executor).ListChannelsAsync(
+            tree: true,
+            limit: 5,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, result.Channels.Count);
+        Assert.Equal((5, 0), (result.Total, result.Offset));
+    }
+
+    [Fact]
+    public async Task Refuses_an_offset_on_a_tree_before_asking_the_server()
+    {
+        await using var harness = new ToolHarness();
+
+        var ex = await Assert.ThrowsAsync<McpException>(() => new ChannelTools(harness.Executor).ListChannelsAsync(
+            tree: true,
+            offset: 2,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("offset", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(harness.Transport.SentCommands);
     }
 
     [Fact]
