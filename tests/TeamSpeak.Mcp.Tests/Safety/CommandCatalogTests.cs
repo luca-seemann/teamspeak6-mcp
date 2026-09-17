@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 
 using TeamSpeak.Mcp.Configuration;
 using TeamSpeak.Mcp.Safety;
+using TeamSpeak.Query.Protocol;
 
 namespace TeamSpeak.Mcp.Tests.Safety;
 
@@ -77,8 +78,33 @@ public partial class CommandCatalogTests
     [InlineData("ftinitupload", SafetyLevel.Write)]
     [InlineData("ftgetchannelfilehttptoken", SafetyLevel.Write)]
     [InlineData("ftdeletefile", SafetyLevel.Destructive)]
+    [InlineData("servergroupaddclient", SafetyLevel.Destructive)]
+    [InlineData("servergroupdelclient", SafetyLevel.Write)]
+    [InlineData("servergroupaddperm", SafetyLevel.Destructive)]
+    [InlineData("servergroupdelperm", SafetyLevel.Destructive)]
+    [InlineData("clientaddperm", SafetyLevel.Destructive)]
+    [InlineData("clientdelperm", SafetyLevel.Destructive)]
+    [InlineData("channelgroupaddperm", SafetyLevel.Write)]
+    [InlineData("channelclientaddperm", SafetyLevel.Write)]
+    [InlineData("setclientchannelgroup", SafetyLevel.Write)]
+    [InlineData("privilegekeydelete", SafetyLevel.Write)]
     public void Classifies_representative_commands(string command, SafetyLevel expected) =>
         Assert.Equal(expected, CommandCatalog.RequiredLevel(command));
+
+    [Theory]
+    [InlineData("serveredit", "virtualserver_name", "x", SafetyLevel.Write)]
+    [InlineData("serveredit", "virtualserver_default_server_group", "6", SafetyLevel.Destructive)]
+    [InlineData("serveredit", "VIRTUALSERVER_DEFAULT_CHANNEL_ADMIN_GROUP", "5", SafetyLevel.Destructive)]
+    [InlineData("servergroupcopy", "tsgid", "0", SafetyLevel.Write)]
+    [InlineData("servergroupcopy", "tsgid", "6", SafetyLevel.Destructive)]
+    [InlineData("channelgroupcopy", "tcgid", "0", SafetyLevel.Write)]
+    [InlineData("channelgroupcopy", "tcgid", "5", SafetyLevel.Destructive)]
+    [InlineData("ftinitupload", "overwrite", "0", SafetyLevel.Write)]
+    [InlineData("ftinitupload", "overwrite", "1", SafetyLevel.Destructive)]
+    [InlineData("ftinitupload", "resume", "1", SafetyLevel.Destructive)]
+    [InlineData("channellist", "virtualserver_default_server_group", "6", SafetyLevel.ReadOnly)]
+    public void Raises_the_level_for_parameters_that_escalate(string command, string key, string value, SafetyLevel expected) =>
+        Assert.Equal(expected, CommandCatalog.RequiredLevel(new QueryCommand(command, new Dictionary<string, string> { [key] = value })));
 
     [Theory]
     [InlineData("use")]

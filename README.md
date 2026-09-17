@@ -232,14 +232,20 @@ action separately. Tools that can need `Destructive` carry the MCP `destructiveH
 
 | Area | `Write` | `Destructive` |
 |---|---|---|
-| Virtual servers | `ts_vserver_edit`, `ts_vserver_snapshot_create`, `ts_vserver_power` (start) | `ts_vserver_create`, `ts_vserver_power` (stop), `ts_vserver_delete`, `ts_vserver_snapshot_deploy`, `ts_instance_edit` |
+| Virtual servers | `ts_vserver_edit`, `ts_vserver_snapshot_create`, `ts_vserver_power` (start) | `ts_vserver_edit` (default groups), `ts_vserver_create`, `ts_vserver_power` (stop), `ts_vserver_delete`, `ts_vserver_snapshot_deploy`, `ts_instance_edit` |
 | Channels | `ts_channel_create`, `ts_channel_edit`, `ts_channel_move` | `ts_channel_delete` |
 | People | `ts_client_move`, `ts_client_poke`, `ts_client_edit`, `ts_message_send`, `ts_offline_message` | `ts_client_kick`, `ts_clientdb_delete` |
-| Groups | `ts_servergroup_manage`, `ts_channelgroup_manage`, `ts_servergroup_membership`, `ts_client_channelgroup_set` | `ts_servergroup_delete`, `ts_channelgroup_delete` |
-| Permissions | `ts_perm_set` | `ts_perm_reset` |
+| Groups | `ts_servergroup_manage`, `ts_channelgroup_manage`, `ts_servergroup_membership` (remove), `ts_client_channelgroup_set` | `ts_servergroup_membership` (add), `ts_servergroup_delete`, `ts_channelgroup_delete` |
+| Permissions | `ts_perm_set` (channel, channel group, identity in a channel) | `ts_perm_set` (server group, identity), `ts_perm_reset` |
 | Moderation | `ts_ban_delete`, `ts_complaint_delete`, `ts_token_manage` (delete) | `ts_ban_add`, `ts_token_manage` (add) |
 | Access and settings | `ts_temp_password` (list, delete), `ts_custom_property`, `ts_log_add` | `ts_temp_password` (add), `ts_apikey_manage`, `ts_querylogin_manage` |
 | Files | `ts_file_upload`, `ts_file_manage`, `ts_file_download` (to a local file) | `ts_file_upload` (overwrite), `ts_file_delete` |
+
+Handing out server-wide power needs `Destructive`, even though it can be undone: otherwise a `Write`
+profile could make anyone a Server Admin. That covers adding someone to a server group, granting or
+revoking a server group's or an identity's permissions (removing a needed power escalates as surely as
+a grant), changing a default group with `ts_vserver_edit`, and, through `ts_query_raw`, copying a group
+over an existing one or an upload that overwrites a stored file.
 
 The three actions that cannot be undone and reach a whole virtual server — `ts_vserver_delete`,
 `ts_vserver_snapshot_deploy` and `ts_perm_reset` — also require `confirmName`, the virtual server's

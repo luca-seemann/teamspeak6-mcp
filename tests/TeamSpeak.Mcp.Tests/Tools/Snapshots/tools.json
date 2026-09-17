@@ -5769,7 +5769,7 @@
   {
     "name": "ts_perm_set",
     "title": "Grant or revoke a permission",
-    "description": "Grants a permission with a value to one target, or revokes the assignment again. The target is a serverGroupId, a channelGroupId, a channelId alone (channel requirements such as needed join power), a databaseId alone (the identity itself), or channelId with databaseId (the identity in that channel). negated applies only to server groups; skip only to server groups and identities. Check the result with ts_perm_effective. Needs Write.",
+    "description": "Grants a permission with a value to one target, or revokes the assignment again. The target is a serverGroupId, a channelGroupId, a channelId alone (channel requirements such as needed join power), a databaseId alone (the identity itself), or channelId with databaseId (the identity in that channel). negated applies only to server groups; skip only to server groups and identities. Check the result with ts_perm_effective. On a server group or an identity, granting and revoking need Destructive, since they decide what someone may do server-wide; on a channel, channel group or identity in a channel they need Write.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -5893,7 +5893,7 @@
     },
     "annotations": {
       "title": "Grant or revoke a permission",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": false
@@ -6547,7 +6547,7 @@
   {
     "name": "ts_servergroup_membership",
     "title": "Add to or remove from a server group",
-    "description": "Adds a client identity to a server group, or removes it, by database id, whether or not the person is online. Default groups and templates cannot be assigned. Needs Write.",
+    "description": "Adds a client identity to a server group, or removes it, by database id, whether or not the person is online. Default groups and templates cannot be assigned. Adding needs Destructive, since a group can carry any power up to Server Admin; removing needs Write.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -6620,7 +6620,7 @@
     },
     "annotations": {
       "title": "Add to or remove from a server group",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": false
@@ -7078,7 +7078,7 @@
   {
     "name": "ts_vserver_edit",
     "title": "Change a virtual server",
-    "description": "Changes one or more properties of a virtual server at once, such as its name, welcome message, password, slot limit or host message, using the virtualserver_* names ts_vserver_info shows. Needs Write.",
+    "description": "Changes one or more properties of a virtual server at once, such as its name, welcome message, password, slot limit or host message, using the virtualserver_* names ts_vserver_info shows. Needs Write; changing a default group (virtualserver_default_server_group, _channel_group or _channel_admin_group) needs Destructive, since everyone given that group gets its power.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -7140,7 +7140,7 @@
     },
     "annotations": {
       "title": "Change a virtual server",
-      "destructiveHint": false,
+      "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false,
       "readOnlyHint": false

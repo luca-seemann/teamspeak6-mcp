@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 
 using TeamSpeak.Mcp.Configuration;
+using TeamSpeak.Query.Protocol;
 
 namespace TeamSpeak.Mcp.Safety;
 
@@ -19,8 +20,17 @@ namespace TeamSpeak.Mcp.Safety;
 /// them — privilege keys, temporary passwords, snapshots, HTTP file transfer tokens — are never
 /// <see cref="SafetyLevel.ReadOnly"/>, because a leaked privilege key is as damaging as a changed
 /// setting. The key <c>ftinitdownload</c> returns is not such a credential: it opens one download of
-/// one file and nothing else. And commands that mint or remove access, or cut people off, are
-/// <see cref="SafetyLevel.Destructive"/> even where they are technically reversible.
+/// one file and nothing else. And commands that grant server-wide power, mint or remove credentials,
+/// or cut people off are <see cref="SafetyLevel.Destructive"/> even where they are technically
+/// reversible: adding someone to a server group, changing a server group's or a client's permissions,
+/// changing the default groups, and copying a group over an existing one. Otherwise a
+/// <see cref="SafetyLevel.Write"/> profile could make anyone a Server Admin. Channel and channel group
+/// permissions, removing a member from a group, and deleting a privilege key stay
+/// <see cref="SafetyLevel.Write"/>: they act within a channel, or take power away.
+/// </para>
+/// <para>
+/// Some commands escalate only with certain parameters, so <see cref="RequiredLevel(QueryCommand)"/>
+/// looks at those too.
 /// </para>
 /// </remarks>
 public static class CommandCatalog
@@ -48,13 +58,13 @@ public static class CommandCatalog
         // Routine, reversible changes.
         "bandel", "channeladdperm", "channelclientaddperm", "channelclientdelperm", "channelcreate",
         "channeldelperm", "channeledit", "channelgroupadd", "channelgroupaddperm", "channelgroupcopy",
-        "channelgroupdelperm", "channelgrouprename", "channelmove", "clientaddperm", "clientdbedit",
-        "clientdelperm", "clientedit", "clientmove", "clientpoke", "clientupdate", "complainadd",
+        "channelgroupdelperm", "channelgrouprename", "channelmove", "clientdbedit",
+        "clientedit", "clientmove", "clientpoke", "clientupdate", "complainadd",
         "complaindel", "customdelete", "customset", "ftcreatedir", "ftinitupload",
         "ftrenamefile", "ftstop", "gm", "logadd", "messageadd", "messagedel", "messageupdateflag",
         "privilegekeydelete", "sendtextmessage", "serveredit", "servergroupadd",
-        "servergroupaddclient", "servergroupaddperm", "servergroupcopy", "servergroupdelclient",
-        "servergroupdelperm", "servergrouprename", "serverstart", "servertemppassworddel",
+        "servergroupcopy", "servergroupdelclient",
+        "servergrouprename", "serverstart", "servertemppassworddel",
         "setclientchannelgroup", "tokendelete",
 
         // Read-only on the server, but they reveal credentials or everything at once.
@@ -76,6 +86,10 @@ public static class CommandCatalog
 
         // Cut people off, or stop the service.
         "banadd", "banclient", "clientkick", "serverprocessstop", "serverstop", "instanceedit",
+
+        // Grant or take server-wide power: group membership and the permissions of server groups and
+        // clients decide what everyone may do. Removing a "needed power" escalates as surely as a grant.
+        "servergroupaddclient", "servergroupaddperm", "servergroupdelperm", "clientaddperm", "clientdelperm",
 
         // Mint, change or remove access. servercreate belongs here because its answer is a privilege
         // key with full control of the new server.
@@ -114,6 +128,49 @@ public static class CommandCatalog
         ArgumentNullException.ThrowIfNull(commandName);
         return Levels.TryGetValue(commandName, out var level) ? level : SafetyLevel.Destructive;
     }
+
+    /// <summary>Gets the level a command needs, taking the parameters that make it escalate into account.</summary>
+    /// <param name="command">The command with its parameters.</param>
+    /// <returns>
+    /// The level of its name, raised to <see cref="SafetyLevel.Destructive"/> for <c>serveredit</c>
+    /// changing a default group, a group copy over an existing group, and an upload that overwrites
+    /// or continues a stored file.
+    /// </returns>
+    public static SafetyLevel RequiredLevel(QueryCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var level = RequiredLevel(command.Name);
+        var parameters = command.Parameters ?? new Dictionary<string, string>();
+
+        var escalates = command.Name.ToLowerInvariant() switch
+        {
+            // Newcomers, or everyone given channel admin, would get the chosen group's power.
+            "serveredit" => parameters.Keys.Any(key =>
+                key.StartsWith("virtualserver_default_", StringComparison.OrdinalIgnoreCase)
+                && key.EndsWith("group", StringComparison.OrdinalIgnoreCase)),
+
+            // A target of 0 creates a new group; any other id replaces an existing group's permissions.
+            "servergroupcopy" => IsNonZero(parameters, "tsgid"),
+            "channelgroupcopy" => IsNonZero(parameters, "tcgid"),
+
+            // Replacing or extending a stored file, as ts_file_upload with overwrite or resume.
+            "ftinitupload" => IsOne(parameters, "overwrite") || IsOne(parameters, "resume"),
+
+            _ => false,
+        };
+
+        return escalates ? SafetyLevel.Destructive : level;
+    }
+
+    private static bool IsNonZero(IReadOnlyDictionary<string, string> parameters, string key) =>
+        Value(parameters, key) is { } value && value.Trim() != "0";
+
+    private static bool IsOne(IReadOnlyDictionary<string, string> parameters, string key) =>
+        Value(parameters, key)?.Trim() == "1";
+
+    private static string? Value(IReadOnlyDictionary<string, string> parameters, string key) =>
+        parameters.FirstOrDefault(pair => string.Equals(pair.Key, key, StringComparison.OrdinalIgnoreCase)).Value;
 
     /// <summary>Gets a value indicating whether a command controls the shared session.</summary>
     /// <param name="commandName">The command name.</param>

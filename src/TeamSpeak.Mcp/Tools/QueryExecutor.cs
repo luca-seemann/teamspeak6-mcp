@@ -155,7 +155,10 @@ public sealed class QueryExecutor
         KnownCrashes.Refuse(command);
 
         var resolved = ResolveProfile(profile);
-        Safety.Demand(resolved, required, action);
+
+        // Never less than the command itself needs, so a level set too low in a tool cannot under-protect.
+        var catalogLevel = CommandCatalog.RequiredLevel(command);
+        Safety.Demand(resolved, catalogLevel > required ? catalogLevel : required, action);
 
         var transport = await TransportForAsync(resolved, cancellationToken).ConfigureAwait(false);
 
@@ -218,7 +221,7 @@ public sealed class QueryExecutor
                 send => work(new SessionSequence(resolved, transport.HoldsSession, async command =>
                 {
                     KnownCrashes.Refuse(command);
-                    Safety.Demand(resolved, CommandCatalog.RequiredLevel(command.Name), action);
+                    Safety.Demand(resolved, CommandCatalog.RequiredLevel(command), action);
                     var response = await send(command, cancellationToken).ConfigureAwait(false);
                     return RecordsOf(resolved.Name, command.Name, response);
                 })),
@@ -275,7 +278,7 @@ public sealed class QueryExecutor
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return RunAsync(action, CommandCatalog.RequiredLevel(command.Name), profile, command, cancellationToken);
+        return RunAsync(action, CommandCatalog.RequiredLevel(command), profile, command, cancellationToken);
     }
 
     /// <summary>Refuses a multi-step action up front, before its first command changes anything.</summary>

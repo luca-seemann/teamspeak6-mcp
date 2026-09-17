@@ -41,10 +41,12 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor)
 
     /// <summary>Changes a virtual server's properties.</summary>
     [McpServerTool(Name = "ts_vserver_edit", Title = "Change a virtual server",
-        ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Changes one or more properties of a virtual server at once, such as its name, welcome " +
                  "message, password, slot limit or host message, using the virtualserver_* names " +
-                 "ts_vserver_info shows. Needs Write.")]
+                 "ts_vserver_info shows. Needs Write; changing a default group " +
+                 "(virtualserver_default_server_group, _channel_group or _channel_admin_group) needs " +
+                 "Destructive, since everyone given that group gets its power.")]
     public async Task<ActionResult> EditAsync(
         [Description(ToolDescriptions.VirtualServerProperties)] IReadOnlyDictionary<string, string> properties,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,

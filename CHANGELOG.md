@@ -139,6 +139,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- A `Write` profile could hand out server-wide power: adding an identity to Server Admin, granting a
+  server group's or client's permissions, changing the default server group, or copying a group over
+  an existing one, although the command catalog's own rule reserves granting access for `Destructive`.
+  These now need `Destructive`, while removing a member and channel or channel group permissions stay
+  `Write`. Levels can depend on parameters: `serveredit` with a default group, a group copy onto an
+  existing group, and `ftinitupload` with `overwrite` or `resume`. Every command is checked at no less
+  than its catalog level, even where a tool asked for less.
 - The SSH host key was never checked, so anyone on the network path could answer in the TeamSpeak
   server's place and receive the `serveradmin` password. The key is now remembered on the first
   connection in `TeamSpeak:KnownHostsFile`, or pinned per profile with `HostKeyFingerprint`, and a

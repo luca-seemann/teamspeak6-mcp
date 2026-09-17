@@ -195,7 +195,7 @@ public sealed class MetaTools(QueryExecutor executor)
                 "refused. To address a virtual server, pass virtualServerId instead of sending 'use'.");
         }
 
-        var required = CommandCatalog.RequiredLevel(name);
+        var required = CommandCatalog.RequiredLevel(new QueryCommand(name, parameters, options, virtualServerId));
         var records = await executor.RunAsync(
             $"ts_query_raw with '{name}'",
             required,

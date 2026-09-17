@@ -93,9 +93,10 @@ public sealed class GroupAdminTools(QueryExecutor executor)
 
     /// <summary>Adds a client identity to a server group or removes it.</summary>
     [McpServerTool(Name = "ts_servergroup_membership", Title = "Add to or remove from a server group",
-        ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Adds a client identity to a server group, or removes it, by database id, whether or not " +
-                 "the person is online. Default groups and templates cannot be assigned. Needs Write.")]
+                 "the person is online. Default groups and templates cannot be assigned. Adding needs " +
+                 "Destructive, since a group can carry any power up to Server Admin; removing needs Write.")]
     public async Task<ActionResult> ServerGroupMembershipAsync(
         [Description("add or remove.")][AllowedValues("add", "remove")] string action,
         [Description("The server group.")] int groupId,

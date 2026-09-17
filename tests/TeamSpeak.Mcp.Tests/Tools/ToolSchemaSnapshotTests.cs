@@ -73,15 +73,16 @@ public class ToolSchemaSnapshotTests
         "ts_temp_password", "ts_channel_delete", "ts_client_kick", "ts_clientdb_delete", "ts_servergroup_delete",
         "ts_channelgroup_delete", "ts_perm_reset", "ts_ban_add", "ts_token_manage", "ts_apikey_manage",
         "ts_querylogin_manage", "ts_file_upload", "ts_file_delete", "ts_file_manage",
+        "ts_perm_set", "ts_servergroup_membership", "ts_vserver_edit",
     ];
 
     /// <summary>Tools that change something but never need more than Write.</summary>
     private static readonly string[] WriteTools =
     [
-        "ts_vserver_edit", "ts_vserver_snapshot_create", "ts_channel_create", "ts_channel_edit",
+        "ts_vserver_snapshot_create", "ts_channel_create", "ts_channel_edit",
         "ts_channel_move", "ts_client_move", "ts_client_poke", "ts_client_edit", "ts_message_send", "ts_offline_message",
-        "ts_servergroup_manage", "ts_channelgroup_manage", "ts_servergroup_membership", "ts_client_channelgroup_set",
-        "ts_perm_set", "ts_ban_delete", "ts_complaint_delete", "ts_custom_property", "ts_log_add",
+        "ts_servergroup_manage", "ts_channelgroup_manage", "ts_client_channelgroup_set",
+        "ts_ban_delete", "ts_complaint_delete", "ts_custom_property", "ts_log_add",
 
         // Needs only ReadOnly on the server, but can write a file on this machine.
         "ts_file_download",

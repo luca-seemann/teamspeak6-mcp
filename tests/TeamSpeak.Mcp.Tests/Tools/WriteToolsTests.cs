@@ -75,6 +75,35 @@ public class WriteToolsTests
     }
 
     [Fact]
+    public async Task A_write_profile_cannot_hand_out_server_wide_power()
+    {
+        await using var harness = PermissionHarness(SafetyLevel.Write);
+        harness.Transport
+            .Returns("servergroupdelclient", ToolHarness.Records())
+            .Returns("channelgroupaddperm", ToolHarness.Records())
+            .Returns("serveredit", ToolHarness.Records());
+        var permissions = new PermissionAdminTools(harness.Executor, new PermissionNameCache());
+        var groups = new GroupAdminTools(harness.Executor);
+        var servers = new VirtualServerAdminTools(harness.Executor);
+
+        await Assert.ThrowsAsync<McpException>(() => groups.ServerGroupMembershipAsync("add", 6, 3, cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => permissions.SetPermissionAsync("grant", "i_client_talk_power", 75, serverGroupId: 8, cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => permissions.SetPermissionAsync("revoke", "i_client_talk_power", databaseId: 3, cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => servers.EditAsync(new Dictionary<string, string> { ["virtualserver_default_server_group"] = "6" }, cancellationToken: Ct));
+        await Assert.ThrowsAsync<McpException>(() => new MetaTools(harness.Executor).QueryRawAsync(
+            "servergroupcopy", new Dictionary<string, string> { ["ssgid"] = "8", ["tsgid"] = "6", ["name"] = "x", ["type"] = "1" }, cancellationToken: Ct));
+
+        // Taking power away, and permissions within channels, stay routine.
+        await groups.ServerGroupMembershipAsync("remove", 6, 3, cancellationToken: Ct);
+        await permissions.SetPermissionAsync("grant", "i_client_talk_power", 30, channelGroupId: 5, cancellationToken: Ct);
+        await servers.EditAsync(new Dictionary<string, string> { ["virtualserver_name"] = "Renamed" }, cancellationToken: Ct);
+
+        Assert.Equal(
+            ["servergroupdelclient", "channelgroupaddperm", "serveredit"],
+            harness.Transport.SentCommands.Where(command => command.Name != "permissionlist").Select(command => command.Name));
+    }
+
+    [Fact]
     public async Task Deleting_a_virtual_server_requires_its_exact_name()
     {
         await using var harness = new ToolHarness(SafetyLevel.Destructive);
@@ -405,7 +434,7 @@ public class WriteToolsTests
     [Fact]
     public async Task Grants_on_a_server_group_with_both_flags_and_revokes_without_a_value()
     {
-        await using var harness = PermissionHarness();
+        await using var harness = PermissionHarness(SafetyLevel.Destructive);
         harness.Transport.Returns("servergroupaddperm", ToolHarness.Records()).Returns("servergroupdelperm", ToolHarness.Records());
         var tools = new PermissionAdminTools(harness.Executor, new PermissionNameCache());
 

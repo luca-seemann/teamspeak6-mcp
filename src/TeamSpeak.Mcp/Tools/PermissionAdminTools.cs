@@ -5,6 +5,7 @@ using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
 using TeamSpeak.Mcp.Configuration;
+using TeamSpeak.Mcp.Safety;
 using TeamSpeak.Query.Protocol;
 
 using static TeamSpeak.Mcp.Tools.ToolArguments;
@@ -19,12 +20,14 @@ public sealed class PermissionAdminTools(QueryExecutor executor, PermissionNameC
 {
     /// <summary>Grants or revokes a permission on one target.</summary>
     [McpServerTool(Name = "ts_perm_set", Title = "Grant or revoke a permission",
-        ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+        ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Grants a permission with a value to one target, or revokes the assignment again. The " +
                  "target is a serverGroupId, a channelGroupId, a channelId alone (channel requirements such " +
                  "as needed join power), a databaseId alone (the identity itself), or channelId with " +
                  "databaseId (the identity in that channel). negated applies only to server groups; skip " +
-                 "only to server groups and identities. Check the result with ts_perm_effective. Needs Write.")]
+                 "only to server groups and identities. Check the result with ts_perm_effective. On a server " +
+                 "group or an identity, granting and revoking need Destructive, since they decide what someone " +
+                 "may do server-wide; on a channel, channel group or identity in a channel they need Write.")]
     public async Task<ActionResult> SetPermissionAsync(
         [Description("grant or revoke.")][AllowedValues("grant", "revoke")] string action,
         [Description("The permission name, for example 'i_client_talk_power'. See ts_perm_list.")] string permission,
@@ -42,8 +45,9 @@ public sealed class PermissionAdminTools(QueryExecutor executor, PermissionNameC
         var grant = Choice(action, nameof(action), "grant", "revoke") == "grant";
         var target = PermissionTarget.From(serverGroupId, channelGroupId, channelId, databaseId);
 
-        // The permission names are read first, so refuse before that read rather than after it.
-        executor.Demand("ts_perm_set", SafetyLevel.Write, profile);
+        // The permission names are read first, so refuse before that read rather than after it, at the
+        // level the command for this target needs.
+        executor.Demand("ts_perm_set", CommandCatalog.RequiredLevel(grant ? target.AddCommand : target.DeleteCommand), profile);
 
         if (negated is not null && (!grant || !target.SupportsNegate))
         {
