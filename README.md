@@ -14,8 +14,9 @@ manage groups, and watch what is happening on the server.
 > complete and verified against a live TeamSpeak 6 server, which is itself still in beta. The server
 > builds as a NuGet tool package and as self-contained binaries, but nothing is published on
 > nuget.org and no release has been tagged yet, so today you build it yourself — see
-> [Installing](#installing). [docs/known-gaps.md](docs/known-gaps.md) lists honestly what is not
-> verified, and [TODO.md](TODO.md) what waits for a trigger.
+> [Installing](docs/setup.md#installing).
+> [docs/known-gaps.md](docs/known-gaps.md) lists honestly what is not verified, and
+> [TODO.md](TODO.md) what waits for a trigger.
 
 ## Quick start
 
@@ -34,8 +35,8 @@ claude mcp add teamspeak \
 
 Then ask: *"Which channels are on the server, and who is online?"* — that works straight away,
 because a new profile is read-only. Nothing can be changed until you raise
-[the safety level](#safety), and the sections below explain what the server needs, what each tool
-does, and how to install it properly.
+[the safety level](#safety). [docs/setup.md](docs/setup.md) explains what the server needs and how to
+install it properly, and [docs/tools.md](docs/tools.md) what each tool does.
 
 ## Why this exists
 
@@ -79,56 +80,10 @@ documentation — all were measured against a live 6.0.0-beta12.1 server:
   long-lived connection per profile and paces both commands and connections; see
   [reference/README.md](reference/README.md).
 
-### Check which client address your server actually sees
-
-On some Docker setups the TeamSpeak server sees the **bridge gateway address** for every external
-client rather than their real addresses. Its own log gives it away:
-
-```
-query from 4 172.20.0.1:49196 issued: login with account "serveradmin"
-```
-
-That entry was a connection from a client on the LAN, at a completely different address.
-
-It depends on how ports are published. Native Docker on Linux forwards them with iptables DNAT,
-which rewrites the destination and leaves the source intact, so real client addresses usually
-arrive. Docker Desktop on Windows and macOS routes through a proxy chain into its VM, which
-rewrites the source; the same happens on Linux for traffic that goes through the userland proxy.
-
-Where the addresses are rewritten, per-IP allow and deny lists cannot tell anyone apart, so
-allow-listing your client's real address silently does nothing — the entry loads and never
-matches. Flood accounting is per IP too, so every external client shares one counter and one
-impatient script can throttle everybody.
-
-Read the log line above before trusting an allow list. If the address is wrong, either run the
-server with `--network host`, or allow-list the bridge network and accept that the exemption then
-covers all outside traffic.
-
-### Exempting this server from flood protection
-
-Not required — the client paces itself and works against a stock server — but it makes life easier
-where the MCP server and the TeamSpeak server are both yours.
-
-`TSSERVER_QUERY_ALLOW_LIST` names a **file of CIDRs**, not an address. Pointing the variable at an
-IP stops the query interfaces from starting at all. Its default is `query_ip_allowlist.txt` in the
-server's data directory, shipping with only `127.0.0.1/32` and `::1/128`, so the usual job is to
-add a line to that file rather than to set the variable:
-
-```bash
-docker exec <container> sh -c \
-  "printf '127.0.0.1/32\n::1/128\n172.20.0.0/16\n' > /var/tsserver/query_ip_allowlist.txt"
-docker restart <container>
-```
-
-Use the address the server actually sees, per the section above — the bridge network where
-addresses are rewritten, the real client address where they are not. Confirm it took by looking for
-the startup line the server writes:
-
-```
-CIDRManager | updated query_ip_allowlist ips: 127.0.0.1/32, ::1/128, 172.20.0.0/16,
-```
-
-If that line does not list your address, the allow list is not doing anything.
+Two deployment details cost people hours, so the setup guide gives each its own section: [which
+client address your server actually sees](docs/setup.md#check-which-client-address-your-server-actually-sees)
+behind Docker, and [exempting this server from flood
+protection](docs/setup.md#exempting-this-server-from-flood-protection).
 
 ## Safety
 
@@ -168,8 +123,8 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 |---|---|---|
 | `TeamSpeak:Safety` | `TSMCP_TeamSpeak__Safety` | `ReadOnly` |
 | `TeamSpeak:EventBufferSize` | `TSMCP_TeamSpeak__EventBufferSize` | `1000` events per profile |
-| `TeamSpeak:DisabledToolGroups` | `TSMCP_TeamSpeak__DisabledToolGroups` | — (every group; comma-separated, see [Tool groups](#tool-groups)) |
-| `TeamSpeak:ToolResultText` | `TSMCP_TeamSpeak__ToolResultText` | `Json` (typed results); `Toon` returns text only, as TOON where shorter, see [Tool results as TOON](#tool-results-as-toon) |
+| `TeamSpeak:DisabledToolGroups` | `TSMCP_TeamSpeak__DisabledToolGroups` | — (every group; comma-separated, see [Tool groups](docs/tools.md#tool-groups)) |
+| `TeamSpeak:ToolResultText` | `TSMCP_TeamSpeak__ToolResultText` | `Json` (typed results); `Toon` returns text only, as TOON where shorter, see [Tool results as TOON](docs/tools.md#tool-results-as-toon) |
 | `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | — (file tools pass content inline only) |
 | `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `32768` (32 KiB, about 10,000 tokens) |
 | `TeamSpeak:FileTransfer:MaxLocalBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxLocalBytes` | `1073741824` (1 GiB); `0` for no limit |
@@ -204,468 +159,36 @@ session that is broken, or still waiting for an answer, is simply closed.
 
 ## Tools
 
-84 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
-because privilege keys are live credentials. The changing tools are listed further down with the
-level each needs.
+84 tools in all, and [docs/tools.md](docs/tools.md) describes every one of them: what it answers,
+which safety level it needs, and the MCP annotation it carries. In short:
 
-### Reading
-
-The list tools return at most `limit` entries, starting at `offset`, and say how many there are in
-all, usually as `total`.
-
-| Area | Tools | What they answer |
-|---|---|---|
-| Setup | `ts_profiles_list`, `ts_whoami` | Which servers are configured, and which login this server uses. |
-| Instance | `ts_instance_info`, `ts_vserver_list`, `ts_vserver_info`, `ts_health_report` | Version and totals; virtual servers; slots, packet loss and ping, with findings in plain words. |
-| Channels | `ts_channel_list`, `ts_channel_info`, `ts_channel_find` | The channel tree in display order, one channel in full, a channel by name. |
-| People online | `ts_client_list`, `ts_client_info`, `ts_client_find` | Who is connected, with groups and away state. |
-| Known identities | `ts_clientdb_list`, `ts_clientdb_info`, `ts_clientdb_find`, `ts_client_resolve` | Everyone the server has seen; turn a session id, database id or unique identity into all three. |
-| Groups | `ts_servergroup_list`, `ts_servergroup_members`, `ts_channelgroup_list`, `ts_channelgroup_members`, `ts_client_groups` | Groups, their members, and every group one person is in. |
-| Permissions | `ts_perm_effective`, `ts_perm_find`, `ts_perm_assigned`, `ts_perm_list` | **Why can or can't someone do something**; who holds a permission; what one group, channel or client has. |
-| Moderation | `ts_ban_list`, `ts_complaint_list`, `ts_token_list` | Bans with expiry, complaints, unused privilege keys. |
-| Access and logs | `ts_apikey_list`, `ts_querylogin_list`, `ts_message_list`, `ts_message_get`, `ts_log_view`, `ts_custom_info`, `ts_custom_search` | API keys and query logins, the query inbox, the server log, custom client properties. |
-| Events | `ts_events_subscribe`, `ts_events_poll`, `ts_events_wait`, `ts_events_unsubscribe`, `ts_events_status` | **What is happening right now**: messages, people connecting and moving, channel and server changes, bans. |
-| Files | `ts_file_list`, `ts_file_info`, `ts_file_transfers`, `ts_file_download` | What is stored in a channel, one file's size and age, transfers under way, and a file's content. |
-| Command reference | `ts_command_help` | How a ServerQuery command works, asked from the connected server itself: usage, permissions, description and an example, always for the version it runs. SSH only; the WebQuery does not serve help. |
-| Anything else | `ts_query_raw` | Any other ServerQuery command, at the safety level of that command. |
-
-### Changing
-
-Each tool needs the level of what it actually sends; a tool with several actions checks each
-action separately. The MCP annotations follow the specification rather than the safety level: a tool
-carries `readOnlyHint` only if it changes nothing, and `destructiveHint` if any of its actions can
-delete, lift, revoke or replace something, or needs `Destructive`. So lifting a ban is marked
-destructive although it needs only `Write`. Subscribing to events is not read-only either: it changes
-what is collected for everyone, and moving the event session into a channel with `textChannelId`
-needs `Write`.
-
-| Area | `Write` | `Destructive` |
-|---|---|---|
-| Virtual servers | `ts_vserver_edit`, `ts_vserver_snapshot_create`, `ts_vserver_power` (start) | `ts_vserver_edit` (default groups), `ts_vserver_create`, `ts_vserver_power` (stop), `ts_vserver_delete`, `ts_vserver_snapshot_deploy`, `ts_instance_edit` |
-| Channels | `ts_channel_create`, `ts_channel_edit`, `ts_channel_move` | `ts_channel_delete` |
-| People | `ts_client_move`, `ts_client_poke`, `ts_client_edit`, `ts_message_send`, `ts_offline_message` | `ts_client_kick`, `ts_clientdb_delete` |
-| Groups | `ts_servergroup_manage`, `ts_channelgroup_manage`, `ts_servergroup_membership` (remove), `ts_client_channelgroup_set` | `ts_servergroup_membership` (add), `ts_servergroup_delete`, `ts_channelgroup_delete` |
-| Permissions | `ts_perm_set` (channel, channel group, identity in a channel) | `ts_perm_set` (server group, identity), `ts_perm_reset` |
-| Moderation | `ts_ban_delete`, `ts_complaint_delete`, `ts_token_manage` (delete) | `ts_ban_add`, `ts_token_manage` (add) |
-| Access and settings | `ts_temp_password` (list, delete), `ts_custom_property`, `ts_log_add` | `ts_temp_password` (add), `ts_apikey_manage`, `ts_querylogin_manage` |
-| Files | `ts_file_upload`, `ts_file_manage`, `ts_file_download` (to a local file) | `ts_file_upload` (overwrite), `ts_file_delete` |
-
-Handing out server-wide power needs `Destructive`, even though it can be undone: otherwise a `Write`
-profile could make anyone a Server Admin. That covers adding someone to a server group, granting or
-revoking a server group's or an identity's permissions (removing a needed power escalates as surely as
-a grant), changing a default group with `ts_vserver_edit`, and, through `ts_query_raw`, copying a group
-over an existing one or an upload that overwrites a stored file.
-
-Every tool that deletes something for good requires `confirmName`, the current name of what it
-deletes, read from the server. A mistyped or mixed-up id then refuses instead of deleting the wrong
-thing:
-
-| Tool | `confirmName` is |
+| Group | What it covers |
 |---|---|
-| `ts_vserver_delete`, `ts_vserver_snapshot_deploy`, `ts_perm_reset` | the virtual server's name |
-| `ts_channel_delete` | the channel's name |
-| `ts_servergroup_delete`, `ts_channelgroup_delete` | the group's name |
-| `ts_clientdb_delete` | the identity's last nickname |
-| `ts_file_delete` | the channel's name, or the virtual server's for channel 0 |
-| `ts_file_upload` with `overwrite` | the existing file's name, when there is one |
-| `ts_querylogin_manage` delete | the login name |
-| `ts_apikey_manage` delete | the owner's nickname, or this login's name for its own keys |
+| `core` | The configured profiles, this server's own login, and a command's help page from the server itself. |
+| `servers` | Instance and virtual servers: settings, health, snapshots, starting and stopping. |
+| `channels` | The channel tree: listing, creating, editing, moving, deleting. |
+| `clients` | People online and every identity the server has seen, with messages and custom properties. |
+| `groups` | Server and channel groups, and who is in them. |
+| `permissions` | Assigned and effective permissions — **why can or can't someone do something** — and changing them. |
+| `moderation` | Bans, complaints, privilege keys and the server log. |
+| `access` | API keys and query logins. |
+| `events` | **What is happening right now**: messages, people moving, channel and server changes, bans. |
+| `files` | The file repository of each channel: listing, downloading, uploading, moving, deleting. |
+| `raw` | `ts_query_raw`, for any ServerQuery command no tool covers, at that command's safety level. |
 
-`ts_query_raw` asks for the same name when it sends one of these commands, so it is no way around the
-confirmation. Deleting bans, complaints, offline messages, custom properties and temporary passwords
-needs no name. `ts_vserver_create` needs `Destructive` because the key it returns grants full control
-of the new server.
-
-A snapshot holds a virtual server's whole configuration and is usually larger than a tool answer
-should be, so `ts_vserver_snapshot_create` saves it with `localPath` inside
-`TeamSpeak:FileTransfer:LocalDirectory`, and `ts_vserver_snapshot_deploy` reads it back from there.
-Without `localPath`, a snapshot comes back inline only up to `MaxInlineBytes`.
-
-A snapshot deploy restarts the virtual server and gives every channel, group and client database id
-a new number, so ids read before it are stale. It also drops the files stored in channels. This
-server never deploys with `-keepfiles`, not even through `ts_query_raw`. On TeamSpeak 6.0.0-beta12.1
-that option crashed the server, and the virtual server could not be started, selected or deleted
-afterwards, until its database was wiped.
-
-`ts_client_kick` and `ts_ban_add` refuse to act on this server's own query session, which would
-cut off every tool call on the profile. A channel message has to move that session into the
-channel and back, so it runs as one uninterrupted sequence; this works over SSH and the WebQuery
-alike, because the WebQuery's internal client keeps its channel between requests. Banning a
-connected client creates separate rules for its identity, its myTeamSpeak id and its IP address.
-Behind NAT or Docker port publishing that address may be shared by everyone, so lift the IP rule if
-it is too broad. `ts_client_edit` grants talker status only to a client that lacks the talk power
-its channel needs; the server refuses it for anyone who can already speak.
-
-A few commands stay reachable only through `ts_query_raw`, because a dedicated tool
-would make them too easy to call: stopping the whole instance (`serverprocessstop`), deleting every
-ban or complaint at once, overwriting an existing group with a copy, and the global auto-permissions.
-
-Every tool except `ts_profiles_list` takes an optional `profile`. Tools below the instance level take
-a `virtualServerId`, optional except where the wrong server would be costly: `ts_vserver_power` and
-`ts_vserver_delete` require it.
-
-`ts_perm_effective` shows, for one client in one channel, the value the client ends up with and
-every assignment behind it, marking the one that decided. It also shows when channel values did not
-count: a skip flag keeps both channel layers out, and `b_client_skip_channelgroup_permissions`, which
-Server Admin holds by default, keeps out the channel group.
-
-### Events
-
-`ts_events_subscribe` starts collecting events from a virtual server:
-- `server`: people connecting and disconnecting, server settings changed
-- `channel`: channels created, edited or deleted, people moving, connecting and disconnecting
-- `textserver`, `textchannel`, `textprivate`: messages to the server, to the channel the event
-  session sits in, or to the event session itself
-- `bans`: bans added or removed
-
-It returns a cursor. `ts_events_poll` returns what arrived after a cursor, and `ts_events_wait` does
-the same but waits up to 60 seconds for something to arrive. Each answer carries the next cursor, so
-reading needs no session and works behind the stateless HTTP transport. Every event keeps
-TeamSpeak's notification name (for example `notifytextmessage`) and its fields. Events that carry only
-a client id, such as a move, are given a `client_nickname` from a cache seeded at subscribe time and
-kept up to date from join events; a name it never learned is simply absent.
-
-`textchannel` covers the channel the event session sits in, which is the default channel unless you
-pass `textChannelId` to `ts_events_subscribe`. That moves the event session's own query client into
-the named channel, where it shows up as a query client, and follows it there after a reconnect.
-
-A few things to know:
-- **SSH only.** Events need the SSH query; the WebQuery refuses `servernotifyregister`. A profile
-  with a password uses SSH for events even when its tools are set to the WebQuery.
-- **Private messages need the event session's id.** `textprivate` covers messages sent to the event
-  session's own client, whose `clientId` each subscription reports.
-- **A session of its own.** Each subscribed virtual server gets its own query session, so tool calls
-  moving the shared session cannot disturb it. That costs one more connection.
-- **Shared by everyone.** Subscriptions belong to the profile, not to the MCP client that made them,
-  and last until `ts_events_unsubscribe` or a restart. Over stdio each client has its own process, so
-  this is invisible; on a shared HTTP server, one client's `ts_events_unsubscribe` stops collection
-  for all of them, though reading is independent because each caller keeps its own cursor.
-- **The buffer has a limit.** Each profile keeps the last `EventBufferSize` events. A reader that
-  falls behind is told how many it missed.
-- **A restart of the virtual server is recovered on its own.** Stopping and starting it silently
-  drops the registrations; a watchdog re-registers within 30 seconds. `ts_events_status` reports each
-  subscription's `lastEventAt`, `lastError` and `healthy` flag, so a stalled one is visible.
-- **One instance only.** Subscriptions and buffers live in the process. Several replicas behind a
-  load balancer need sticky routing.
-
-### Files
-
-Every channel has a file repository, and channel 0 holds the virtual server's icons and avatars.
-`ts_file_list` shows one directory of it, and `ts_file_download` and `ts_file_upload` move files in
-and out. `ts_file_manage` creates directories, renames or moves files between channels, and stops
-a transfer. `ts_file_delete` removes files, and a directory together with everything in it.
-
-The content comes in one of two ways:
-- **Inline**, up to `MaxInlineBytes` (32 KiB by default). A download comes back as text when it is
-  valid UTF-8 and as base64 otherwise. An upload takes `content` or `contentBase64`. Inline content
-  lands in the model's context, which is why the default is small.
-- **As a local file**, through `localPath`, only once `TeamSpeak:FileTransfer:LocalDirectory` is set
-  to an absolute path that exists and is not the root of a drive. Every local path is resolved inside
-  that directory, and a path leading outside it is refused. So is a path through a symbolic link or
-  junction inside it. The model chooses these paths, and over Streamable HTTP it does so from another
-  machine. A download never replaces an existing local file, and saves at most `MaxLocalBytes`
-  (1 GiB by default), since whoever uploaded the file decides how large it is.
-- **The opened file is checked, not only its path.** After opening, the file the operating system
-  actually opened must lie inside the directory and have no second name. So a link planted between
-  the check and the open, a `.partial` file that is really a link, and a hard link to a file elsewhere
-  are all refused before a byte is read or written.
-
-A few things to know:
-- **SSH and port 30033.** The tickets come from the SSH query, and the bytes travel over the file
-  transfer port, which must be reachable from this server just as the query port is. Publish it
-  alongside the query ports when TeamSpeak runs in a container.
-- **Safety levels.** A download returned inline needs `ReadOnly`, because it changes nothing on the
-  TeamSpeak server. Saving it to a local file needs `Write`. Uploading needs `Write`. Replacing an
-  existing file with `overwrite=true` needs `Destructive`, and so does continuing one with
-  `resume=true`: the server cannot tell a partial file from a finished one, and it lengthened a
-  finished file when asked to resume it. `ts_file_manage` stop with `deletePartial=true` needs
-  `Destructive` too, since the upload it discards may be someone else's.
-- **An upload is checked, and can be resumed.** The protocol has no acknowledgement, so after
-  sending, the tool compares the size the server stored with the size it sent. A transfer that broke
-  off is reported, and its partial file stays. Upload the same content again with `resume=true`: the
-  tool first compares the last bytes stored (up to 64 KiB) with the same bytes of the content, refuses
-  if they differ, and otherwise sends only the rest. On the test server a resumed file was byte for
-  byte identical.
-- **A download can be resumed too.** A download to a local file is written to `<localPath>.partial`
-  and renamed when complete. If it breaks off, that file stays, and `resume=true` fetches only the
-  missing bytes. A `.partial` file the tool did not ask for is never overwritten.
-- **Stalls.** The server closed an upload that sent nothing for between 16 and 30 seconds, keeping
-  what had arrived. The tools give up after 30 seconds without a byte. A steady 20 KB/s completed.
-- **Channel passwords.** The file tools take `channelPassword`. Without it, or with a wrong one, a
-  login in the Guest group was refused with `781 invalid channel password`. `serveradmin` is let in
-  with any password.
-
-### Resources
-
-The same data is available as resources, for clients that attach context instead of calling tools:
-`ts://profiles`, `ts://{profile}/permissions`, and `ts://{profile}/{virtualServerId}/` followed by
-`info`, `channels`, `clients` or `groups`.
-
-### Prompts
-
-Four prompts start the jobs this server was built for. Clients offer them by name; Claude Code, for
-example, lists them as slash commands such as `/mcp__teamspeak__server-audit`.
-
-| Prompt | Arguments | What it does |
-|---|---|---|
-| `server-audit` | `profile`, `virtualServerId` | Reviews health, who holds power, bans, complaints, keys and the log, and reports findings by severity. Read-only. |
-| `explain-user-permissions` | `client`, `action`, `channel`, `profile`, `virtualServerId` | Traces why someone can or cannot do something through every group and assignment, and suggests the smallest fix. Read-only. |
-| `cleanup-channel-tree` | `goal`, `profile`, `virtualServerId` | Proposes a tidier channel tree as a table of changes, and makes only the ones you confirm. |
-| `onboard-new-member` | `member`, `role`, `channel`, `profile`, `virtualServerId` | Adds a new member to their server group and channel group, or offers a privilege key if they never connected, asking before every change. |
-
-Only `client`, `action` and `member` are required. The prompts only instruct the model; what it may
-actually change is still decided by the safety level.
-
-### Tool groups
-
-A client sends every tool definition to the model with each request: about 34,000 tokens for all 84.
-A deployment that never needs some of them can switch whole groups off, for example
-`TSMCP_TeamSpeak__DisabledToolGroups=files,events`. An unknown name stops the start with the list of
-valid ones.
-
-| Group | Tools | Tokens, measured |
-|---|---|---|
-| `core` | `ts_profiles_list`, `ts_whoami`, `ts_command_help`; cannot be switched off | ~700 |
-| `raw` | `ts_query_raw` | ~600 |
-| `servers` | `ts_vserver_*`, `ts_instance_*`, `ts_health_report`, `ts_temp_password` | ~4,400 |
-| `channels` | `ts_channel_*` | ~2,600 |
-| `groups` | `ts_servergroup_*`, `ts_channelgroup_*`, `ts_client_groups`, `ts_client_channelgroup_set` | ~4,000 |
-| `clients` | `ts_client_*`, `ts_clientdb_*`, `ts_message_*`, `ts_offline_message`, `ts_custom_*` | ~7,300 |
-| `permissions` | `ts_perm_*` | ~3,000 |
-| `moderation` | `ts_ban_*`, `ts_complaint_*`, `ts_token_*`, `ts_log_*` | ~3,600 |
-| `access` | `ts_apikey_*`, `ts_querylogin_*` | ~1,500 |
-| `events` | `ts_events_*` | ~3,000 |
-| `files` | `ts_file_*` | ~3,800 |
-
-Switching a group off is not a safety measure: the safety level decides what may change, and a tool
-above it stays listed so the model can say why it was refused. Resources and prompts stay available,
-and a prompt may then suggest a tool that is not listed.
-
-### Tool results as TOON
-
-By default every tool result carries its data twice: as `structuredContent`, JSON matching the tool's
-output schema, and as a JSON text block. Claude Code gives the model the `structuredContent` whenever
-there is some and discards the text block; that was measured, it is not documented.
-
-With `TSMCP_TeamSpeak__ToolResultText=Toon`, results are text only. The tools declare no output
-schema and return no `structuredContent`, and the text is written as
-[TOON](https://github.com/toon-format/toon) wherever that is shorter than JSON. The server instructions
-explain the format. Lists of uniform records become one header and a line per record:
-
-```
-permissions[425]{id,name,value,negated,skip}:
-  26,b_virtualserver_info_view,1,false,false
-```
-
-Measured on the test server, in characters of the text:
-
-| Result | JSON | TOON |
-|---|---|---|
-| `ts_perm_assigned`, Server Admin, `limit=500` | 43,432 | 26,881 |
-| `ts_query_raw permissionlist`, `limit=1000` | 51,083 | 33,766 |
-| `ts_servergroup_list` | 1,904 | 602 |
-| `ts_channel_list`, `ts_vserver_info` | stays JSON | TOON would be longer |
-
-In Claude Code 2.1.268 (headless, Haiku), the Server Admin permissions cost the model 14,782 tokens as
-JSON and 10,089 as TOON. With the default limit of 100 entries the saving is smaller, about 700 tokens
-on a large list, and none on small results.
-
-Choose by client:
-
-- **`Json`, the default:** typed results a client can check against the output schema.
-- **`Toon`:** fewer tokens for large lists, for a client that only hands text to its model, such as
-  Claude Code.
-
-Errors, resources and prompts stay as they are in both modes.
-
-Independent of this setting, results write text as it is. Emoji and umlauts in channel names and
-nicknames used to come back as `\u` escapes, twelve characters per emoji and six per umlaut.
+45 of them only read; the rest change something and are refused until the profile allows it. Whole
+groups can be switched off to save the tokens their definitions cost, and results can be returned as
+[TOON](docs/tools.md#tool-results-as-toon) instead of JSON. The same data is also available as
+[resources](docs/tools.md#resources), and four [prompts](docs/tools.md#prompts) start the jobs this
+server was built for: a server audit, explaining someone's permissions, tidying the channel tree and
+onboarding a member.
 
 ## Setting up
 
-### Preparing the TeamSpeak server
-
-1. **Enable the SSH query.** Both query interfaces are off by default. Set
-   `TSSERVER_QUERY_SSH_ENABLED=1`, and `TSSERVER_QUERY_HTTP_ENABLED=1` if you also want the
-   WebQuery. A port that accepts connections but never greets is the symptom of an interface that is
-   published but not enabled.
-2. **Know the `serveradmin` password.** Set it with `TSSERVER_QUERY_ADMIN_PASSWORD`; otherwise the
-   server generates one on first start and prints it to its log once.
-3. **Make the ports reachable** from where this server runs: 10022 for the SSH query, and 30033 for
-   file transfer. 10080 only if you use the WebQuery.
-4. **Optionally mint a WebQuery key**, over SSH: `apikeyadd scope=manage lifetime=0`. SSH is still
-   needed for events and file transfer, so a password is the better choice whenever you have one.
-5. **Start read-only.** Leave `TeamSpeak:Safety` at `ReadOnly` until you have seen what the tools do,
-   then raise it per profile.
-
-`docker/docker-compose.yml` shows all of this for a TeamSpeak container.
-
-### Installing
-
-There are three ways to run the server, and only building from source needs .NET installed.
-
-#### As a NuGet tool, through `dnx`
-
-`dnx` comes with the .NET 10 SDK. It fetches the package for the machine it runs on and starts it
-without installing anything. The package holds the same self-contained binary as below, for
-win-x64, linux-x64 and linux-arm64.
-
-The package is not on nuget.org yet. Build it and point `dnx` at the folder:
-
-```bash
-dotnet pack src/TeamSpeak.Mcp -c Release -o artifacts/nuget
-
-claude mcp add teamspeak \
-  -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com \
-  -e TSMCP_TeamSpeak__Profiles__home__Password='<query admin password>' \
-  -- dnx TeamSpeak6.Mcp --version 0.1.0-beta --yes --add-source /path/to/artifacts/nuget
-```
-
-#### As a single-file binary
-
-```bash
-dotnet publish src/TeamSpeak.Mcp -c Release -r linux-x64 -o publish/linux-x64   # or win-x64, linux-arm64
-```
-
-The result is one executable, `teamspeak6-mcp` (`teamspeak6-mcp.exe` on Windows), with the .NET runtime
-inside and compiled ahead of time with ReadyToRun. It needs nothing installed.
-- **Size:** about 150 MB, and 170 MB for linux-arm64.
-- **Start-up:** it answers an MCP client about 0.15 seconds after starting, measured on win-x64.
-- **Smaller:** `-p:EnableCompressionInSingleFile=true` brings it to about 70 MB, at about 0.3 seconds to
-  the first answer.
-
-Pushing a version tag builds all three binaries and the packages and attaches them to a GitHub
-release, with checksums. No release is tagged yet, and that workflow has never run.
-
-```bash
-claude mcp add teamspeak \
-  -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com \
-  -e TSMCP_TeamSpeak__Profiles__home__Password='<query admin password>' \
-  -- /opt/teamspeak6-mcp/teamspeak6-mcp
-```
-
-See [Connecting a client](#connecting-a-client) for scopes, a shared `.mcp.json`, Windows and Claude
-Desktop.
-
-#### As a container, over Streamable HTTP
-
-`docker/Dockerfile` builds an image for linux/amd64 and linux/arm64 that serves Streamable HTTP on
-port 7801, and `docker/docker-compose.yml` starts it next to a TeamSpeak server. The endpoint is the
-root path. Inside a container the server listens on all interfaces, so it needs a bearer token and
-refuses to start without one; the compose file publishes the port on 127.0.0.1 only:
-
-```bash
-export TSMCP_HTTP_TOKEN=$(openssl rand -hex 32)
-docker compose -f docker/docker-compose.yml up -d
-claude mcp add --transport http teamspeak http://localhost:7801/ --header "Authorization: Bearer $TSMCP_HTTP_TOKEN"
-```
-
-The image has not been built yet; see [TODO.md](TODO.md).
-
-However it is started, the Streamable HTTP endpoint protects itself:
-- **A foreign `Origin` is refused with 403.** A web page open in your browser cannot use the server
-  through DNS rebinding. Pages on a loopback host, and origins listed in `TeamSpeak:Http:AllowedOrigins`,
-  are accepted; MCP clients send no `Origin` at all.
-- **Without a token, only loopback addresses and names.** The server binds only to a loopback address
-  and accepts only loopback host names, plus `TeamSpeak:Http:AllowedHosts`.
-- **With a token, every request must present it** as `Authorization: Bearer <token>`. It must be at
-  least 32 characters long.
-
-#### From source
-
-With the [.NET SDK 10.0.400](https://dotnet.microsoft.com/download) or newer:
-
-```bash
-dotnet run --project src/TeamSpeak.Mcp                                                     # stdio
-dotnet run --project src/TeamSpeak.Mcp -- --transport http --url http://127.0.0.1:7801     # Streamable HTTP
-```
-
-On Windows, a start-up failure with `An attempt was made to access a socket in a way forbidden by its
-access permissions` (socket error 10013) means the port lies in a range Windows has reserved, often
-for Hyper-V or WSL. `netsh interface ipv4 show excludedportrange protocol=tcp` lists the ranges;
-pick a port outside them.
-
-### Connecting a client
-
-**Claude Code.** `claude mcp add` registers the server with a scope:
-- `--scope local`, the default, for you in the current project only;
-- `--scope user` for you in every project;
-- `--scope project` writes `.mcp.json` into the project, to be committed and shared.
-
-Check it with `/mcp` inside Claude Code, or `claude mcp list`: the server should show as connected.
-Ask *"Which TeamSpeak profiles are configured?"* to see the profiles, their safety level and the SSH host
-key each server is trusted with.
-
-**Never commit a password.** A shared `.mcp.json` takes environment variables instead, which Claude
-Code expands when it starts the server; each person sets `TS_QUERY_PASSWORD` in their own environment:
-
-```json
-{
-  "mcpServers": {
-    "teamspeak": {
-      "command": "/opt/teamspeak6-mcp/teamspeak6-mcp",
-      "env": {
-        "TSMCP_TeamSpeak__Profiles__home__Host": "ts.example.com",
-        "TSMCP_TeamSpeak__Profiles__home__Password": "${TS_QUERY_PASSWORD}"
-      }
-    }
-  }
-}
-```
-
-**On Windows**, in PowerShell, with the binary from above:
-
-```powershell
-claude mcp add teamspeak `
-  -e TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com `
-  -e 'TSMCP_TeamSpeak__Profiles__home__Password=<query admin password>' `
-  -- C:\Tools\teamspeak6-mcp\teamspeak6-mcp.exe
-```
-
-**Optional settings** go in as further `-e` pairs, for example:
-- `TSMCP_TeamSpeak__Profiles__home__Safety=Write` to allow changes on that profile (see [Safety](#safety));
-- `TSMCP_TeamSpeak__DisabledToolGroups=files,events` to leave groups out (see [Tool groups](#tool-groups));
-- `TSMCP_TeamSpeak__ToolResultText=Toon` for fewer tokens on large lists (see
-  [Tool results as TOON](#tool-results-as-toon)).
-
-**Claude Desktop** reads `claude_desktop_config.json`, in `%APPDATA%\Claude\` on Windows and
-`~/Library/Application Support/Claude/` on macOS. It takes the same `mcpServers` entry as the
-`.mcp.json` above, with the password written into `env` directly, since that file stays on your
-machine. Restart Claude Desktop after changing it.
-
-### Running over HTTP for longer
-
-For a server several people or machines use, run the Streamable HTTP transport as a service, bound
-to loopback behind your own reverse proxy with TLS, or on a private address with a bearer token. A
-systemd unit on Linux, with the secrets in a file only root can read:
-
-```ini
-# /etc/systemd/system/teamspeak6-mcp.service
-[Unit]
-Description=TeamSpeak MCP server
-After=network-online.target
-
-[Service]
-ExecStart=/opt/teamspeak6-mcp/teamspeak6-mcp --transport http --url http://127.0.0.1:7801
-EnvironmentFile=/etc/teamspeak6-mcp.env
-DynamicUser=yes
-StateDirectory=teamspeak6-mcp
-Environment=TSMCP_TeamSpeak__KnownHostsFile=/var/lib/teamspeak6-mcp/known_hosts
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```ini
-# /etc/teamspeak6-mcp.env, chmod 600
-TSMCP_TeamSpeak__Profiles__home__Host=ts.example.com
-TSMCP_TeamSpeak__Profiles__home__Password=<query admin password>
-TSMCP_TeamSpeak__Http__BearerToken=<at least 32 random characters, e.g. openssl rand -hex 32>
-```
-
-`StateDirectory` keeps the remembered host keys across restarts. Clients connect with
-`claude mcp add --transport http teamspeak https://mcp.example.com/ --header "Authorization: Bearer <token>"`.
+[docs/setup.md](docs/setup.md) is the full guide: preparing the TeamSpeak server, the three ways to
+install this one — as a NuGet tool through `dnx`, as a self-contained binary, or as a container over
+Streamable HTTP — connecting Claude Code or Claude Desktop, and running it as a service behind a
+bearer token.
 
 ## Building and testing
 
@@ -681,7 +204,7 @@ src/TeamSpeak.Query    Transport-agnostic ServerQuery client library
 src/TeamSpeak.Mcp      The MCP server itself (stdio and Streamable HTTP)
 tests/                 Unit tests, an in-memory fake server, and a live-server integration suite
 docker/                Container image and a compose file that brings up TeamSpeak alongside it
-docs/                  How TeamSpeak 6 really behaves, measured, and the known gaps of this project
+docs/                  The tool reference, the setup guide, how TeamSpeak 6 really behaves, known gaps
 reference/             The ServerQuery command reference, captured from the server itself
 ```
 

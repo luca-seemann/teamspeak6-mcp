@@ -326,6 +326,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The README is a front page again, about 235 lines instead of 715: the tool reference moved to
+  `docs/tools.md`, the setup guide and the two deployment notes to `docs/setup.md`, and what is left
+  links to both. No text was dropped.
 - Package metadata names the repository, the project URL and the copyright, and the placeholder
   owner in `.mcp/server.json` is replaced.
 - The container image carries the self-contained binary on `runtime-deps` instead of a
