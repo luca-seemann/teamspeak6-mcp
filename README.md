@@ -711,4 +711,5 @@ as the server prints it, and belongs to TeamSpeak Systems GmbH. See
 
 ## Disclaimer
 
-Not affiliated with or endorsed by TeamSpeak Systems GmbH.
+Not affiliated with or endorsed by TeamSpeak Systems GmbH. "TeamSpeak" is a trademark of TeamSpeak
+Systems GmbH, used here only to say which software this project talks to.
