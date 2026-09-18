@@ -236,3 +236,7 @@ as the server prints it, and belongs to TeamSpeak Systems GmbH. See
 
 Not affiliated with or endorsed by TeamSpeak Systems GmbH. "TeamSpeak" is a trademark of TeamSpeak
 Systems GmbH, used here only to say which software this project talks to.
+
+Built with AI assistance, as the commit history shows. The design, the review and every decision are
+the maintainer's, and what these documents claim was measured against a live TeamSpeak 6 server
+rather than assumed.

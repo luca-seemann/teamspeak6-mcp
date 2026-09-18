@@ -101,6 +101,13 @@ When the code and `reference/serverquery-6.0.0-beta12.1.txt` disagree, the refer
   doubt, classify upward.
 - Run `dotnet format` before pushing; CI verifies formatting.
 
+## AI-assisted contributions
+
+Welcome, on the same terms as any other: you are the author of what you open a pull request for.
+Read it, run the tests, and be able to explain why the change is right — and where it touches the
+query protocol, say whether you checked it against a real TeamSpeak 6 server or against
+`reference/serverquery-6.0.0-beta12.1.txt`. What gets reviewed is the diff, not its origin.
+
 ## Commit messages
 
 Write them in English, in the imperative mood, explaining why rather than restating the diff.
