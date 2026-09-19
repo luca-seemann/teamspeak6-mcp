@@ -185,6 +185,11 @@ public sealed class ToolIntegrationTests(LiveServerFixture server)
         Assert.Equal("online", health.Status);
         Assert.True(health.QueryClientsOnline >= 1);
 
+        // A virtual server that has logged nothing since the server process started has no log file
+        // at all, and logview then answers 2052 rather than an empty page. Writing one entry first
+        // makes the read meaningful whatever the server has been doing.
+        await new ModerationAdminTools(executor).AddLogAsync("read by the live tool suite", virtualServerId: 1, cancellationToken: ct);
+
         var log = await new LogTools(executor).ViewLogAsync(lines: 5, virtualServerId: 1, cancellationToken: ct);
         Assert.NotEmpty(log.Entries);
         Assert.All(log.Entries, entry => Assert.NotEmpty(entry.Level));

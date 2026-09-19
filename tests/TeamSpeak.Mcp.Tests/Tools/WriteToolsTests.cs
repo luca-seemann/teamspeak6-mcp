@@ -135,12 +135,40 @@ public class WriteToolsTests
     public async Task Stopping_a_virtual_server_passes_the_reason()
     {
         await using var harness = new ToolHarness(SafetyLevel.Destructive);
-        harness.Transport.Returns("serverstop", ToolHarness.Records());
+        harness.Transport
+            .Returns("ftlist", ToolHarness.Error(QueryErrorCode.EmptyResultSet, "database empty result set"))
+            .Returns("serverstop", ToolHarness.Records());
 
         await new VirtualServerAdminTools(harness.Executor).PowerAsync("STOP", 3, "maintenance", cancellationToken: Ct);
 
-        var sent = Assert.Single(harness.Transport.SentCommands).Parameters!;
+        var sent = harness.Transport.SentCommands.Single(command => command.Name == "serverstop").Parameters!;
         Assert.Equal(("3", "maintenance"), (sent["sid"], sent["reasonmsg"]));
+    }
+
+    [Theory]
+    [InlineData("running")]
+    [InlineData("unreadable")]
+    public async Task Stopping_a_virtual_server_is_refused_while_a_file_transfer_is_pending(string ftlist)
+    {
+        // Measured on 6.0.0-beta13: one waiting transfer was enough for serverstop never to answer,
+        // and the virtual server then stayed 'shutting down' until the whole process was restarted.
+        await using var harness = new ToolHarness(SafetyLevel.Destructive);
+        harness.Transport
+            .Returns("ftlist", ftlist == "running"
+                ? ToolHarness.Records(Fields(("serverftfid", "1"), ("status", "0")))
+                : ToolHarness.Error(QueryErrorCode.InsufficientPermissions, "insufficient client permissions"))
+            .Returns("serverstop", ToolHarness.Records());
+
+        var refused = await Assert.ThrowsAsync<McpException>(() => new VirtualServerAdminTools(harness.Executor).PowerAsync(
+            "stop", 1, cancellationToken: Ct));
+
+        Assert.Contains("shutting down", refused.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name == "serverstop");
+
+        // Starting is never in danger, and asks the server nothing first.
+        harness.Transport.Returns("serverstart", ToolHarness.Records());
+        await new VirtualServerAdminTools(harness.Executor).PowerAsync("start", 1, cancellationToken: Ct);
+        Assert.Contains(harness.Transport.SentCommands, command => command.Name == "serverstart");
     }
 
     [Fact]
@@ -200,20 +228,48 @@ public class WriteToolsTests
         }
     }
     [Theory]
-    [InlineData("-keepfiles")]
-    [InlineData("keepfiles")]
-    [InlineData(" -KEEPFILES ")]
-    public async Task A_deploy_with_keepfiles_is_refused_on_every_path_without_sending_anything(string option)
+    [InlineData("-keepfiles", "6.0.0-beta12.1")]
+    [InlineData("keepfiles", "6.0.0-beta12.1")]
+    [InlineData(" -KEEPFILES ", "6.0.0-beta12.1")]
+    [InlineData("-keepfiles", "6.0.0-beta9")]
+    [InlineData("-keepfiles", "")]
+    public async Task A_deploy_with_keepfiles_is_refused_on_a_server_that_it_crashes(string option, string serverVersion)
     {
-        // On TeamSpeak 6.0.0-beta12.1 it hung once and crashed the server once, both times leaving the
-        // virtual server unrecoverable.
+        // On TeamSpeak 6.0.0-beta12.1 it hung once and crashed the server twice, every time leaving the
+        // virtual server unrecoverable. A server that will not say which version it is stays refused.
         await using var harness = new ToolHarness(SafetyLevel.Destructive);
+        harness.Transport
+            .Returns("serverinfo", ToolHarness.Records(Fields(("virtualserver_name", "Main"))))
+            .Returns("version", serverVersion.Length == 0
+                ? ToolHarness.Error(256, "command not found")
+                : ToolHarness.Records(Fields(("version", serverVersion), ("build", "1789645103"))));
 
         var raw = await Assert.ThrowsAsync<McpException>(() => new MetaTools(harness.Executor).QueryRawAsync(
-            "serversnapshotdeploy", new Dictionary<string, string> { ["version"] = "3", ["data"] = "KLUv" }, [option], virtualServerId: 1, cancellationToken: Ct));
+            "serversnapshotdeploy", new Dictionary<string, string> { ["version"] = "3", ["data"] = "KLUv" }, [option],
+            confirmName: "Main", virtualServerId: 1, cancellationToken: Ct));
 
         Assert.Contains("crashed", raw.Message, StringComparison.Ordinal);
-        Assert.Empty(harness.Transport.SentCommands);
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name == "serversnapshotdeploy");
+    }
+
+    [Fact]
+    public async Task A_deploy_keeps_the_channel_files_on_a_server_where_that_no_longer_crashes()
+    {
+        // Verified against 6.0.0-beta13 on 18 September 2026: the deploy that killed beta12.1 answered
+        // ok in 0.3 seconds and left the virtual server online.
+        await using var harness = new ToolHarness(SafetyLevel.Destructive);
+        harness.Transport
+            .Returns("version", ToolHarness.Records(Fields(("version", "6.0.0-beta13"), ("build", "1789645103"))))
+            .Returns("serverinfo", ToolHarness.Records(Fields(("virtualserver_name", "Main"))))
+            .Returns("serversnapshotdeploy", ToolHarness.Records(Fields(("ocid", "3"), ("ncid", "7"))));
+
+        var deployed = await new VirtualServerAdminTools(harness.Executor).SnapshotDeployAsync(
+            "Main", version: "3", data: "KLUv", keepFiles: true, cancellationToken: Ct);
+
+        var sent = harness.Transport.SentCommands.Single(command => command.Name == "serversnapshotdeploy");
+
+        Assert.Equal(["-mapping", "-keepfiles"], sent.Options!);
+        Assert.Contains("kept their files", deployed.Done, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -80,6 +80,11 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
         var subscribed = await events.SubscribeAsync([EventCategoryName.TextServer], virtualServerId: 1, cancellationToken: Ct);
         try
         {
+            // A transfer left over from the file tests makes the stop hang on 6.0.0-beta13 — and this
+            // server refuses a stop while one is pending. They lapse by themselves: an unused ticket
+            // after about two minutes, an upload that broke off after about thirty seconds.
+            await WaitForQuietTransfersAsync(executor);
+
             await power.PowerAsync("stop", 1, "event recovery test", cancellationToken: Ct);
             await power.PowerAsync("start", 1, cancellationToken: Ct);
 
@@ -102,6 +107,31 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
         {
             await events.UnsubscribeAsync(virtualServerId: 1, cancellationToken: Ct);
         }
+    }
+
+    /// <summary>Waits until the virtual server has no file transfer running or waiting.</summary>
+    /// <param name="executor">The path to the server.</param>
+    /// <remarks>
+    /// On 6.0.0-beta13 a pending transfer makes <c>serverstop</c> hang for good, so a test that stops
+    /// a server has to let the earlier file tests' transfers lapse first.
+    /// </remarks>
+    private static async Task WaitForQuietTransfersAsync(QueryExecutor executor)
+    {
+        var files = new FileTools(executor, new FileTransferOptions());
+        var deadline = DateTimeOffset.UtcNow.AddMinutes(3);
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var running = await files.ListTransfersAsync(virtualServerId: 1, cancellationToken: Ct);
+            if (running.Transfers.Count == 0)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(5), Ct);
+        }
+
+        Assert.Fail("File transfers were still pending after three minutes, and stopping the server would hang it.");
     }
 
     /// <summary>Waits until an event of a category with matching fields arrives, reading on from a cursor.</summary>

@@ -119,7 +119,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         var records = await executor.RunCommandAsync(
             "ts_file_upload", profile, new QueryCommand("ftinitupload", parameters, VirtualServerId: virtualServerId), cancellationToken)
             .ConfigureAwait(false);
-        var ticket = Ticket(resolved.Name, "ftinitupload", records);
+        var ticket = Ticket(resolved, "ftinitupload", records);
 
         // Measured: resume answers with the stored size as seekpos, and the bytes from there on complete
         // the file byte for byte. A fresh upload answers 0. Anything else means the file changed meanwhile.
@@ -377,7 +377,7 @@ public sealed class FileAdminTools(QueryExecutor executor, FileTransferOptions o
         var records = await executor.RunCommandAsync(
             "ts_file_upload", profile, new QueryCommand("ftinitdownload", parameters, VirtualServerId: virtualServerId), cancellationToken)
             .ConfigureAwait(false);
-        var ticket = Ticket(resolved.Name, "ftinitdownload", records);
+        var ticket = Ticket(resolved, "ftinitdownload", records);
 
         var stored = new byte[count];
         var expected = new byte[count];

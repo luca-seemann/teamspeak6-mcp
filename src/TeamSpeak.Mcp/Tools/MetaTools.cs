@@ -27,9 +27,10 @@ public sealed class MetaTools(QueryExecutor executor)
     [McpServerTool(Name = "ts_profiles_list", Title = "List TeamSpeak profiles",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Lists the TeamSpeak servers this MCP server is configured to administer, with the " +
-                 "interface and safety level each uses, and the SSH host key fingerprint each server is " +
-                 "trusted with. Does not contact any server. Call this first when several profiles exist " +
-                 "and a tool needs a profile name.")]
+                 "interface and safety level each uses, the SSH host key fingerprint each server is " +
+                 "trusted with, and whether a profile connects as the ServerQuery guest, which can do " +
+                 "only what that server grants guests. Does not contact any server. Call this first when " +
+                 "several profiles exist and a tool needs a profile name.")]
     public ProfileList ListProfiles()
     {
         var registry = executor.Connections.Profiles;
@@ -46,7 +47,8 @@ public sealed class MetaTools(QueryExecutor executor)
                     EventsAvailable: transport == PreferredTransport.Ssh,
                     executor.Safety.LevelFor(profile.Name).ToString(),
                     profile.DefaultVirtualServerId,
-                    HostKeyOf(profile, transport));
+                    HostKeyOf(profile, transport),
+                    profile.IsGuest);
             })
             .ToList());
     }
@@ -205,7 +207,13 @@ public sealed class MetaTools(QueryExecutor executor)
 
         // A command known to crash the server is refused before anything is read for its confirmation,
         // and the raw tool must not be the way around the confirmation the dedicated tools ask for.
-        KnownCrashes.Refuse(raw);
+        // One whose danger depends on what the server says about itself is left to the executor,
+        // which has a connection to ask on.
+        if (!KnownCrashes.NeedsServerFacts(raw))
+        {
+            KnownCrashes.Refuse(raw);
+        }
+
         executor.Demand($"ts_query_raw with '{name}'", required, profile);
         await new DeletionTargets(executor).ConfirmAsync($"ts_query_raw with '{name}'", profile, raw, confirmName, cancellationToken).ConfigureAwait(false);
         var records = await executor.RunAsync(
@@ -234,6 +242,12 @@ public sealed record ProfileList(IReadOnlyList<ProfileSummary> Profiles);
 /// The SSH host key the server must present: pinned in configuration, or remembered from the first
 /// connection. <see langword="null"/> before the first SSH connection, and for the WebQuery.
 /// </param>
+/// <param name="Guest">
+/// Whether this profile connects without credentials, as the ServerQuery guest. Such a session may
+/// do only what the server's <c>Guest Server Query</c> group allows, which is usually next to
+/// nothing, so a refusal from it is about the server's permissions, not about this server's safety
+/// level.
+/// </param>
 public sealed record ProfileSummary(
     string Name,
     string Host,
@@ -241,7 +255,8 @@ public sealed record ProfileSummary(
     bool EventsAvailable,
     string Safety,
     int DefaultVirtualServerId,
-    string? HostKeyFingerprint);
+    string? HostKeyFingerprint,
+    bool Guest);
 
 /// <summary>A summary of a server instance.</summary>
 /// <param name="Version">The <c>version</c> fields.</param>

@@ -70,7 +70,15 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor, FileTransfer
         ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Starts or stops a virtual server. Starting needs Write. Stopping disconnects everyone on " +
                  "it and needs Destructive; the optional reason is shown to them. The virtual server id is " +
-                 "required here rather than defaulted, so the wrong server is not stopped by accident.")]
+                 "required here rather than defaulted, so the wrong server is not stopped by accident. A " +
+                 "stop is refused while any file transfer is running or waiting on that virtual server: on " +
+                 "TeamSpeak 6.0.0-beta13 a single pending transfer makes the stop never finish, leaving the " +
+                 "server in 'shutting down' and recoverable only by restarting the whole TeamSpeak process. " +
+                 "ts_file_transfers shows them and ts_file_manage stop ends one; an abandoned transfer also " +
+                 "lapses by itself within about two minutes. That check is not a guarantee: a virtual " +
+                 "server that has hung this way once hangs on every later stop too, with nothing pending, " +
+                 "so on that version tell the user a stop may need a restart of the TeamSpeak process, and " +
+                 "check with ts_vserver_list that the status really reached offline.")]
     public async Task<ActionResult> PowerAsync(
         [Description("start or stop.")][AllowedValues("start", "stop")] string action,
         [Description("The virtual server to start or stop.")] int virtualServerId,
@@ -205,8 +213,8 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor, FileTransfer
                  "TeamSpeak checks no permissions while deploying, so a snapshot can grant anything: deploy " +
                  "only snapshots from a trusted source. The virtual server shuts down meanwhile, " +
                  "disconnecting everyone; this tool waits up to 10 minutes. Afterwards every channel, group " +
-                 "and client database id is new. Channel files are lost: -keepfiles crashed TeamSpeak " +
-                 "6.0.0-beta12.1 beyond repair and is refused. Snapshot the target first. Give the snapshot " +
+                 "and client database id is new, and the channels' files are gone unless keepFiles is set. " +
+                 "Snapshot the target first. Give the snapshot " +
                  "either as localPath, a file ts_vserver_snapshot_create saved, or as version and data (and " +
                  "salt). confirmName must repeat the target's exact name. Needs Destructive.")]
     public async Task<ActionResult> SnapshotDeployAsync(
@@ -216,6 +224,9 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor, FileTransfer
         [Description("Without localPath: the snapshot's data field.")] string? data = null,
         [Description("Without localPath: the snapshot's salt field, present when it was created with a password.")] string? salt = null,
         [Description("The password the snapshot was created with.")] string? password = null,
+        [Description("Keep the files stored in the channels, which a deploy otherwise drops; measured " +
+                     "on 6.0.0-beta13, where the files were still there afterwards. Refused on servers " +
+                     "below that version, where the option crashed the server beyond repair.")] bool keepFiles = false,
         [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
         [Description(ToolDescriptions.Profile)] string? profile = null,
         CancellationToken cancellationToken = default)
@@ -272,15 +283,17 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor, FileTransfer
             parameters["password"] = password;
         }
 
-        // Never -keepfiles: it crashed the whole server, see KnownCrashes.
-        string[] options = ["-mapping"];
+        // -keepfiles crashed everything before 6.0.0-beta13, so the executor asks the server for its
+        // version and refuses it below that; see KnownCrashes.
+        string[] options = keepFiles ? ["-mapping", "-keepfiles"] : ["-mapping"];
 
         var records = await executor.RunCommandAsync(
             "ts_vserver_snapshot_deploy", profile, new QueryCommand("serversnapshotdeploy", parameters, options, virtualServerId, SnapshotDeployTimeout), cancellationToken)
             .ConfigureAwait(false);
 
         return new ActionResult(
-            "Deployed the snapshot. Channel ids have changed; see records for the mapping from ocid to ncid.",
+            "Deployed the snapshot. Channel ids have changed; see records for the mapping from ocid to ncid. " +
+            (keepFiles ? "The channels kept their files." : "The channels' files are gone."),
             new Dictionary<string, string>(),
             records.Select(QueryExecutor.ToFields).ToList());
     }

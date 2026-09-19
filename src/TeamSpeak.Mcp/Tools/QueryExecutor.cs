@@ -93,11 +93,11 @@ public sealed class QueryExecutor
         QueryCommand command,
         CancellationToken cancellationToken)
     {
-        var (profileName, response) = await SendUncheckedAsync(action, required, profile, command, cancellationToken).ConfigureAwait(false);
+        var (resolved, response) = await SendUncheckedAsync(action, required, profile, command, cancellationToken).ConfigureAwait(false);
 
         return response.Error.IsSuccess || response.Error.IsEmptyResult
             ? response
-            : throw new McpException(DescribeRefusal(profileName, command.Name, response.Error));
+            : throw new McpException(DescribeRefusal(resolved.Name, command.Name, response.Error, resolved.IsGuest));
     }
 
     /// <summary>
@@ -129,7 +129,7 @@ public sealed class QueryExecutor
         int noMatchCode,
         CancellationToken cancellationToken)
     {
-        var (profileName, response) = await SendUncheckedAsync(action, required, profile, command, cancellationToken).ConfigureAwait(false);
+        var (resolved, response) = await SendUncheckedAsync(action, required, profile, command, cancellationToken).ConfigureAwait(false);
 
         if (response.Error.Id == noMatchCode || response.Error.IsEmptyResult)
         {
@@ -138,11 +138,11 @@ public sealed class QueryExecutor
 
         return response.Error.IsSuccess
             ? response.Records
-            : throw new McpException(DescribeRefusal(profileName, command.Name, response.Error));
+            : throw new McpException(DescribeRefusal(resolved.Name, command.Name, response.Error, resolved.IsGuest));
     }
 
     /// <summary>Checks safety and sends one command, leaving the server's status to the caller.</summary>
-    private async Task<(string ProfileName, QueryResponse Response)> SendUncheckedAsync(
+    private async Task<(QueryProfile Profile, QueryResponse Response)> SendUncheckedAsync(
         string action,
         SafetyLevel required,
         string? profile,
@@ -152,8 +152,6 @@ public sealed class QueryExecutor
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(command);
 
-        KnownCrashes.Refuse(command);
-
         var resolved = ResolveProfile(profile);
 
         // Never less than the command itself needs, so a level set too low in a tool cannot under-protect.
@@ -162,9 +160,11 @@ public sealed class QueryExecutor
 
         var transport = await TransportForAsync(resolved, cancellationToken).ConfigureAwait(false);
 
+        await RefuseKnownCrashesAsync(command, transport.SendAsync, cancellationToken).ConfigureAwait(false);
+
         try
         {
-            return (resolved.Name, await transport.SendAsync(command, cancellationToken).ConfigureAwait(false));
+            return (resolved, await transport.SendAsync(command, cancellationToken).ConfigureAwait(false));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -220,10 +220,10 @@ public sealed class QueryExecutor
             return await transport.RunExclusiveAsync(
                 send => work(new SessionSequence(resolved, transport.HoldsSession, async command =>
                 {
-                    KnownCrashes.Refuse(command);
                     Safety.Demand(resolved, CommandCatalog.RequiredLevel(command), action);
+                    await RefuseKnownCrashesAsync(command, send, cancellationToken).ConfigureAwait(false);
                     var response = await send(command, cancellationToken).ConfigureAwait(false);
-                    return RecordsOf(resolved.Name, command.Name, response);
+                    return RecordsOf(resolved, command.Name, response);
                 })),
                 cancellationToken).ConfigureAwait(false);
         }
@@ -231,6 +231,57 @@ public sealed class QueryExecutor
         {
             throw new McpException($"{action} did not complete on profile '{resolved.Name}': {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// Refuses a command known to wreck the server, first asking the server whatever the refusal
+    /// depends on: which version it runs, what it is still busy with.
+    /// </summary>
+    /// <param name="command">The command about to be sent.</param>
+    /// <param name="send">Sends on the connection the command itself would use.</param>
+    /// <param name="cancellationToken">Cancels the lookups.</param>
+    /// <exception cref="McpException">Thrown when the command is refused. It has not been sent.</exception>
+    /// <remarks>
+    /// The extra round trip is paid only by the handful of commands that can wreck a server, all of
+    /// them rare and heavyweight, so nothing here is worth caching and going stale over. A fact that
+    /// cannot be read leaves the command refused.
+    /// </remarks>
+    private static async Task RefuseKnownCrashesAsync(
+        QueryCommand command,
+        QuerySender send,
+        CancellationToken cancellationToken)
+    {
+        if (!KnownCrashes.NeedsServerFacts(command))
+        {
+            KnownCrashes.Refuse(command);
+            return;
+        }
+
+        ServerVersion? version = null;
+        int? pendingTransfers = null;
+
+        if (KnownCrashes.NeedsServerVersion(command))
+        {
+            var response = await send(new QueryCommand("version"), cancellationToken).ConfigureAwait(false);
+
+            version = response.Error.IsSuccess && response.Records.Count > 0
+                ? ServerVersion.TryParse(response.Records[0].GetString("version"))
+                : null;
+        }
+
+        if (KnownCrashes.NeedsPendingTransfers(command))
+        {
+            // Asked on the virtual server the command itself addresses, so a stop is judged by what
+            // that server is busy with. An empty result set is the server saying "none".
+            var response = await send(
+                new QueryCommand("ftlist", VirtualServerId: command.VirtualServerId), cancellationToken).ConfigureAwait(false);
+
+            pendingTransfers = response.Error.IsEmptyResult ? 0
+                : response.Error.IsSuccess ? response.Records.Count
+                : null;
+        }
+
+        KnownCrashes.Refuse(command, new ServerFacts(version, pendingTransfers));
     }
 
     private async Task<IQueryTransport> TransportForAsync(QueryProfile profile, CancellationToken cancellationToken)
@@ -246,7 +297,7 @@ public sealed class QueryExecutor
         }
     }
 
-    private static IReadOnlyList<QueryRecord> RecordsOf(string profileName, string commandName, QueryResponse response)
+    private static IReadOnlyList<QueryRecord> RecordsOf(QueryProfile profile, string commandName, QueryResponse response)
     {
         if (response.Error.IsEmptyResult)
         {
@@ -255,7 +306,7 @@ public sealed class QueryExecutor
 
         if (!response.Error.IsSuccess)
         {
-            throw new McpException(DescribeRefusal(profileName, commandName, response.Error));
+            throw new McpException(DescribeRefusal(profile.Name, commandName, response.Error, profile.IsGuest));
         }
 
         return response.Records;
@@ -293,8 +344,12 @@ public sealed class QueryExecutor
     /// <param name="profileName">The profile the command ran on.</param>
     /// <param name="commandName">The refused command.</param>
     /// <param name="error">The server's status.</param>
+    /// <param name="guest">
+    /// Whether the profile connects as the ServerQuery guest, which changes what a refusal means:
+    /// it is the server's guest group that is too small, not this profile's login or key.
+    /// </param>
     /// <returns>The message.</returns>
-    public static string DescribeRefusal(string profileName, string commandName, QueryError error)
+    public static string DescribeRefusal(string profileName, string commandName, QueryError error, bool guest = false)
     {
         ArgumentNullException.ThrowIfNull(error);
 
@@ -313,6 +368,11 @@ public sealed class QueryExecutor
                 " Something by that name already exists. An upload replaces a file only with overwrite=true.",
             QueryErrorCode.FileNotFound =>
                 " There is no file by that name; ts_file_list shows what is there.",
+            QueryErrorCode.FileIoError when commandName.Equals("logview", StringComparison.OrdinalIgnoreCase) =>
+                " The virtual server has no log file yet, which is normal when nothing has been logged " +
+                "since the server process started; what it logs at all is set by its virtualserver_log_* " +
+                "settings. The instance log is a separate file and usually has entries: read it with " +
+                "instance set. ts_log_add writes an entry, which creates the file.",
             QueryErrorCode.InvalidChannelPassword =>
                 " The channel has a password; pass it as channelPassword.",
             QueryErrorCode.OverwriteExcludesResume =>
@@ -346,8 +406,31 @@ public sealed class QueryExecutor
             _ => string.Empty,
         };
 
+        // A guest is refused for a reason of its own, so its hint replaces the one about logins and keys.
+        if (guest && GuestHint(error.Id) is { } guestHint)
+        {
+            hint = guestHint;
+        }
+
         return $"TeamSpeak refused '{commandName}' on profile '{profileName}' (error {error.Id}: {detail}).{hint}";
     }
+
+    /// <summary>Explains a refusal that is about being the ServerQuery guest, not about a login.</summary>
+    /// <param name="errorId">The server's status.</param>
+    /// <returns>The hint, or <see langword="null"/> when the status has nothing to do with being a guest.</returns>
+    private static string? GuestHint(int errorId) => errorId switch
+    {
+        QueryErrorCode.InsufficientPermissions =>
+            " This profile connects as the ServerQuery guest, which holds only what the TeamSpeak server's " +
+            "'Guest Server Query' group grants, by default next to nothing. Either give the profile a " +
+            "password or an API key, or have the server's administrator grant that group the permission " +
+            "the message names.",
+        QueryErrorCode.OutOfScope =>
+            " This profile connects as the ServerQuery guest, and TeamSpeak does not allow guests this " +
+            "command at all, whatever permissions the guest group holds. Give the profile a password or " +
+            "an API key.",
+        _ => null,
+    };
 
     /// <summary>Copies a record into a plain dictionary for structured tool output.</summary>
     /// <remarks>Kept next to <see cref="SessionSequence"/>'s users for discoverability.</remarks>

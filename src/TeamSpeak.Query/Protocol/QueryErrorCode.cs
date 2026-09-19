@@ -5,7 +5,8 @@ namespace TeamSpeak.Query.Protocol;
 /// </summary>
 /// <remarks>
 /// The server defines many more; only the ones that change control flow are named here. All values
-/// were observed on a live 6.0.0-beta12.1 server.
+/// were observed on a live 6.0.0-beta12.1 server, and the ones that decide control flow were seen
+/// again on 6.0.0-beta13.
 /// </remarks>
 public static class QueryErrorCode
 {
@@ -114,6 +115,15 @@ public static class QueryErrorCode
     /// <remarks><c>ftinitdownload</c> reports it inside the record with <c>error id=0</c>.</remarks>
     public const int FileNotFound = 2051;
 
+    /// <summary>A file the server itself keeps could not be read. Sent as <c>file input/output error</c>.</summary>
+    /// <remarks>
+    /// Measured on 6.0.0-beta13: this is what <c>logview</c> answers for a virtual server whose log
+    /// file does not exist yet, which is the normal state after the instance is restarted while the
+    /// virtual server logs almost nothing. One <c>logadd</c> creates the file, and <c>logview</c>
+    /// works from then on.
+    /// </remarks>
+    public const int FileIoError = 2052;
+
     /// <summary>
     /// The path does not exist, or a directory on the way to it is missing. Sent as
     /// <c>invalid file path</c>.
@@ -153,11 +163,18 @@ public static class QueryErrorCode
     /// </summary>
     /// <remarks>
     /// Sent as <c>out of scope</c> with <c>command not in api key scope</c>. Notably this is what
-    /// <c>servernotifyregister</c> returns over the WebQuery even with a <c>manage</c> key.
+    /// <c>servernotifyregister</c> and every <c>ft*</c> command return over the WebQuery even with a
+    /// <c>manage</c> key. From 6.0.0-beta13 the same code, with <c>command not allowed for guest
+    /// access</c>, also refuses a command a guest may not reach at all, such as <c>serverlist</c>,
+    /// <c>serverinfo</c> or <c>login</c> over the WebQuery.
     /// </remarks>
     public const int OutOfScope = 5120;
 
     /// <summary>The WebQuery request carried no <c>x-api-key</c> header.</summary>
+    /// <remarks>
+    /// Sent by 6.0.0-beta12.1 for any request without the header. From 6.0.0-beta13 such a request
+    /// is answered as the ServerQuery guest instead, so this is no longer how a missing key shows.
+    /// </remarks>
     public const int ApiKeyMissing = 5124;
 
     /// <summary>The WebQuery request carried an <c>x-api-key</c> header the server rejected.</summary>

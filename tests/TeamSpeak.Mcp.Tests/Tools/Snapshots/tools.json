@@ -6071,7 +6071,7 @@
   {
     "name": "ts_profiles_list",
     "title": "List TeamSpeak profiles",
-    "description": "Lists the TeamSpeak servers this MCP server is configured to administer, with the interface and safety level each uses, and the SSH host key fingerprint each server is trusted with. Does not contact any server. Call this first when several profiles exist and a tool needs a profile name.",
+    "description": "Lists the TeamSpeak servers this MCP server is configured to administer, with the interface and safety level each uses, the SSH host key fingerprint each server is trusted with, and whether a profile connects as the ServerQuery guest, which can do only what that server grants guests. Does not contact any server. Call this first when several profiles exist and a tool needs a profile name.",
     "inputSchema": {
       "type": "object",
       "properties": {}
@@ -6107,6 +6107,9 @@
                   "string",
                   "null"
                 ]
+              },
+              "guest": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -6116,7 +6119,8 @@
               "eventsAvailable",
               "safety",
               "defaultVirtualServerId",
-              "hostKeyFingerprint"
+              "hostKeyFingerprint",
+              "guest"
             ]
           }
         }
@@ -7519,7 +7523,7 @@
   {
     "name": "ts_vserver_power",
     "title": "Start or stop a virtual server",
-    "description": "Starts or stops a virtual server. Starting needs Write. Stopping disconnects everyone on it and needs Destructive; the optional reason is shown to them. The virtual server id is required here rather than defaulted, so the wrong server is not stopped by accident.",
+    "description": "Starts or stops a virtual server. Starting needs Write. Stopping disconnects everyone on it and needs Destructive; the optional reason is shown to them. The virtual server id is required here rather than defaulted, so the wrong server is not stopped by accident. A stop is refused while any file transfer is running or waiting on that virtual server: on TeamSpeak 6.0.0-beta13 a single pending transfer makes the stop never finish, leaving the server in \u0027shutting down\u0027 and recoverable only by restarting the whole TeamSpeak process. ts_file_transfers shows them and ts_file_manage stop ends one; an abandoned transfer also lapses by itself within about two minutes. That check is not a guarantee: a virtual server that has hung this way once hangs on every later stop too, with nothing pending, so on that version tell the user a stop may need a restart of the TeamSpeak process, and check with ts_vserver_list that the status really reached offline.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -7673,7 +7677,7 @@
   {
     "name": "ts_vserver_snapshot_deploy",
     "title": "Deploy a snapshot over a virtual server",
-    "description": "Replaces a virtual server\u0027s configuration, channels, groups and permissions with a snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. TeamSpeak checks no permissions while deploying, so a snapshot can grant anything: deploy only snapshots from a trusted source. The virtual server shuts down meanwhile, disconnecting everyone; this tool waits up to 10 minutes. Afterwards every channel, group and client database id is new. Channel files are lost: -keepfiles crashed TeamSpeak 6.0.0-beta12.1 beyond repair and is refused. Snapshot the target first. Give the snapshot either as localPath, a file ts_vserver_snapshot_create saved, or as version and data (and salt). confirmName must repeat the target\u0027s exact name. Needs Destructive.",
+    "description": "Replaces a virtual server\u0027s configuration, channels, groups and permissions with a snapshot from ts_vserver_snapshot_create, and returns how old channel ids map to new ones. TeamSpeak checks no permissions while deploying, so a snapshot can grant anything: deploy only snapshots from a trusted source. The virtual server shuts down meanwhile, disconnecting everyone; this tool waits up to 10 minutes. Afterwards every channel, group and client database id is new, and the channels\u0027 files are gone unless keepFiles is set. Snapshot the target first. Give the snapshot either as localPath, a file ts_vserver_snapshot_create saved, or as version and data (and salt). confirmName must repeat the target\u0027s exact name. Needs Destructive.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -7720,6 +7724,11 @@
             "null"
           ],
           "default": null
+        },
+        "keepFiles": {
+          "description": "Keep the files stored in the channels, which a deploy otherwise drops; measured on 6.0.0-beta13, where the files were still there afterwards. Refused on servers below that version, where the option crashed the server beyond repair.",
+          "type": "boolean",
+          "default": false
         },
         "virtualServerId": {
           "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",

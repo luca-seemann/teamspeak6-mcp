@@ -17,8 +17,8 @@ namespace TeamSpeak.Mcp.Tools;
 /// <param name="executor">The shared path to the server.</param>
 /// <param name="options">Where downloads may be saved, and how much comes back inline.</param>
 /// <remarks>
-/// TeamSpeak 6.0.0-beta12.1 refuses every file command over the WebQuery, so these tools work on
-/// profiles that use SSH.
+/// TeamSpeak refuses every file command over the WebQuery — measured on 6.0.0-beta12.1 and again on
+/// 6.0.0-beta13 — so these tools work on profiles that use SSH.
 /// </remarks>
 [McpServerToolType]
 public sealed class FileTools(QueryExecutor executor, FileTransferOptions options)
@@ -199,7 +199,7 @@ public sealed class FileTools(QueryExecutor executor, FileTransferOptions option
         var records = await executor.RunCommandAsync(
             "ts_file_download", profile, new QueryCommand("ftinitdownload", parameters, VirtualServerId: virtualServerId), cancellationToken)
             .ConfigureAwait(false);
-        var ticket = Ticket(resolved.Name, "ftinitdownload", records);
+        var ticket = Ticket(resolved, "ftinitdownload", records);
 
         if (offset > ticket.Size)
         {

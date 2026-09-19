@@ -199,6 +199,39 @@ public class MetaToolsTests
     }
 
     [Fact]
+    public async Task Explains_a_refusal_of_a_guest_profile_by_the_servers_guest_group()
+    {
+        // A guest holds no login of its own, so the usual hints about a login or an API key would
+        // send the reader looking in the wrong place.
+        var guest = new QueryProfile { Name = "public", Host = "ts.example.com", Username = QueryProfile.GuestUsername };
+        await using var harness = new ToolHarness(profile: guest);
+        harness.Transport
+            .Returns("channellist", ToolHarness.Error(QueryErrorCode.InsufficientPermissions, "insufficient client permissions"))
+            .Returns("serverlist", ToolHarness.Error(QueryErrorCode.OutOfScope, "out of scope", "command not allowed for guest access"));
+
+        var permissions = await Assert.ThrowsAsync<McpException>(() => new ChannelTools(harness.Executor).ListChannelsAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+        var scope = await Assert.ThrowsAsync<McpException>(() => new VirtualServerTools(harness.Executor).ListVirtualServersAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("Guest Server Query", permissions.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("query login lacks", permissions.Message, StringComparison.Ordinal);
+        Assert.Contains("does not allow guests this command", scope.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_profile_with_credentials_keeps_the_hints_about_its_login()
+    {
+        var message = QueryExecutor.DescribeRefusal(
+            "test",
+            "channellist",
+            new QueryError(QueryErrorCode.InsufficientPermissions, "insufficient client permissions"));
+
+        Assert.Contains("query login", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("guest", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Explains_that_a_value_was_too_long()
     {
         var message = QueryExecutor.DescribeRefusal(

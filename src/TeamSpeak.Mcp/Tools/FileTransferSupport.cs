@@ -3,6 +3,7 @@ using System.Globalization;
 using ModelContextProtocol;
 
 using TeamSpeak.Mcp.Configuration;
+using TeamSpeak.Query.Client;
 using TeamSpeak.Query.FileTransfer;
 using TeamSpeak.Query.Protocol;
 
@@ -178,11 +179,11 @@ internal static class FileTransferSupport
     }
 
     /// <summary>Reads the ticket from an init command's answer, explaining a refusal inside the record.</summary>
-    public static FileTransferTicket Ticket(string profileName, string commandName, IReadOnlyList<QueryRecord> records)
+    public static FileTransferTicket Ticket(QueryProfile profile, string commandName, IReadOnlyList<QueryRecord> records)
     {
         if (records.Count == 0)
         {
-            throw new McpException($"'{commandName}' returned no transfer on profile '{profileName}'.");
+            throw new McpException($"'{commandName}' returned no transfer on profile '{profile.Name}'.");
         }
 
         try
@@ -191,7 +192,7 @@ internal static class FileTransferSupport
         }
         catch (FileTransferRefusedException ex)
         {
-            throw new McpException(QueryExecutor.DescribeRefusal(profileName, commandName, ex.ToQueryError()), ex);
+            throw new McpException(QueryExecutor.DescribeRefusal(profile.Name, commandName, ex.ToQueryError(), profile.IsGuest), ex);
         }
         catch (QueryProtocolException ex)
         {
