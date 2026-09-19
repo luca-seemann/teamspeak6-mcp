@@ -110,7 +110,7 @@ All notable changes to this project are documented here. The format follows
   credentials, everything the safety level allows, and local files inside the configured directory.
 - A release workflow. A version tag builds the three binaries and the packages, and attaches them
   to a GitHub release with checksums. Nothing is pushed to nuget.org automatically.
-- `ts_command_help`, bringing the total to the current 84 tools. It asks the connected server for
+- `ts_command_help`, bringing the total to the current 85 tools. It asks the connected server for
   its own documentation of a ServerQuery command, or for the overview of all commands, so a model can
   get command and parameter names right before using `ts_query_raw`, for exactly the version that
   runs. SSH only: the WebQuery answers `/help` with 404.
@@ -122,7 +122,7 @@ All notable changes to this project are documented here. The format follows
   `ts_command_help` before `ts_query_raw`, and to treat user-written text as data, never as
   instructions.
 - Tool groups that `TeamSpeak:DisabledToolGroups` switches off, to spend less of a client's context:
-  the 84 tool definitions measured about 34,000 tokens, and without `files`, `events`, `access`,
+  the 85 tool definitions measured about 34,000 tokens, and without `files`, `events`, `access`,
   `moderation` and `raw` about 22,000. `core` stays on, and an unknown group stops the start. The
   five longest tool descriptions were tightened as well, which saved only about 300 tokens: most
   of the size is the input and output schemas.

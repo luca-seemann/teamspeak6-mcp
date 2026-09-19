@@ -81,7 +81,7 @@ When the code and `reference/serverquery-6.0.0-beta12.1.txt` disagree, the refer
 | ├ `PermissionNameCache` | The permission catalog per profile, fetched once, so tools show names instead of ids. |
 | ├ `PermissionTarget` | The five things permissions attach to, with the list, add and delete command and the flags each takes. |
 | ├ `SessionSequence` | An uninterrupted run of commands on the session, for actions that depend on its state: channel messages, and the own-session check before a kick or ban. |
-| ├ Tools | 85 tools: 46 reading (5 of them for events, 4 for files), 39 changing including `ts_query_raw`. Counting by annotation gives 45 and 40, because `ts_file_download` reads from TeamSpeak but is not `readOnly`: saving to a local file needs `Write`. Schemas and annotations pinned by tests; see docs/tools.md for the lists. |
+| ├ Tools | 85 tools. The Reading section of docs/tools.md lists the ones that answer questions, the Changing section the ones that alter something, with the level each needs; `ts_query_raw` takes the level of the command it sends. By annotation, pinned by tests, 43 carry `readOnlyHint` and 28 `destructiveHint`: a tool that reads from TeamSpeak is not read-only if it writes somewhere else, as `ts_file_download` does when saving to a local file. |
 | ├ `FileTransferOptions` | The one local directory file tools may use (off unless set) and the inline size limit. |
 | ├ Resources | `ts://profiles`, `ts://{profile}/permissions`, and `info`, `channels`, `clients`, `groups` per virtual server. |
 | └ Prompts | `server-audit`, `explain-user-permissions`, `cleanup-channel-tree`, `onboard-new-member`: the tools to use in order, and what the model may change. |
