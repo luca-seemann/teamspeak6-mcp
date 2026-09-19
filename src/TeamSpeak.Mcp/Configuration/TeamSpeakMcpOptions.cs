@@ -81,8 +81,8 @@ public sealed class TeamSpeakMcpOptions
 /// One configured TeamSpeak server, in the shape configuration binding understands.
 /// </summary>
 /// <remarks>
-/// This mirrors <see cref="QueryProfile"/> but uses plain, bindable types — strings and integers
-/// rather than <see cref="Uri"/> and <see cref="TimeSpan"/> — so that a malformed setting produces
+/// This mirrors <see cref="QueryProfile"/> but uses plain, bindable types, strings and integers
+/// rather than <see cref="Uri"/> and <see cref="TimeSpan"/>, so that a malformed setting produces
 /// a clear message here instead of a binding failure deep in the host.
 /// </remarks>
 public sealed class QueryProfileOptions

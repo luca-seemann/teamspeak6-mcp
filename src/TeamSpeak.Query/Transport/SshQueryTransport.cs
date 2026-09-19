@@ -22,7 +22,7 @@ namespace TeamSpeak.Query.Transport;
 /// <para>
 /// Three details of the real server drive this implementation and appear nowhere in its
 /// documentation. It refuses pseudo-terminal requests, so the channel is opened without one. It
-/// emits no prompt at all — the greeting line is <c>TS3</c> — so responses can only be framed on
+/// emits no prompt at all, the greeting line being <c>TS3</c>, so responses can only be framed on
 /// the trailing <c>error id=</c> line. And <c>ShellStream</c> returns a read count of zero simply
 /// because nothing has arrived yet, which is not end-of-stream.
 /// </para>
@@ -105,7 +105,7 @@ public sealed class SshQueryTransport : IQueryTransport
     /// <inheritdoc />
     /// <remarks>
     /// The sequence holds the session slot throughout, which is what keeps other callers' commands
-    /// — including a <c>use</c> for another virtual server — out of it. A session that falls out of
+    /// out of it, including a <c>use</c> for another virtual server. A session that falls out of
     /// step during the sequence fails the rest of it; the next ordinary command replaces the session.
     /// </remarks>
     public async Task<T> RunExclusiveAsync<T>(Func<QuerySender, Task<T>> work, CancellationToken cancellationToken = default)

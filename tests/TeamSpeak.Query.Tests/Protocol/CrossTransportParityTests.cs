@@ -9,7 +9,7 @@ namespace TeamSpeak.Query.Tests.Protocol;
 /// </summary>
 /// <remarks>
 /// The fixtures behind these tests were captured minutes apart from the same live server, so fields
-/// that move on their own — client counts, uptimes, timestamps — are compared loosely or skipped.
+/// that move on their own, such as client counts, uptimes and timestamps, are compared loosely or skipped.
 /// </remarks>
 public class CrossTransportParityTests
 {

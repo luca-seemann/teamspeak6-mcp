@@ -16,7 +16,7 @@ and then `help <command>` for all 141 commands. It is the source of truth for th
 the code and this file disagree, this file wins.
 
 Alongside it, `tests/TeamSpeak.Query.Tests/Fixtures/` holds raw responses for the same commands over
-both transports — `ssh/` as raw query text, `http/` as raw WebQuery JSON. They are captured bytes,
+both transports: `ssh/` as raw query text, `http/` as raw WebQuery JSON. They are captured bytes,
 not hand-written, and the parser tests run against them.
 
 ## Where the official docs are wrong
@@ -25,12 +25,12 @@ Verified against server 6.0.0-beta12.1:
 
 | Docs claim | Reality |
 |---|---|
-| WebQuery accepts HTTP Basic Auth with `serveradmin` | Rejected. `x-api-key` is the only accepted credential — Basic Auth with correct credentials still returns `5124 missing apikey`, while a bad `x-api-key` returns the distinct `5122 invalid apikey`. |
+| WebQuery accepts HTTP Basic Auth with `serveradmin` | Rejected. `x-api-key` is the only accepted credential. Basic Auth with correct credentials still returns `5124 missing apikey`, while a bad `x-api-key` returns the distinct `5122 invalid apikey`. |
 | SSH shows a `TS6>` prompt | The greeting line is `TS3` and no prompt is ever emitted. |
 | (undocumented) | The SSH query refuses PTY requests. An SSH client must open its channel without one. |
 
 **Still current on 6.0.0-beta13.** Its `help` lists exactly the same 143 commands, with the same
-descriptions, so this capture describes that release too, `help serversnapshotdeploy` included —
+descriptions, so this capture describes that release too, `help serversnapshotdeploy` included,
 even though `-keepfiles`, which the page describes, behaves completely differently there. What did
 change in beta13 is in [docs/teamspeak6-findings.md](../docs/teamspeak6-findings.md): both
 interfaces now let a guest in without credentials, and a request without an `x-api-key` header is
@@ -45,7 +45,7 @@ The capture scripts are not committed; they are throwaway. To rebuild the refere
 session and issue `help` followed by `help <command>` for each name in the first column, writing the
 raw bytes out unmodified.
 
-**Pace it — roughly 150 ms between commands is enough.** The reference above was captured that way,
+**Pace it: roughly 150 ms between commands is enough.** The reference above was captured that way,
 160 commands in one SSH session, without ever being throttled.
 
 Send faster and the server rejects with a perfectly ordinary status that says exactly what is
@@ -57,7 +57,7 @@ wrong:
 
 Honour it. **Continuing to send through a 524 escalates to an IP-level block that takes down both
 the SSH and the HTTP interface for several minutes**, and that block presents as a connection
-closed before the SSH identification string, or an empty HTTP reply — which looks nothing like rate
+closed before the SSH identification string, or an empty HTTP reply, which looks nothing like rate
 limiting. Polling to check whether it has lifted keeps it alive.
 
 Connections cost far more than commands. One session carrying 160 commands was fine; five or six
@@ -68,12 +68,12 @@ Two settings that look like they should help do not. `TSSERVER_QUERY_POOL_SIZE` 
 (tested at 32), and `TSSERVER_QUERY_SKIP_BRUTE_FORCE_CHECK` covers failed *logins*, a different
 mechanism.
 
-The flood **allow list does** work — but only if it names the address the server actually sees.
+The flood **allow list does** work, but only if it names the address the server actually sees.
 An allow-listed client address can still achieve nothing, for a reason that has nothing to do
 with the allow list: behind Docker Desktop's port publishing the server saw the
 bridge gateway for every external client. See the deployment note in the top-level
 [README](../README.md); the short version is to read the server's own log line before trusting an
-entry. `TSSERVER_QUERY_ALLOW_LIST` also names a *file* of CIDRs rather than an address — pointing it
+entry. `TSSERVER_QUERY_ALLOW_LIST` also names a *file* of CIDRs rather than an address, so pointing it
 at an address stops the query interfaces from starting at all.
 
 `tests/.../Fixtures/http/flooding.json` is a real 524, captured the hard way.

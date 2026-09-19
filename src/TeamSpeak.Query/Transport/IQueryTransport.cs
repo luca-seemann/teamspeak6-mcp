@@ -26,7 +26,7 @@ public interface IQueryTransport : IAsyncDisposable
 
     /// <summary>
     /// Gets a value indicating whether the transport speaks for one server-side query client whose
-    /// state — selected virtual server, current channel — lasts between commands.
+    /// state, meaning the selected virtual server and current channel, lasts between commands.
     /// </summary>
     /// <remarks>
     /// True for SSH, and for the WebQuery, whose internal query client keeps its channel between
@@ -44,7 +44,7 @@ public interface IQueryTransport : IAsyncDisposable
     /// <returns>What <paramref name="work"/> returns.</returns>
     /// <remarks>
     /// No other caller's command can run between the commands of <paramref name="work"/>, so a
-    /// sequence that depends on session state — which client this session is, which channel it is in —
+    /// sequence that depends on session state, which client this session is and which channel it is in,
     /// cannot have that state changed underneath it. Keep sequences short: every other caller on the
     /// connection waits for them. A transport without a session runs the commands as they come.
     /// </remarks>
@@ -57,7 +57,7 @@ public interface IQueryTransport : IAsyncDisposable
     /// <remarks>
     /// The command is addressed to <see cref="QueryCommand.VirtualServerId"/>, or to the profile's
     /// default virtual server when that is unset. The two interfaces express this completely
-    /// differently — SSH has a stateful <c>use</c> command, the WebQuery puts the id in the URL — and
+    /// differently, since SSH has a stateful <c>use</c> command while the WebQuery puts the id in the URL, and
     /// an implementation must make selection and command one indivisible step, because a transport is
     /// shared by concurrent callers.
     /// </remarks>

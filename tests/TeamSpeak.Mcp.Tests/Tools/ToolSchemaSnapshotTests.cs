@@ -15,8 +15,8 @@ namespace TeamSpeak.Mcp.Tests.Tools;
 /// Pins the MCP surface: tool names, descriptions, input and output schemas, and annotations.
 /// </summary>
 /// <remarks>
-/// A model sees nothing but these schemas, so an accidental change to one — a renamed parameter, a
-/// lost annotation — is a breaking change for every client. When a change is intended, run the tests
+/// A model sees nothing but these schemas, so an accidental change to one, a renamed parameter or a a
+/// lost annotation, is a breaking change for every client. When a change is intended, run the tests
 /// with <c>TSMCP_UPDATE_SNAPSHOTS=1</c>, review the diff of <c>Snapshots/tools.json</c> and commit it.
 /// </remarks>
 public class ToolSchemaSnapshotTests

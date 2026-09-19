@@ -156,7 +156,7 @@ All notable changes to this project are documented here. The format follows
   granted. It takes permission names, or a `command` whose requirements it reads from the server's
   own help, so "may I stop a virtual server?" can be answered without sending `serverstop`. Every
   other permission tool asks about somebody else, which leaves the commonest question after a
-  refusal — what am *I* allowed to do — to guesswork.
+  refusal, what am *I* allowed to do, to guesswork.
 - Refusals explain themselves differently for a guest profile: `2568` names the server's
   `Guest Server Query` group rather than a query login it does not have, and `5120` says TeamSpeak
   does not allow guests that command at all.
@@ -307,7 +307,7 @@ All notable changes to this project are documented here. The format follows
 - `ts_vserver_snapshot_deploy` could deploy with `-keepfiles` against a server it crashes. On
   TeamSpeak 6.0.0-beta12.1 that crashed the server, with and without files stored in channels, and
   left the virtual server impossible to start, select or delete. `serversnapshotdeploy -keepfiles`
-  is refused on every path, `ts_query_raw` included, below the 6.0.0-beta13 that fixes it — see the
+  is refused on every path, `ts_query_raw` included, below the 6.0.0-beta13 that fixes it; see the
   `keepFiles` entry above.
 - SSH sessions were dropped by the server after about 30 idle seconds, because the keepalive only
   fired after 120, based on a documented 300-second timeout that did not hold on 6.0.0-beta12.1.

@@ -37,8 +37,8 @@ servers, or against a second TeamSpeak build.
   where 38 of the 39 live tests pass on the same parsers, but nothing pins that fixture by fixture.
 - **The test server is small, and often has no human client.** It carries a permanent channel tree
   of about two dozen channels, but usually only the query session is connected, so the
-  client-facing tools — client listing and decoding, effective permissions, complaints, talker status
-  — have met a real person only on the occasions someone was connected, and otherwise in unit tests.
+  client-facing tools, among them client listing and decoding, effective permissions, complaints and
+  talker status, have met a real person only on the occasions someone was connected, and otherwise in unit tests.
   Several live tests skip themselves when nobody is online. After the phase 9 transport changes they
   ran again with a client connected and passed; only the disruptive test was left out.
 - **Only two instance-wide WebQuery paths were probed.** `serverstart` and `serveridgetbyport` are
@@ -81,8 +81,8 @@ servers, or against a second TeamSpeak build.
   ten on 18 September 2026, `ts_file_download` came out with the SDK-injected
   `IProgress<ProgressNotificationValue>` parameter in its input schema, where every other run leaves
   it out; the runs before and after, five of them in a row, were byte-identical. The cause is not
-  known — a race between the test classes that each build a host is the obvious suspect, since the
-  project runs them in parallel — so a snapshot regenerated in such a run would commit a schema the
+  known. A race between the test classes that each build a host is the obvious suspect, since the
+  project runs them in parallel, so a snapshot regenerated in such a run would commit a schema the
   server does not really serve. Compare the diff before committing a regenerated snapshot.
 - **`serverstop` is refused on every version, which is broader than what was measured.** The bug was
   measured on 6.0.0-beta13 only, and TeamSpeak confirmed it there. Whether 6.0.0-beta12.1 shares it

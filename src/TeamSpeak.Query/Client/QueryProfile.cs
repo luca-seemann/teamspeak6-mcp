@@ -38,8 +38,8 @@ public sealed class QueryProfile
     /// <remarks>
     /// Added in TeamSpeak 6.0.0-beta13 and measured there: the SSH interface accepts the user
     /// <c>guest</c> with any password, the empty one included, and the WebQuery treats a request
-    /// without an <c>x-api-key</c> header the same way. Such a session is nobody — <c>whoami</c>
-    /// reports <c>client_database_id=0</c> and no login name — and holds only what the virtual
+    /// without an <c>x-api-key</c> header the same way. Such a session is nobody, since <c>whoami</c>
+    /// reports <c>client_database_id=0</c> and no login name, and it holds only what the virtual
     /// server's <c>Guest Server Query</c> group grants, which by default is nothing but
     /// <c>version</c>, <c>whoami</c> and <c>use</c>.
     /// </remarks>
@@ -114,8 +114,8 @@ public sealed class QueryProfile
     /// Gets a value indicating whether this profile reaches the server as the ServerQuery guest.
     /// </summary>
     /// <remarks>
-    /// Deliberately an explicit choice — <see cref="Username"/> set to <see cref="GuestUsername"/>
-    /// and no credentials — rather than something a profile falls back to. A forgotten password or
+    /// Deliberately an explicit choice, <see cref="Username"/> set to <see cref="GuestUsername"/>
+    /// with no credentials, rather than something a profile falls back to. A forgotten password or
     /// API key stays an error instead of quietly becoming a session that can read almost nothing.
     /// </remarks>
     public bool IsGuest =>

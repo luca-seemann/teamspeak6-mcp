@@ -6,8 +6,8 @@ namespace TeamSpeak.Query.Protocol;
 /// <remarks>
 /// <para>
 /// A response is zero or more payload lines followed by a status line such as
-/// <c>error id=0 msg=ok</c>. There is no prompt to synchronise on — despite what the official
-/// documentation shows, the server never emits one — so the status line is the only frame marker.
+/// <c>error id=0 msg=ok</c>. There is no prompt to synchronise on. Despite what the official
+/// documentation shows, the server never emits one, so the status line is the only frame marker.
 /// </para>
 /// <para>
 /// Only a status line that starts its line ends a response. Measured on 6.0.0-beta12.1: a

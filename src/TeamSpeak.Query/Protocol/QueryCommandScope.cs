@@ -9,7 +9,7 @@ namespace TeamSpeak.Query.Protocol;
 /// Both transports need the distinction, for different reasons. The WebQuery requests an
 /// instance-wide command as <c>/version</c> and everything else as <c>/{sid}/{command}</c>. The SSH
 /// transport sends <c>use</c> before a scoped command when a different virtual server is selected,
-/// and must not do so before an instance-wide one — <c>serverstart</c> on a stopped server would
+/// and must not do so before an instance-wide one: <c>serverstart</c> on a stopped server would
 /// otherwise fail on the <c>use</c> it never needed.
 /// </para>
 /// <para>

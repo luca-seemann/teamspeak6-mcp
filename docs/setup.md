@@ -164,15 +164,15 @@ TSMCP_TeamSpeak__Profiles__public__Host=ts.example.com
 TSMCP_TeamSpeak__Profiles__public__Username=guest
 ```
 
-Over SSH the server takes that name with any password; over the WebQuery — add
-`__WebQueryUrl=http://ts.example.com:10080` and select it with `__Transport=WebQuery` — the request
+Over SSH the server takes that name with any password; over the WebQuery, where you add
+`__WebQueryUrl=http://ts.example.com:10080` and select it with `__Transport=WebQuery`, the request
 simply carries no key. `ts_profiles_list` marks such a profile as a guest.
 
 A guest is nobody on the server, and by default may do almost nothing: `ts_whoami`, the server
 version, and nothing else. Everything else comes back as *insufficient client permissions* or *out
 of scope*, which is the TeamSpeak server's answer, not this server's safety level. To make a guest
 profile useful, grant the permissions you want it to have to server group **1, `Guest Server
-Query`**, on the TeamSpeak side — that group covers guests on both interfaces. Grant read
+Query`**, on the TeamSpeak side, because that group covers guests on both interfaces. Grant read
 permissions only; a guest login is unauthenticated, and anyone else can use it too.
 
 **Claude Desktop** reads `claude_desktop_config.json`, in `%APPDATA%\Claude\` on Windows and
@@ -195,17 +195,17 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | none, so file tools pass content inline only |
 | `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `32768` (32 KiB, about 10,000 tokens) |
 | `TeamSpeak:FileTransfer:MaxLocalBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxLocalBytes` | `1073741824` (1 GiB); `0` for no limit |
-| `TeamSpeak:Http:BearerToken` | `TSMCP_TeamSpeak__Http__BearerToken` | — (Streamable HTTP only; required when bound to a non-loopback address) |
-| `TeamSpeak:Http:AllowedOrigins:<n>` | `TSMCP_TeamSpeak__Http__AllowedOrigins__<n>` | — (only loopback origins) |
-| `TeamSpeak:Http:AllowedHosts:<n>` | `TSMCP_TeamSpeak__Http__AllowedHosts__<n>` | — (only loopback host names; checked when no token is set) |
+| `TeamSpeak:Http:BearerToken` | `TSMCP_TeamSpeak__Http__BearerToken` | none (Streamable HTTP only; required when bound to a non-loopback address) |
+| `TeamSpeak:Http:AllowedOrigins:<n>` | `TSMCP_TeamSpeak__Http__AllowedOrigins__<n>` | none (only loopback origins) |
+| `TeamSpeak:Http:AllowedHosts:<n>` | `TSMCP_TeamSpeak__Http__AllowedHosts__<n>` | none (only loopback host names; checked when no token is set) |
 | `TeamSpeak:KnownHostsFile` | `TSMCP_TeamSpeak__KnownHostsFile` | `teamspeak6-mcp/known_hosts` in `%LOCALAPPDATA%` (Windows) or `~/.local/share` (Linux) |
-| `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | — |
+| `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | none |
 | `TeamSpeak:Profiles:<name>:Username` | `TSMCP_TeamSpeak__Profiles__<name>__Username` | `serveradmin`; `guest`, with no credentials, connects as the ServerQuery guest (6.0.0-beta13 and above) |
-| `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | — (enables SSH) |
-| `TeamSpeak:Profiles:<name>:HostKeyFingerprint` | `TSMCP_TeamSpeak__Profiles__<name>__HostKeyFingerprint` | — (the first key seen is remembered) |
+| `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | none, and it is what enables SSH |
+| `TeamSpeak:Profiles:<name>:HostKeyFingerprint` | `TSMCP_TeamSpeak__Profiles__<name>__HostKeyFingerprint` | none, so the first key seen is remembered |
 | `TeamSpeak:Profiles:<name>:SshPort` | `TSMCP_TeamSpeak__Profiles__<name>__SshPort` | `10022` |
-| `TeamSpeak:Profiles:<name>:WebQueryUrl` | `TSMCP_TeamSpeak__Profiles__<name>__WebQueryUrl` | — |
-| `TeamSpeak:Profiles:<name>:ApiKey` | `TSMCP_TeamSpeak__Profiles__<name>__ApiKey` | — (enables the WebQuery) |
+| `TeamSpeak:Profiles:<name>:WebQueryUrl` | `TSMCP_TeamSpeak__Profiles__<name>__WebQueryUrl` | none |
+| `TeamSpeak:Profiles:<name>:ApiKey` | `TSMCP_TeamSpeak__Profiles__<name>__ApiKey` | none, and it is what enables the WebQuery |
 | `TeamSpeak:Profiles:<name>:Transport` | `TSMCP_TeamSpeak__Profiles__<name>__Transport` | `Auto` (SSH when a password is set) |
 | `TeamSpeak:Profiles:<name>:DefaultVirtualServerId` | `TSMCP_TeamSpeak__Profiles__<name>__DefaultVirtualServerId` | `1` |
 | `TeamSpeak:Profiles:<name>:Safety` | `TSMCP_TeamSpeak__Profiles__<name>__Safety` | the global level |
@@ -246,7 +246,7 @@ TSMCP_TeamSpeak__Http__BearerToken=<at least 32 random characters, e.g. openssl 
 
 ## Exempting this server from flood protection
 
-Not required — the client paces itself and works against a stock server — but it makes life easier
+Not required, since the client paces itself and works against a stock server, but it makes life easier
 where the MCP server and the TeamSpeak server are both yours.
 
 `TSSERVER_QUERY_ALLOW_LIST` names a **file of CIDRs**, not an address. Pointing the variable at an
@@ -260,7 +260,7 @@ docker exec <container> sh -c \
 docker restart <container>
 ```
 
-Use the address the server actually sees, per the section above — the bridge network where
+Use the address the server actually sees, per the section above: the bridge network where
 addresses are rewritten, the real client address where they are not. Confirm it took by looking for
 the startup line the server writes:
 
@@ -287,7 +287,7 @@ arrive. Docker Desktop on Windows and macOS routes through a proxy chain into it
 rewrites the source; the same happens on Linux for traffic that goes through the userland proxy.
 
 Where the addresses are rewritten, per-IP allow and deny lists cannot tell anyone apart, so
-allow-listing your client's real address silently does nothing — the entry loads and never
+allow-listing your client's real address silently does nothing, because the entry loads and never
 matches. Flood accounting is per IP too, so every external client shares one counter and one
 impatient script can throttle everybody.
 

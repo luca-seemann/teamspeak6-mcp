@@ -10,7 +10,7 @@ namespace TeamSpeak.Query.Protocol;
 /// <para>
 /// The <c>version</c> command answers with a string such as <c>6.0.0-beta13</c>: a numeric core and,
 /// while the series is in beta, a pre-release part like <c>beta12.1</c>. Some behaviour differs
-/// between betas — and one command crashed servers before a certain build — so a caller sometimes
+/// between betas, and one command crashed servers before a certain build, so a caller sometimes
 /// has to ask whether the server it is talking to is at least a given version.
 /// </para>
 /// <para>

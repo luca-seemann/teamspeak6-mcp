@@ -6,7 +6,7 @@ namespace TeamSpeak.Query.Client;
 /// <remarks>
 /// Reconnecting is not free against a TeamSpeak server: a flurry of connection attempts is itself
 /// what the flood protection punishes, and the block it hands out takes down both query interfaces
-/// for minutes. So the delay grows quickly, is capped, and carries jitter — several profiles or
+/// for minutes. So the delay grows quickly, is capped, and carries jitter, because several profiles or
 /// several processes recovering from the same outage must not march in step.
 /// </remarks>
 public sealed class ReconnectPolicy

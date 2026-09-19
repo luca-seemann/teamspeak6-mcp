@@ -4,7 +4,7 @@ namespace TeamSpeak.Mcp.IntegrationTests;
 /// The live server the integration suite runs against, taken from the environment.
 /// </summary>
 /// <remarks>
-/// Nothing here is committed. Point the suite at a disposable TeamSpeak 6 instance — these tests
+/// Nothing here is committed. Point the suite at a disposable TeamSpeak 6 instance, because these tests
 /// connect for real, and some of them will eventually write.
 /// </remarks>
 internal static class LiveServer

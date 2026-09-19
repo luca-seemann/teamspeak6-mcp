@@ -86,7 +86,7 @@ When the code and `reference/serverquery-6.0.0-beta12.1.txt` disagree, the refer
 | ├ Resources | `ts://profiles`, `ts://{profile}/permissions`, and `info`, `channels`, `clients`, `groups` per virtual server. |
 | └ Prompts | `server-audit`, `explain-user-permissions`, `cleanup-channel-tree`, `onboard-new-member`: the tools to use in order, and what the model may change. |
 | Packaging | `dotnet publish -r <rid>` gives one self-contained, ReadyToRun-compiled executable for win-x64, linux-x64 or linux-arm64. `dotnet pack` gives the `TeamSpeak6.Mcp` tool package, of type `McpServer`, for `dnx`. `docker/Dockerfile` puts the binary on `runtime-deps`. |
-| `reference/` | The captured ServerQuery reference — 143 commands in its index, 141 with their own page — and the source of truth for this project. |
+| `reference/` | The captured ServerQuery reference, 143 commands in its index, 141 with their own page, and the source of truth for this project. |
 
 ## House rules
 
@@ -104,7 +104,7 @@ When the code and `reference/serverquery-6.0.0-beta12.1.txt` disagree, the refer
 ## AI-assisted contributions
 
 Welcome, on the same terms as any other: you are the author of what you open a pull request for.
-Read it, run the tests, and be able to explain why the change is right — and where it touches the
+Read it, run the tests, and be able to explain why the change is right, and where it touches the
 query protocol, say whether you checked it against a real TeamSpeak 6 server or against
 `reference/serverquery-6.0.0-beta12.1.txt`. What gets reviewed is the diff, not its origin.
 

@@ -98,8 +98,8 @@ a new number, so ids read before it are stale. It also drops the files stored in
 `keepFiles` is set, which was measured on 6.0.0-beta13: the files were still in their channel, under
 its new id, after a deploy with the option, and gone after the same snapshot was deployed without it. That option is allowed only against servers from **6.0.0-beta13** on, where it
 was measured to be harmless: on 6.0.0-beta12.1 it crashed the server, and the virtual server could
-not be started, selected or deleted afterwards, until its database was wiped. Below that version —
-and against a server that does not answer `version` — it is refused on every path, `ts_query_raw`
+not be started, selected or deleted afterwards, until its database was wiped. Below that version, and against a server that does not answer
+`version`, it is refused on every path, `ts_query_raw`
 included. The check costs one `version` command before the deploy.
 
 `ts_client_kick` and `ts_ban_add` refuse to act on this server's own query session, which would
@@ -137,7 +137,7 @@ Server Admin holds by default, keeps out the channel group.
 (`2568`), or before trying something that might be refused: it names the login, the server groups it
 holds and the value it has for each permission asked about, where a permission it holds nowhere
 comes back as `granted: false`. Rather than naming permissions, `command` looks up what a
-ServerQuery command requires, read from the server's own help — so `command: "serverstop"` answers
+ServerQuery command requires, read from the server's own help, so `command: "serverstop"` answers
 "may this session stop a virtual server?" without sending `serverstop`. That lookup needs an SSH
 profile, because the WebQuery serves no help. A guest profile has no account, so it holds no groups.
 

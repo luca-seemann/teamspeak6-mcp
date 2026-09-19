@@ -80,7 +80,7 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
         var subscribed = await events.SubscribeAsync([EventCategoryName.TextServer], virtualServerId: 1, cancellationToken: Ct);
         try
         {
-            // A transfer left over from the file tests makes the stop hang on 6.0.0-beta13 — and this
+            // A transfer left over from the file tests makes the stop hang on 6.0.0-beta13, and this
             // server refuses a stop while one is pending. They lapse by themselves: an unused ticket
             // after about two minutes, an upload that broke off after about thirty seconds.
             await WaitForQuietTransfersAsync(executor);

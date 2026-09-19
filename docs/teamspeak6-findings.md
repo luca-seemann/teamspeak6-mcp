@@ -8,15 +8,15 @@ assumption, and each cost real time to find.
 **There is no public command reference.** The official docs have four query pages and not one of
 them lists a command, an endpoint path, or a response shape. The real reference ships inside the
 server package. We captured it by running `help` and then `help <command>` for every command in its
-index — 143 names, 141 of them with a page of their own (`help` is the overview, `quit` has none);
+index, 143 names, 141 of them with a page of their own (`help` is the overview, `quit` has none);
 it lives in `reference/`.
 
 **The WebQuery authenticates with `x-api-key` and nothing else.** The docs say HTTP Basic Auth with
-`serveradmin` credentials. It is refused — correct credentials still return `5124 missing apikey`,
+`serveradmin` credentials. It is refused: correct credentials still return `5124 missing apikey`,
 while a bad key returns the distinct `5122 invalid apikey`. Two different codes are what proves the
 header is the only channel the server reads. Keys come from `apikeyadd`, which runs over SSH only,
 so **SSH is the bootstrap path for using the WebQuery at all**. On 6.0.0-beta13 a request with no
-header at all is no longer refused either, but answered as the ServerQuery guest — see
+header at all is no longer refused either, but answered as the ServerQuery guest; see
 [what beta13 changed](#what-600-beta13-changed); a wrong key is still `5122`, and everything worth
 reading still needs a key.
 
@@ -27,7 +27,7 @@ must open the channel without a terminal and frame responses on the trailing `er
 
 **Connections cost far more than commands.** 160 commands over one session at 150 ms spacing were
 never throttled. Five or six connections in quick succession earned an IP-level block that took
-*both* interfaces down for minutes. A command sent too fast gets a polite `524 client is flooding —
+*both* interfaces down for minutes. A command sent too fast gets a polite `524 client is flooding,
 please wait 1 seconds`; **sending on through that rejection** is what escalates to the block, and
 polling to see whether it has lifted keeps it alive.
 
@@ -37,7 +37,7 @@ polling to see whether it has lifted keeps it alive.
 query from 4 172.20.0.1:49196 issued: login with account "serveradmin"
 ```
 
-— for a connection from a LAN client at a completely different address. Per-IP allow lists
+for a connection from a LAN client at a completely different address. Per-IP allow lists
 therefore cannot match anything, which
 is why allow-listing a real client address achieved nothing however often it was tried. Native
 Docker on Linux forwards with DNAT and preserves the source, so this is deployment-specific: read
@@ -66,7 +66,7 @@ registered for server events, watched a query session leave:
 The server log read through `logview` records neither. An earlier version of this note said the slot
 was freed at once; that was never measured, and it was wrong.
 
-**Events are SSH-only.** Over the WebQuery, `servernotifyregister` returns `5120 out of scope —
+**Events are SSH-only.** Over the WebQuery, `servernotifyregister` returns `5120 out of scope,
 command not in api key scope`, on 6.0.0-beta13 as on beta12.1, even with a `manage` key.
 
 **What each event registration delivers is not documented, so it was measured one category at a
@@ -220,7 +220,7 @@ forum on 14 September 2026:
 [`-keepfiles` crashes the server and leaves the virtual server unrecoverable](https://community.teamspeak.com/t/keepfiles-crashes-the-server-and-leaves-the-virtual-server-unrecoverable/65326).
 
 **6.0.0-beta13 fixes it.** Measured on 18 September 2026 on the same server, upgraded: the deploy
-that had killed beta12.1 answered `error id=0 msg=ok` in **0.3 seconds**, twice — once in the
+that had killed beta12.1 answered `error id=0 msg=ok` in **0.3 seconds**, twice: once in the
 documented option-first form, once as the wire line this project actually sends
 (`serversnapshotdeploy version=3 data=… -mapping -keepfiles`, options last). The instance stayed up,
 the virtual server restarted and came back `online` with its 26 channels and a valid
@@ -234,7 +234,7 @@ project's own tools, with a control:
 - A deploy of a fresh snapshot **with** `keepFiles` renumbered the Lobby to 192, where both files
   were still listed, with the same sizes.
 - Deploying the very same snapshot **without** the option renumbered it again, to 218, and that
-  channel was empty — `ftgetfilelist` answered `1281`.
+  channel was empty, and `ftgetfilelist` answered `1281`.
 
 So the difference is real, and the old note that a deploy always drops the channels' files now holds
 only for a deploy without `-keepfiles`.
@@ -273,7 +273,7 @@ and the roughly 30-second idle timeout of a query session.
   unknown user is still `Permission denied (password)`, so it is that name and nothing else.
 - Over the WebQuery a request **without an `x-api-key` header** is answered the same way. That is a
   real change: on beta12.1 it was `401` with `5124 missing apikey`. A header carrying a key the
-  server does not know is still `5122 invalid apikey`, so sending an empty key is not the way in —
+  server does not know is still `5122 invalid apikey`, so sending an empty key is not the way in;
   sending no header is.
 - Such a session is nobody: `whoami` reports `client_database_id=0` and an empty
   `client_login_name`. `use <sid>` works and joins the virtual server as a query client named
@@ -283,7 +283,7 @@ and the roughly 30-second idle timeout of a query session.
 - Everything else is refused in one of two ways: `2568 insufficient client permissions` with the
   `failed_permid` (SSH) or `failed_permission` name (WebQuery) for anything permission-gated, and
   `5120 out of scope` with `command not allowed for guest access` for commands guests may not reach
-  at all — `serverlist`, `serverinfo` and `login` over the WebQuery among them.
+  at all, among them `serverlist`, `serverinfo` and `login` over the WebQuery among them.
 - A guest can be made useful: granting a permission to server group 1, `Guest Server Query`, reaches
   both interfaces at once. Granting `b_virtualserver_channel_list` there made `channellist` work for
   the SSH guest and for `GET /1/channellist` without a key, and removing it closed both again.
@@ -292,7 +292,7 @@ and the roughly 30-second idle timeout of a query session.
 or positionally `login <name> <password>`, upgrades a guest session in place to that account, with
 full rights including `servernotifyregister`; wrong credentials answer `520 invalid loginname or
 password`. `logout` drops back to the guest and deselects the virtual server. Over the WebQuery
-`login` is refused for guests with `5120`, so there is no privilege upgrade there — an API key
+`login` is refused for guests with `5120`, so there is no privilege upgrade there, and an API key
 remains the only way.
 
 **`serversnapshotdeploy -keepfiles` no longer crashes**, as described above.
@@ -300,13 +300,13 @@ remains the only way.
 **`logview` on a virtual server without a log file answers `2052 file input/output error`**, rather
 than an empty result. Seen right after the instance was restarted: the instance log
 (`logview instance=1`) answered normally, while the virtual server's own log did not exist, because
-that server logs almost nothing — its `virtualserver_log_client`, `_log_query`, `_log_channel` and
+that server logs almost nothing: its `virtualserver_log_client`, `_log_query`, `_log_channel` and
 `_log_server` are all 0. A single `logadd` created the file, and `logview` worked from then on. A
 live test caught this, and `ts_log_view` now explains the code instead of passing it on bare.
 
 **`serverstop` did not finish, and the virtual server could not be started again.** Seen once, on
 18 September 2026, in the live test that stops a virtual server, starts it again and checks that an
-event subscription recovers — a test that passed on beta12.1. After the stop:
+event subscription recovers, a test that passed on beta12.1. After the stop:
 
 - `serverlist` reported `virtualserver_status=shutting down` and stayed there for over ten minutes.
 - `use 1` was refused with `1035 server got an invalid status for this operation`, so nothing
@@ -315,7 +315,7 @@ event subscription recovers — a test that passed on beta12.1. After the stop:
   counts against the licence, while `hostinfo` reported `virtualservers_running_total=0`.
 - The instance's own log repeated, every ten seconds, from the moment of the stop:
   `ERROR VirtualSvrMgr stopserver for sid: 1 still waiting for shutdown`.
-- The instance itself stayed healthy — SSH, the WebQuery and `hostinfo` all answered — so only
+- The instance itself stayed healthy, with SSH, the WebQuery and `hostinfo` all answering, so only
   `serverprocessstop` and starting the process again brought the virtual server back.
 
 **The cause is a pending file transfer.** Five further attempts the same day narrowed it down:
@@ -337,7 +337,7 @@ seconds. `use 1` answered `1035` and `ftlist` `1024`, so nothing could be cleane
 query interface, and `serverprocessstop` plus a fresh start was again the only way back.
 
 So the event hub, the first suspect, is innocent: what the live suite adds is a file test a minute
-earlier that leaves a transfer behind. And it takes exactly one — this is not a load problem.
+earlier that leaves a transfer behind. And it takes exactly one, so this is not a load problem.
 
 **But the damage outlives the transfer, and that is the worse half.** Measured on 19 September 2026,
 after the process had been restarted three times:
@@ -362,7 +362,7 @@ after the process had been restarted three times:
   ```
 
   The deploy's shutdown completes and says so; the `serverstop` fourteen seconds later waits
-  forever — that run was still repeating the line more than fifteen minutes later. So the internal
+  forever, and that run was still repeating the line more than fifteen minutes later. So the internal
   shutdown path works on a virtual server whose `serverstop` no longer does, which is the most
   useful pointer there is for whoever fixes this, and a deploy is no escape from the state.
 
@@ -379,14 +379,14 @@ into this state; it is not what keeps it there.
 The two ways it presents are worth knowing apart: `serverstop` either answers `ok` and the virtual
 server never finishes shutting down, or the command never answers at all. Both leave the same
 wreckage. This server **refuses `serverstop` while any transfer is pending**, on every path
-including `ts_query_raw`, which closes the known way in — but a virtual server already in this state
+including `ts_query_raw`, which closes the known way in. But a virtual server already in this state
 cannot be stopped at all, and no check this server can make will tell you which one you have.
 
 A bug report was posted to the TeamSpeak community forum on 19 September 2026:
 [`serverstop` never completes when a file transfer is pending, and the virtual server can never be stopped again](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376).
 
 **TeamSpeak answered within the hour, and corrected the story above**: they had already seen it in
-their own testing, a hotfix is coming, and — the part that matters here — *"it was not necessary to
+their own testing, a hotfix is coming, and this is the part that matters here: *"it was not necessary to
 start a file transfer, just trying to stop the server was causing trouble"*. So `serverstop` is
 broken in this build, full stop. The pending transfer was not the trigger; it was what happened to
 be there the first time, and the table above reads better as evidence that the state does not depend
@@ -407,7 +407,7 @@ excludedportrange protocol=tcp` showed a reserved range that included it and the
 reservations, often made for Hyper-V or WSL, can change when the machine restarts.
 
 `ShellStream.ReadAsync` returns zero because nothing has arrived yet, not because the stream ended
-— treating zero as EOF silently kills the reader after the greeting. And it ignores its
+Treating zero as EOF silently kills the reader after the greeting. And it ignores its
 cancellation token, so disposal must dispose the stream rather than merely cancel.
 
 The test host appeared to hang for two minutes after every run. A thread dump showed no frames from

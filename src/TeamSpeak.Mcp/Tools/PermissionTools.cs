@@ -263,7 +263,7 @@ public sealed partial class PermissionTools(QueryExecutor executor, PermissionNa
     /// <summary>Asks the server for the session's own value of one permission.</summary>
     /// <remarks>
     /// The server validates the name itself, answering <c>2562</c> for one it does not know, so this
-    /// needs no permission catalog — which matters, because a session that may not read the catalog
+    /// needs no permission catalog, which matters because a session that may not read the catalog
     /// can still be asked about itself. Every outcome is reported rather than thrown: measured on
     /// 6.0.0-beta13, a guest session is refused <c>permget</c> entirely with <c>2568</c>, and "you may
     /// not even ask" is the answer to the question, not a reason to abandon the other permissions.

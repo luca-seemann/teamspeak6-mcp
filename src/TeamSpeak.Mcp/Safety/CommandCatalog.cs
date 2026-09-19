@@ -17,7 +17,7 @@ namespace TeamSpeak.Mcp.Safety;
 /// </para>
 /// <para>
 /// Two judgements go beyond "does it change state". Commands that hand out credentials or reveal
-/// them — privilege keys, temporary passwords, snapshots, HTTP file transfer tokens — are never
+/// them, such as privilege keys, temporary passwords, snapshots and HTTP file transfer tokens, are never
 /// <see cref="SafetyLevel.ReadOnly"/>, because a leaked privilege key is as damaging as a changed
 /// setting. The key <c>ftinitdownload</c> returns is not such a credential: it opens one download of
 /// one file and nothing else. And commands that grant server-wide power, mint or remove credentials,

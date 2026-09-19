@@ -17,8 +17,8 @@ namespace TeamSpeak.Mcp.IntegrationTests;
 /// <remarks>
 /// Everything a test creates carries a unique "tsmcp-live" name and is removed in a finally block, so
 /// a failure leaves no more behind than one test's objects. Actions that cannot be undone or would
-/// disturb the shared test server — kicks, identity deletion, snapshot deployment, permission reset,
-/// stopping the only virtual server — are covered by unit tests only.
+/// disturb the shared test server, such as kicks, identity deletion, snapshot deployment, permission reset,
+/// stopping the only virtual server, are covered by unit tests only.
 /// </remarks>
 [Collection(LiveServerDefinition.Name)]
 public sealed class WriteToolIntegrationTests(LiveServerFixture server)

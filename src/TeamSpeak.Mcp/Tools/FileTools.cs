@@ -17,8 +17,8 @@ namespace TeamSpeak.Mcp.Tools;
 /// <param name="executor">The shared path to the server.</param>
 /// <param name="options">Where downloads may be saved, and how much comes back inline.</param>
 /// <remarks>
-/// TeamSpeak refuses every file command over the WebQuery — measured on 6.0.0-beta12.1 and again on
-/// 6.0.0-beta13 — so these tools work on profiles that use SSH.
+/// TeamSpeak refuses every file command over the WebQuery, measured on 6.0.0-beta12.1 and again on
+/// 6.0.0-beta13, so these tools work on profiles that use SSH.
 /// </remarks>
 [McpServerToolType]
 public sealed class FileTools(QueryExecutor executor, FileTransferOptions options)
