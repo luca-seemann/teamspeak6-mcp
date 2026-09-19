@@ -250,7 +250,7 @@ actually change is still decided by the safety level.
 
 ## Tool groups
 
-A client sends every tool definition to the model with each request: about 34,000 tokens for all 85.
+A client sends every tool definition to the model with each request: about 34,500 tokens for all 85.
 A deployment that never needs some of them can switch whole groups off, for example
 `TSMCP_TeamSpeak__DisabledToolGroups=files,events`. An unknown name stops the start with the list of
 valid ones.
@@ -263,7 +263,7 @@ valid ones.
 | `channels` | `ts_channel_*` | ~2,600 |
 | `groups` | `ts_servergroup_*`, `ts_channelgroup_*`, `ts_client_groups`, `ts_client_channelgroup_set` | ~4,000 |
 | `clients` | `ts_client_*`, `ts_clientdb_*`, `ts_message_*`, `ts_offline_message`, `ts_custom_*` | ~7,300 |
-| `permissions` | `ts_perm_*` | ~3,000 |
+| `permissions` | `ts_perm_*` | ~3,500 |
 | `moderation` | `ts_ban_*`, `ts_complaint_*`, `ts_token_*`, `ts_log_*` | ~3,600 |
 | `access` | `ts_apikey_*`, `ts_querylogin_*` | ~1,500 |
 | `events` | `ts_events_*` | ~3,000 |
