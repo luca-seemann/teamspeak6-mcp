@@ -35,10 +35,13 @@ lists everything that is unverified, including what cannot be checked on the tes
   `tests/TeamSpeak.Mcp.Tests` in a loop with `TSMCP_UPDATE_SNAPSHOTS=1` and compare the bytes, and if
   it reproduces, try putting every test class that builds a host into one xunit collection so they
   cannot run at the same time.
-- **Act on the answer to the `serverstop` bug report.** Waiting for TeamSpeak. The report is
-  [`serverstop` never completes when a file transfer is pending](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376),
-  posted on 19 September 2026. Two answers would change code: if a version is named in which this is
-  fixed, the refusal in [KnownCrashes](src/TeamSpeak.Mcp/Safety/KnownCrashes.cs) should be gated on
-  it the way `-keepfiles` is, instead of applying to every version; and if the state can be cleared
-  without losing the virtual server, that belongs in the refusal message and in
+- **Lift the `serverstop` refusal when the hotfix lands.** Waiting for TeamSpeak to name the version.
+  They confirmed the bug on 19 September 2026 in
+  [the report](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376)
+  and announced a hotfix. Then: set `KnownCrashes.StopFixedIn` to that version, so the refusal
+  narrows to the releases below it; un-skip
+  `A_subscription_recovers_on_its_own_after_its_virtual_server_is_restarted`, which stops and starts
+  a virtual server; and put the restored assertion on `sid` and `reasonmsg` back into
+  `Stopping_a_virtual_server_passes_the_reason`. If they also say how an already stuck virtual
+  server can be freed without a process restart, that belongs in the refusal message and in
   [docs/teamspeak6-findings.md](docs/teamspeak6-findings.md).

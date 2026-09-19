@@ -134,29 +134,33 @@ public class WriteToolsTests
     [Fact]
     public async Task Stopping_a_virtual_server_passes_the_reason()
     {
+        // Stopping is refused on every version while no fixed one is known, so the only thing left to
+        // check here is that the refusal happens before anything is sent. The assertion on sid and
+        // reasonmsg belongs back here once KnownCrashes.StopFixedIn names a version.
         await using var harness = new ToolHarness(SafetyLevel.Destructive);
         harness.Transport
-            .Returns("ftlist", ToolHarness.Error(QueryErrorCode.EmptyResultSet, "database empty result set"))
+            .Returns("version", ToolHarness.Records(Fields(("version", "6.0.0-beta13"))))
             .Returns("serverstop", ToolHarness.Records());
 
-        await new VirtualServerAdminTools(harness.Executor).PowerAsync("STOP", 3, "maintenance", cancellationToken: Ct);
+        await Assert.ThrowsAsync<McpException>(() => new VirtualServerAdminTools(harness.Executor).PowerAsync(
+            "STOP", 3, "maintenance", cancellationToken: Ct));
 
-        var sent = harness.Transport.SentCommands.Single(command => command.Name == "serverstop").Parameters!;
-        Assert.Equal(("3", "maintenance"), (sent["sid"], sent["reasonmsg"]));
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name == "serverstop");
     }
 
     [Theory]
-    [InlineData("running")]
-    [InlineData("unreadable")]
-    public async Task Stopping_a_virtual_server_is_refused_while_a_file_transfer_is_pending(string ftlist)
+    [InlineData("6.0.0-beta13")]
+    [InlineData("6.0.0-beta12.1")]
+    [InlineData("")]
+    public async Task Stopping_a_virtual_server_is_refused_while_no_version_is_known_to_survive_it(string serverVersion)
     {
-        // Measured on 6.0.0-beta13: one waiting transfer was enough for serverstop never to answer,
-        // and the virtual server then stayed 'shutting down' until the whole process was restarted.
+        // On 6.0.0-beta13 a stop hung five times out of seven, needing the whole server process
+        // restarted, and TeamSpeak confirmed it without naming a version that carries the hotfix.
         await using var harness = new ToolHarness(SafetyLevel.Destructive);
         harness.Transport
-            .Returns("ftlist", ftlist == "running"
-                ? ToolHarness.Records(Fields(("serverftfid", "1"), ("status", "0")))
-                : ToolHarness.Error(QueryErrorCode.InsufficientPermissions, "insufficient client permissions"))
+            .Returns("version", serverVersion.Length == 0
+                ? ToolHarness.Error(256, "command not found")
+                : ToolHarness.Records(Fields(("version", serverVersion))))
             .Returns("serverstop", ToolHarness.Records());
 
         var refused = await Assert.ThrowsAsync<McpException>(() => new VirtualServerAdminTools(harness.Executor).PowerAsync(

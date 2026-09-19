@@ -384,8 +384,14 @@ cannot be stopped at all, and no check this server can make will tell you which 
 
 A bug report was posted to the TeamSpeak community forum on 19 September 2026:
 [`serverstop` never completes when a file transfer is pending, and the virtual server can never be stopped again](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376).
-It asks the two questions this leaves open: whether the state can be cleared without losing the
-virtual server, and whether earlier versions share the bug.
+
+**TeamSpeak answered within the hour, and corrected the story above**: they had already seen it in
+their own testing, a hotfix is coming, and — the part that matters here — *"it was not necessary to
+start a file transfer, just trying to stop the server was causing trouble"*. So `serverstop` is
+broken in this build, full stop. The pending transfer was not the trigger; it was what happened to
+be there the first time, and the table above reads better as evidence that the state does not depend
+on it: rows 5 to 7 hung with nothing pending at all. That also explains rows 1 and 2, the two stops
+that worked, as the coin landing the other way rather than as a healthy server.
 
 ## Traps that were not TeamSpeak's fault
 

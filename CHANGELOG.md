@@ -143,14 +143,14 @@ All notable changes to this project are documented here. The format follows
   `x-api-key` header at all. Both were verified against a live beta13 server. Such a session may do
   only what the server's `Guest Server Query` group grants, which by default is little more than
   `whoami`, so `ts_profiles_list` reports which profiles are guests.
-- `ts_vserver_power stop` is refused while a file transfer is running or waiting on that virtual
-  server, and so is `serverstop` through `ts_query_raw`. On TeamSpeak 6.0.0-beta13 one pending
-  transfer is enough to make the stop never finish and leave the virtual server in `shutting down`,
-  recoverable only by restarting the whole TeamSpeak process; this was reproduced deliberately with
-  a single unused upload ticket. The refusal names `ts_file_transfers` and `ts_file_manage stop`, and
-  an unreadable transfer list counts as "might be busy". It closes the known way into that state
-  rather than making a stop safe: a virtual server that has hung once hangs on every later stop too,
-  with nothing pending, and the tool descriptions and docs say so.
+- `ts_vserver_power stop` is refused, and so is `serverstop` through `ts_query_raw`. On TeamSpeak
+  6.0.0-beta13 a stop hung in five of seven measured attempts and left the virtual server in
+  `shutting down`, recoverable only by restarting the whole TeamSpeak process. TeamSpeak
+  [confirmed the bug](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376)
+  on 19 September 2026 and announced a hotfix, without yet naming the version that carries it, so
+  the refusal applies to every version until `KnownCrashes.StopFixedIn` names one. The message says
+  what still works instead: a snapshot deploy restarts a virtual server from the inside, and
+  stopping the instance takes its virtual servers with it.
 - Refusals explain themselves differently for a guest profile: `2568` names the server's
   `Guest Server Query` group rather than a query login it does not have, and `5120` says TeamSpeak
   does not allow guests that command at all.

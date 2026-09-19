@@ -84,16 +84,13 @@ servers, or against a second TeamSpeak build.
   known — a race between the test classes that each build a host is the obvious suspect, since the
   project runs them in parallel — so a snapshot regenerated in such a run would commit a schema the
   server does not really serve. Compare the diff before committing a regenerated snapshot.
-- **The `serverstop` guard closes the known way in; it does not make a stop safe.** A pending file
-  transfer making the stop hang for good was reproduced deliberately on 6.0.0-beta13, and that is
-  what the refusal checks for. But the same virtual server then hung on every later stop as well,
-  with `ftlist` empty, the leftover files deleted and the process freshly restarted, so a virtual
-  server already in that state passes the check and hangs anyway — and nothing readable through the
-  query interface tells the two apart. Two further limits: which earlier versions share the bug is
-  unknown, since a stop with a transfer pending was never tried on 6.0.0-beta12.1, so the refusal
-  applies to every version; and a profile whose login may stop a server but not read `ftlist` cannot
-  stop one through this server at all, by design, because an unreadable list counts as "might be
-  busy".
+- **`serverstop` is refused on every version, which is broader than what was measured.** The bug was
+  measured on 6.0.0-beta13 only, and TeamSpeak confirmed it there. Whether 6.0.0-beta12.1 shares it
+  was never tried, and the version that carries the announced hotfix is not known yet, so the
+  refusal covers everything until one of those answers arrives. It will be too broad from the moment
+  the hotfix ships until `KnownCrashes.StopFixedIn` is set to that version. The live test that
+  restarts a virtual server is skipped for the same reason, so subscription recovery after a restart
+  currently has no live coverage.
 - **The guest login was probed by hand, not in a live test.** Connecting as the ServerQuery guest
   over SSH and over the WebQuery, what such a session may do, and that a permission granted to
   server group 1 reaches it, were all measured against 6.0.0-beta13 on 18 September 2026, through

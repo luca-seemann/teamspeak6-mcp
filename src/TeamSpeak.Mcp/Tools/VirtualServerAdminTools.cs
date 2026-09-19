@@ -70,15 +70,13 @@ public sealed class VirtualServerAdminTools(QueryExecutor executor, FileTransfer
         ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Starts or stops a virtual server. Starting needs Write. Stopping disconnects everyone on " +
                  "it and needs Destructive; the optional reason is shown to them. The virtual server id is " +
-                 "required here rather than defaulted, so the wrong server is not stopped by accident. A " +
-                 "stop is refused while any file transfer is running or waiting on that virtual server: on " +
-                 "TeamSpeak 6.0.0-beta13 a single pending transfer makes the stop never finish, leaving the " +
-                 "server in 'shutting down' and recoverable only by restarting the whole TeamSpeak process. " +
-                 "ts_file_transfers shows them and ts_file_manage stop ends one; an abandoned transfer also " +
-                 "lapses by itself within about two minutes. That check is not a guarantee: a virtual " +
-                 "server that has hung this way once hangs on every later stop too, with nothing pending, " +
-                 "so on that version tell the user a stop may need a restart of the TeamSpeak process, and " +
-                 "check with ts_vserver_list that the status really reached offline.")]
+                 "required here rather than defaulted, so the wrong server is not stopped by accident. " +
+                 "Stopping is currently refused altogether: on TeamSpeak 6.0.0-beta13 a stop often never " +
+                 "finishes, leaving the virtual server in 'shutting down' and recoverable only by " +
+                 "restarting the whole TeamSpeak process, and TeamSpeak has confirmed the bug without yet " +
+                 "naming the version that fixes it. Tell the user that, and that two things still work: a " +
+                 "snapshot deploy restarts a virtual server from the inside, and stopping the instance " +
+                 "takes its virtual servers with it.")]
     public async Task<ActionResult> PowerAsync(
         [Description("start or stop.")][AllowedValues("start", "stop")] string action,
         [Description("The virtual server to start or stop.")] int virtualServerId,

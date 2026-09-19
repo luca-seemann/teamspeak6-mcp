@@ -66,7 +66,7 @@ public sealed class EventIntegrationTests(LiveServerFixture server)
         }
     }
 
-    [RequiresTeamSpeakServerFact]
+    [RequiresTeamSpeakServerFact(Skip = "serverstop is refused until a TeamSpeak version is known that survives it; see KnownCrashes.StopFixedIn.")]
     public async Task A_subscription_recovers_on_its_own_after_its_virtual_server_is_restarted()
     {
         await using var connections = Connections();

@@ -207,9 +207,9 @@ public sealed class MetaTools(QueryExecutor executor)
 
         // A command known to crash the server is refused before anything is read for its confirmation,
         // and the raw tool must not be the way around the confirmation the dedicated tools ask for.
-        // One whose danger depends on what the server says about itself is left to the executor,
+        // One whose danger depends on the version the server reports is left to the executor,
         // which has a connection to ask on.
-        if (!KnownCrashes.NeedsServerFacts(raw))
+        if (!KnownCrashes.NeedsServerVersion(raw))
         {
             KnownCrashes.Refuse(raw);
         }

@@ -10,9 +10,9 @@ namespace TeamSpeak.Mcp.Safety;
 /// </summary>
 /// <remarks>
 /// Checked on every path to the server, <c>ts_query_raw</c> included. A safety level decides how much
-/// a caller may change; it cannot make a wrecked server acceptable. Some of these depend on
-/// something only the server can answer — which version it runs, what it is busy with — so
-/// <see cref="NeedsServerFacts"/> says when to ask before deciding.
+/// a caller may change; it cannot make a wrecked server acceptable. Both entries here are bugs of
+/// particular server versions, so each names the version that fixes it and is refused below that;
+/// <see cref="NeedsServerVersion"/> says when the version has to be read from the server first.
 /// </remarks>
 public static class KnownCrashes
 {
@@ -27,37 +27,42 @@ public static class KnownCrashes
     public static ServerVersion KeepFilesFixedIn { get; } = ServerVersion.Parse("6.0.0-beta13");
 
     /// <summary>
-    /// Says whether refusing this command needs answers from the server itself.
+    /// The first server version in which <c>serverstop</c> can be trusted to finish, or
+    /// <see langword="null"/> while no such version is known.
+    /// </summary>
+    /// <remarks>
+    /// On 6.0.0-beta13 a stop hung five times out of seven and left the virtual server in
+    /// <c>shutting down</c> until the whole server process was restarted. TeamSpeak confirmed the bug
+    /// on 19 September 2026 and announced a hotfix, saying that no file transfer is needed to trigger
+    /// it: "just trying to stop the server was causing trouble". Until that hotfix names a version,
+    /// there is none this can clear, so every stop is refused. Setting this to the fixed version
+    /// narrows the refusal to the releases that still have the bug, the way
+    /// <see cref="KeepFilesFixedIn"/> does.
+    /// </remarks>
+    public static ServerVersion? StopFixedIn { get; }
+
+    /// <summary>
+    /// Says whether deciding on this command needs the version the server reports.
     /// </summary>
     /// <param name="command">The command about to be sent.</param>
     /// <returns>
-    /// <see langword="true"/> when <see cref="Refuse"/> decides on <see cref="ServerFacts"/> the
-    /// caller has to read from the server first.
+    /// <see langword="true"/> when <see cref="Refuse"/> decides by version, so the caller should ask
+    /// the server for it first.
     /// </returns>
-    public static bool NeedsServerFacts(QueryCommand command) => KeepsFiles(command) || StopsVirtualServer(command);
-
-    /// <summary>Says whether deciding on this command needs the server's version.</summary>
-    /// <param name="command">The command about to be sent.</param>
-    /// <returns><see langword="true"/> when <see cref="ServerFacts.Version"/> is consulted.</returns>
-    public static bool NeedsServerVersion(QueryCommand command) => KeepsFiles(command);
-
-    /// <summary>Says whether deciding on this command needs the virtual server's pending transfers.</summary>
-    /// <param name="command">The command about to be sent.</param>
-    /// <returns><see langword="true"/> when <see cref="ServerFacts.PendingTransfers"/> is consulted.</returns>
-    public static bool NeedsPendingTransfers(QueryCommand command) => StopsVirtualServer(command);
+    public static bool NeedsServerVersion(QueryCommand command) => KeepsFiles(command) || StopsVirtualServer(command);
 
     /// <summary>Throws when a command is known to wreck the server it is aimed at.</summary>
     /// <param name="command">The command about to be sent.</param>
-    /// <param name="facts">
-    /// What the server answered about itself, or <see langword="null"/> when nothing was asked. A
-    /// command whose safety depends on a fact that could not be read is refused.
+    /// <param name="serverVersion">
+    /// What the server answers to <c>version</c>, or <see langword="null"/> when it is not known. A
+    /// command whose safety depends on the version is refused while it is unknown.
     /// </param>
     /// <exception cref="McpException">Thrown for a refused command. Nothing has been sent.</exception>
-    public static void Refuse(QueryCommand command, ServerFacts? facts = null)
+    public static void Refuse(QueryCommand command, ServerVersion? serverVersion = null)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (KeepsFiles(command) && !(facts?.Version >= KeepFilesFixedIn))
+        if (KeepsFiles(command) && !(serverVersion >= KeepFilesFixedIn))
         {
             throw new McpException(
                 "serversnapshotdeploy with -keepfiles is refused, and nothing was sent. On TeamSpeak " +
@@ -67,27 +72,30 @@ public static class KnownCrashes
                 "or selected ('VIRTUALSERVER_DEFAULT_SERVER_GROUP points to 0', error 2560), deleting it " +
                 "failed with 1281 where that was tried, and only wiping the server's database brought it " +
                 $"back. It is fixed in {KeepFilesFixedIn}, and this server reports " +
-                $"{(facts?.Version is { } version ? version.Text : "no version")}. Deploy without -keepfiles " +
-                "on this server; channel files are not kept.");
+                $"{Reported(serverVersion)}. Deploy without -keepfiles on this server; channel files are " +
+                "not kept.");
         }
 
-        if (StopsVirtualServer(command) && facts?.PendingTransfers is not 0)
+        if (StopsVirtualServer(command) && !(StopFixedIn is { } fixedIn && serverVersion >= fixedIn))
         {
-            var pending = facts?.PendingTransfers is { } count
-                ? $"{count} file transfer(s) are pending on it"
-                : "this server could not read its file transfers, so it cannot tell whether any are pending";
-
             throw new McpException(
-                $"serverstop is refused, and nothing was sent: {pending}. Measured on TeamSpeak " +
-                "6.0.0-beta13: with a single transfer waiting — an upload ticket nobody connected to was " +
-                "enough — the stop never answered, the virtual server stayed 'shutting down' for good, " +
-                "'use' on it returned 1035 and starting it again 2816, and only restarting the whole " +
-                "server process brought it back. On a quiet virtual server the same stop finishes in under " +
-                "a second. Use ts_file_transfers to see what is running, ts_file_manage stop to end a " +
-                "transfer, or wait: an unused ticket lapses after about two minutes, an upload that broke " +
-                "off after about thirty seconds.");
+                "serverstop is refused, and nothing was sent. On TeamSpeak 6.0.0-beta13 a stop hung five " +
+                "times out of seven: the command either answered ok or never answered at all, and either " +
+                "way the virtual server stayed in 'shutting down' for good. It could then not be selected " +
+                "(1035) or started again (2816), no file transfer had to be involved, and only restarting " +
+                "the whole TeamSpeak server process brought it back. TeamSpeak confirmed the bug on " +
+                "19 September 2026 and announced a hotfix, so far without naming the version that carries " +
+                "it: https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376 " +
+                $"This server reports {Reported(serverVersion)}, and no version is known in which the bug " +
+                "is gone, so every stop is refused. What does still work: a snapshot deploy restarts a " +
+                "virtual server from the inside, and stopping the whole instance takes its virtual servers " +
+                "with it. Tell the user that stopping a single virtual server needs access to the " +
+                "TeamSpeak host until the hotfix is out.");
         }
     }
+
+    private static string Reported(ServerVersion? serverVersion) =>
+        serverVersion is { } version ? version.Text : "no version";
 
     private static bool KeepsFiles(QueryCommand command) =>
         Is(command, "serversnapshotdeploy")
@@ -99,15 +107,3 @@ public static class KnownCrashes
     private static bool Is(QueryCommand command, string name) =>
         string.Equals(command.Name.Trim(), name, StringComparison.OrdinalIgnoreCase);
 }
-
-/// <summary>
-/// What the server said about itself, read just before a command that could wreck it.
-/// </summary>
-/// <param name="Version">
-/// What it answers to <c>version</c>, or <see langword="null"/> when that could not be read.
-/// </param>
-/// <param name="PendingTransfers">
-/// How many file transfers are running or waiting on the virtual server the command addresses, or
-/// <see langword="null"/> when that could not be read.
-/// </param>
-public sealed record ServerFacts(ServerVersion? Version = null, int? PendingTransfers = null);

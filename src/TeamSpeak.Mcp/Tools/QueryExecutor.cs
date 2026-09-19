@@ -251,37 +251,19 @@ public sealed class QueryExecutor
         QuerySender send,
         CancellationToken cancellationToken)
     {
-        if (!KnownCrashes.NeedsServerFacts(command))
+        if (!KnownCrashes.NeedsServerVersion(command))
         {
             KnownCrashes.Refuse(command);
             return;
         }
 
-        ServerVersion? version = null;
-        int? pendingTransfers = null;
+        var response = await send(new QueryCommand("version"), cancellationToken).ConfigureAwait(false);
 
-        if (KnownCrashes.NeedsServerVersion(command))
-        {
-            var response = await send(new QueryCommand("version"), cancellationToken).ConfigureAwait(false);
-
-            version = response.Error.IsSuccess && response.Records.Count > 0
+        KnownCrashes.Refuse(
+            command,
+            response.Error.IsSuccess && response.Records.Count > 0
                 ? ServerVersion.TryParse(response.Records[0].GetString("version"))
-                : null;
-        }
-
-        if (KnownCrashes.NeedsPendingTransfers(command))
-        {
-            // Asked on the virtual server the command itself addresses, so a stop is judged by what
-            // that server is busy with. An empty result set is the server saying "none".
-            var response = await send(
-                new QueryCommand("ftlist", VirtualServerId: command.VirtualServerId), cancellationToken).ConfigureAwait(false);
-
-            pendingTransfers = response.Error.IsEmptyResult ? 0
-                : response.Error.IsSuccess ? response.Records.Count
-                : null;
-        }
-
-        KnownCrashes.Refuse(command, new ServerFacts(version, pendingTransfers));
+                : null);
     }
 
     private async Task<IQueryTransport> TransportForAsync(QueryProfile profile, CancellationToken cancellationToken)

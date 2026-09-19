@@ -80,19 +80,18 @@ should be, so `ts_vserver_snapshot_create` saves it with `localPath` inside
 `TeamSpeak:FileTransfer:LocalDirectory`, and `ts_vserver_snapshot_deploy` reads it back from there.
 Without `localPath`, a snapshot comes back inline only up to `MaxInlineBytes`.
 
-**Stopping a virtual server is dangerous on TeamSpeak 6.0.0-beta13.** One pending file transfer —
-an upload ticket nobody connected to is enough — makes `serverstop` never finish: the virtual server
-stays `shutting down`, `use` on it answers `1035`, `serverstart` answers `2816`, and only restarting
-the whole TeamSpeak process brings it back. And once a virtual server has been through that, *every*
-later stop hangs the same way, on a fresh process, with nothing pending.
+**Stopping a virtual server is refused for now.** On TeamSpeak 6.0.0-beta13 a `serverstop` often
+never finishes: the virtual server stays `shutting down`, `use` on it answers `1035`, `serverstart`
+answers `2816`, and only restarting the whole TeamSpeak process brings it back. It hung in five of
+seven measured attempts, with and without file transfers pending, and TeamSpeak
+[confirmed the bug](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376)
+on 19 September 2026, announcing a hotfix but not yet the version that carries it.
 
-`ts_vserver_power stop` therefore reads `ftlist` first and refuses when anything is running or
-waiting, or when it cannot read the list at all; `ts_query_raw serverstop` is refused the same way.
-`ts_file_transfers` shows what is pending and `ts_file_manage stop` ends one, and an abandoned
-transfer lapses by itself within about two minutes. **That check closes the known way in, it does
-not make a stop safe**: a virtual server already in the broken state passes it and hangs anyway, and
-nothing readable through the query interface distinguishes the two. Stop a virtual server on that
-version only when you can restart the TeamSpeak process if it does not come back.
+Until a version is known that survives a stop, `ts_vserver_power stop` refuses on every version, and
+so does `ts_query_raw serverstop`. Two things still work and cover most reasons to stop one: a
+snapshot deploy restarts a virtual server from the inside, and stopping the whole instance takes its
+virtual servers with it. When the hotfix names its version, the refusal narrows to the releases
+below it, the way the `-keepfiles` one already does.
 
 A snapshot deploy restarts the virtual server and gives every channel, group and client database id
 a new number, so ids read before it are stale. It also drops the files stored in channels unless
