@@ -80,11 +80,28 @@ should be, so `ts_vserver_snapshot_create` saves it with `localPath` inside
 `TeamSpeak:FileTransfer:LocalDirectory`, and `ts_vserver_snapshot_deploy` reads it back from there.
 Without `localPath`, a snapshot comes back inline only up to `MaxInlineBytes`.
 
+**Stopping a virtual server is dangerous on TeamSpeak 6.0.0-beta13.** One pending file transfer —
+an upload ticket nobody connected to is enough — makes `serverstop` never finish: the virtual server
+stays `shutting down`, `use` on it answers `1035`, `serverstart` answers `2816`, and only restarting
+the whole TeamSpeak process brings it back. And once a virtual server has been through that, *every*
+later stop hangs the same way, on a fresh process, with nothing pending.
+
+`ts_vserver_power stop` therefore reads `ftlist` first and refuses when anything is running or
+waiting, or when it cannot read the list at all; `ts_query_raw serverstop` is refused the same way.
+`ts_file_transfers` shows what is pending and `ts_file_manage stop` ends one, and an abandoned
+transfer lapses by itself within about two minutes. **That check closes the known way in, it does
+not make a stop safe**: a virtual server already in the broken state passes it and hangs anyway, and
+nothing readable through the query interface distinguishes the two. Stop a virtual server on that
+version only when you can restart the TeamSpeak process if it does not come back.
+
 A snapshot deploy restarts the virtual server and gives every channel, group and client database id
-a new number, so ids read before it are stale. It also drops the files stored in channels. This
-server never deploys with `-keepfiles`, not even through `ts_query_raw`. On TeamSpeak 6.0.0-beta12.1
-that option crashed the server, and the virtual server could not be started, selected or deleted
-afterwards, until its database was wiped.
+a new number, so ids read before it are stale. It also drops the files stored in channels unless
+`keepFiles` is set, which was measured on 6.0.0-beta13: the files were still in their channel, under
+its new id, after a deploy with the option, and gone after the same snapshot was deployed without it. That option is allowed only against servers from **6.0.0-beta13** on, where it
+was measured to be harmless: on 6.0.0-beta12.1 it crashed the server, and the virtual server could
+not be started, selected or deleted afterwards, until its database was wiped. Below that version —
+and against a server that does not answer `version` — it is refused on every path, `ts_query_raw`
+included. The check costs one `version` command before the deploy.
 
 `ts_client_kick` and `ts_ban_add` refuse to act on this server's own query session, which would
 cut off every tool call on the profile. A channel message has to move that session into the
@@ -102,6 +119,14 @@ ban or complaint at once, overwriting an existing group with a copy, and the glo
 Every tool except `ts_profiles_list` takes an optional `profile`. Tools below the instance level take
 a `virtualServerId`, optional except where the wrong server would be costly: `ts_vserver_power` and
 `ts_vserver_delete` require it.
+
+A profile can also reach a server without credentials, as the ServerQuery guest that TeamSpeak
+6.0.0-beta13 added; `ts_profiles_list` marks those with `guest`. Such a profile still has a safety
+level, but what it may actually do is decided on the TeamSpeak side by the `Guest Server Query`
+group, which by default grants almost nothing: expect *insufficient client permissions* (`2568`) or
+*out of scope* (`5120`) from nearly every tool, and read those as the server's answer rather than
+this server's refusal. [setup.md](setup.md#without-credentials-as-the-serverquery-guest) explains how
+to configure one.
 
 `ts_perm_effective` shows, for one client in one channel, the value the client ends up with and
 every assignment behind it, marking the one that decided. It also shows when channel values did not

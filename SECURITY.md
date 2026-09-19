@@ -31,7 +31,12 @@ backports.
 Worth knowing when judging a report:
 
 - It holds TeamSpeak query credentials, as `serveradmin` passwords or WebQuery API keys, taken from
-  configuration or the environment.
+  configuration or the environment. A profile can also be configured to hold none and connect as the
+  ServerQuery guest, which TeamSpeak 6.0.0-beta13 added; what such a session may do is decided
+  entirely by the TeamSpeak server's `Guest Server Query` group. Note that this cuts both ways for
+  your own server: from that version on, an exposed query port answers an unauthenticated caller —
+  over SSH as the user `guest`, over the WebQuery with no `x-api-key` header at all — so anything
+  granted to that group is granted to everyone who can reach the port.
 - Over SSH it checks the server's host key before sending the password: against a pinned
   fingerprint, or against the key remembered on the first connection. Connecting despite a changed
   key is a vulnerability. Two limits are accepted: the very first connection to an unpinned server

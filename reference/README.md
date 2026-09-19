@@ -29,6 +29,13 @@ Verified against server 6.0.0-beta12.1:
 | SSH shows a `TS6>` prompt | The greeting line is `TS3` and no prompt is ever emitted. |
 | (undocumented) | The SSH query refuses PTY requests. An SSH client must open its channel without one. |
 
+**Still current on 6.0.0-beta13.** Its `help` lists exactly the same 143 commands, with the same
+descriptions, so this capture describes that release too, `help serversnapshotdeploy` included —
+even though `-keepfiles`, which the page describes, behaves completely differently there. What did
+change in beta13 is in [docs/teamspeak6-findings.md](../docs/teamspeak6-findings.md): both
+interfaces now let a guest in without credentials, and a request without an `x-api-key` header is
+answered rather than refused.
+
 ## Re-capturing
 
 For a single command there is no need: `ts_command_help` asks the connected server for its page,

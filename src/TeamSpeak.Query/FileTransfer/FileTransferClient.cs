@@ -8,7 +8,8 @@ namespace TeamSpeak.Query.FileTransfer;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Measured on 6.0.0-beta12.1, this is the only way files move. <c>ftgetchannelfilehttptoken</c>, the
+/// Measured on 6.0.0-beta12.1 and again on 6.0.0-beta13, this is the only way files move.
+/// <c>ftgetchannelfilehttptoken</c>, the
 /// HTTP alternative the reference describes, answers <c>2 not implemented</c>, and the WebQuery
 /// refuses every <c>ft*</c> command with <c>5120 out of scope</c> even with a <c>manage</c> key, so the
 /// ticket has to come from the SSH interface.

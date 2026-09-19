@@ -137,6 +137,33 @@ All notable changes to this project are documented here. The format follows
 - Progress notifications for `ts_file_upload` and `ts_file_download` when the client sends a
   progress token, at most four a second plus the last one. `FileTransferClient` reports the bytes
   moved through an optional `IProgress<long>`.
+- Profiles can reach a server without credentials, as the ServerQuery guest that TeamSpeak
+  6.0.0-beta13 added: `Username=guest` with no password and no API key connects over SSH, where the
+  server takes that name with any password, and over the WebQuery, where the request carries no
+  `x-api-key` header at all. Both were verified against a live beta13 server. Such a session may do
+  only what the server's `Guest Server Query` group grants, which by default is little more than
+  `whoami`, so `ts_profiles_list` reports which profiles are guests.
+- `ts_vserver_power stop` is refused while a file transfer is running or waiting on that virtual
+  server, and so is `serverstop` through `ts_query_raw`. On TeamSpeak 6.0.0-beta13 one pending
+  transfer is enough to make the stop never finish and leave the virtual server in `shutting down`,
+  recoverable only by restarting the whole TeamSpeak process; this was reproduced deliberately with
+  a single unused upload ticket. The refusal names `ts_file_transfers` and `ts_file_manage stop`, and
+  an unreadable transfer list counts as "might be busy". It closes the known way into that state
+  rather than making a stop safe: a virtual server that has hung once hangs on every later stop too,
+  with nothing pending, and the tool descriptions and docs say so.
+- Refusals explain themselves differently for a guest profile: `2568` names the server's
+  `Guest Server Query` group rather than a query login it does not have, and `5120` says TeamSpeak
+  does not allow guests that command at all.
+- `ts_log_view` explains `2052 file input/output error`, which is what a virtual server that has
+  logged nothing since the server process started answers, having no log file yet. The instance log
+  is a separate file, and `ts_log_add` creates the missing one.
+- `ts_vserver_snapshot_deploy` takes `keepFiles` again, on servers where it is safe. TeamSpeak
+  6.0.0-beta13 fixes the crash, verified twice against a live server, including with the exact wire
+  line this project sends, and the option was then measured to do what it promises: two files
+  survived the deploy and were gone when the same snapshot was deployed without it. Below that
+  version, and against a server that will not say its version, the option stays refused on every
+  path. `ServerVersion` compares what a server reports, betas
+  included, so that `6.0.0-beta12.1` sorts below `6.0.0-beta13` as it should.
 
 ### Security
 
@@ -271,10 +298,11 @@ All notable changes to this project are documented here. The format follows
   It now needs `Destructive`.
 - `ts_perm_set` read the permission catalog before checking the safety level.
 - Empty property values and an unreadable server name passed validation.
-- `ts_vserver_snapshot_deploy` could deploy with `-keepfiles`. On TeamSpeak 6.0.0-beta12.1 that crashed
-  the server, with and without files stored in channels, and left the virtual server impossible to
-  start, select or delete. The option is gone from the tool, and `serversnapshotdeploy -keepfiles` is
-  refused on every path, `ts_query_raw` included.
+- `ts_vserver_snapshot_deploy` could deploy with `-keepfiles` against a server it crashes. On
+  TeamSpeak 6.0.0-beta12.1 that crashed the server, with and without files stored in channels, and
+  left the virtual server impossible to start, select or delete. `serversnapshotdeploy -keepfiles`
+  is refused on every path, `ts_query_raw` included, below the 6.0.0-beta13 that fixes it — see the
+  `keepFiles` entry above.
 - SSH sessions were dropped by the server after about 30 idle seconds, because the keepalive only
   fired after 120, based on a documented 300-second timeout that did not hold on 6.0.0-beta12.1.
   - Event sessions lost their events.
@@ -346,3 +374,13 @@ All notable changes to this project are documented here. The format follows
 - Several deployment surprises are documented in [README.md](README.md) and
   [reference/README.md](reference/README.md), including which client address the server actually
   sees behind Docker, and why `TESTINGPLATFORM_TELEMETRY_OPTOUT` matters when running the tests.
+- Everything measured on 6.0.0-beta12.1 was re-checked on 6.0.0-beta13 on 18 September 2026, and only
+  two answers moved: the guest access above, and `-keepfiles`. The command set, the error codes the
+  client reacts to, the SSH-only nature of events and file transfer, and the roughly 30-second idle
+  timeout are all unchanged, so the captured reference and the response fixtures still describe this
+  server. One thing did get worse: a `serverstop` issued while a file transfer is pending never
+  finishes and leaves the virtual server in `shutting down` until the whole TeamSpeak process is
+  restarted. It was found through a live suite run, then reproduced from nothing but one unused
+  upload ticket; it is described in
+  [docs/teamspeak6-findings.md](docs/teamspeak6-findings.md), the tools refuse such a stop, and the
+  live test that stops a virtual server waits for the transfers to lapse first.

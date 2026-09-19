@@ -59,8 +59,9 @@ TeamSpeak 6 removed the unencrypted raw TCP query that TeamSpeak 3 had. What rem
 Both speak the same command set, so this project models them as two implementations of one
 `IQueryTransport` and keeps everything above that line transport-agnostic.
 
-Three things about them are worth knowing before you set this up, none of which are in TeamSpeak's
-documentation — all were measured against a live 6.0.0-beta12.1 server:
+A few things about them are worth knowing before you set this up, none of which are in TeamSpeak's
+documentation — all were measured against a live server, first on 6.0.0-beta12.1 and re-checked on
+6.0.0-beta13:
 
 - **Events are SSH-only.** Over the WebQuery, `servernotifyregister` comes back as
   `5120 out of scope — command not in api key scope`. It could hardly work anyway: the WebQuery
@@ -71,7 +72,10 @@ documentation — all were measured against a live 6.0.0-beta12.1 server:
   default, which has to be reachable from wherever this server runs.
 - **The WebQuery authenticates with `x-api-key` and nothing else.** HTTP Basic Auth with correct
   `serveradmin` credentials is refused. Keys come from `apikeyadd scope=manage lifetime=0`, which
-  you can only run over SSH — so SSH is also the bootstrap path for using the WebQuery at all.
+  you can only run over SSH — so SSH is also the bootstrap path for using the WebQuery at all. From
+  6.0.0-beta13 on, a request without the header is not refused either: it is answered as the
+  ServerQuery guest, which a profile can use deliberately — `Username=guest`, no credentials, over
+  either interface — and which may do only what that server grants guests.
 - **The server throttles hard, and connections cost far more than commands.** 160 commands over one
   SSH session at 150 ms spacing were never throttled; bursts with no delay were refused from about
   the fifth command, and five or six connections in quick succession earned an IP-level block that
@@ -133,6 +137,7 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Http:AllowedHosts:<n>` | `TSMCP_TeamSpeak__Http__AllowedHosts__<n>` | — (only loopback host names; checked when no token is set) |
 | `TeamSpeak:KnownHostsFile` | `TSMCP_TeamSpeak__KnownHostsFile` | `teamspeak6-mcp/known_hosts` in `%LOCALAPPDATA%` (Windows) or `~/.local/share` (Linux) |
 | `TeamSpeak:Profiles:<name>:Host` | `TSMCP_TeamSpeak__Profiles__<name>__Host` | — |
+| `TeamSpeak:Profiles:<name>:Username` | `TSMCP_TeamSpeak__Profiles__<name>__Username` | `serveradmin`; `guest`, with no credentials, connects as the ServerQuery guest (6.0.0-beta13 and above) |
 | `TeamSpeak:Profiles:<name>:Password` | `TSMCP_TeamSpeak__Profiles__<name>__Password` | — (enables SSH) |
 | `TeamSpeak:Profiles:<name>:HostKeyFingerprint` | `TSMCP_TeamSpeak__Profiles__<name>__HostKeyFingerprint` | — (the first key seen is remembered) |
 | `TeamSpeak:Profiles:<name>:SshPort` | `TSMCP_TeamSpeak__Profiles__<name>__SshPort` | `10022` |
@@ -141,7 +146,7 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Profiles:<name>:Transport` | `TSMCP_TeamSpeak__Profiles__<name>__Transport` | `Auto` (SSH when a password is set) |
 | `TeamSpeak:Profiles:<name>:DefaultVirtualServerId` | `TSMCP_TeamSpeak__Profiles__<name>__DefaultVirtualServerId` | `1` |
 | `TeamSpeak:Profiles:<name>:Safety` | `TSMCP_TeamSpeak__Profiles__<name>__Safety` | the global level |
-| `TeamSpeak:Profiles:<name>:KeepAliveSeconds` | `TSMCP_TeamSpeak__Profiles__<name>__KeepAliveSeconds` | `15`; keep it below the server's idle timeout, about 30 seconds on 6.0.0-beta12.1 |
+| `TeamSpeak:Profiles:<name>:KeepAliveSeconds` | `TSMCP_TeamSpeak__Profiles__<name>__KeepAliveSeconds` | `15`; keep it below the server's idle timeout, about 30 seconds on 6.0.0-beta12.1 and beta13 |
 
 **SSH host keys are checked**, as OpenSSH does. The first connection to a server remembers the key it
 presents in `TeamSpeak:KnownHostsFile`, and a different key later refuses the connection before the

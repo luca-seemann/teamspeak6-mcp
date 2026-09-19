@@ -13,9 +13,14 @@ service. The tools are described in [tools.md](tools.md), the server itself in t
 2. **Know the `serveradmin` password.** Set it with `TSSERVER_QUERY_ADMIN_PASSWORD`; otherwise the
    server generates one on first start and prints it to its log once.
 3. **Make the ports reachable** from where this server runs: 10022 for the SSH query, and 30033 for
-   file transfer. 10080 only if you use the WebQuery.
+   file transfer. 10080 only if you use the WebQuery. Reachable by you also means reachable by
+   others: from 6.0.0-beta13 both query ports answer a caller with no credentials at all, as the
+   ServerQuery guest, so keep them off the open internet and grant the `Guest Server Query` group
+   nothing you would not publish.
 4. **Optionally mint a WebQuery key**, over SSH: `apikeyadd scope=manage lifetime=0`. SSH is still
    needed for events and file transfer, so a password is the better choice whenever you have one.
+   A profile can also go without either and connect as the guest; see
+   [Without credentials](#without-credentials-as-the-serverquery-guest).
 5. **Start read-only.** Leave `TeamSpeak:Safety` at `ReadOnly` until you have seen what the tools do,
    then raise it per profile.
 
@@ -148,6 +153,27 @@ claude mcp add teamspeak `
 - `TSMCP_TeamSpeak__DisabledToolGroups=files,events` to leave groups out (see [Tool groups](tools.md#tool-groups));
 - `TSMCP_TeamSpeak__ToolResultText=Toon` for fewer tokens on large lists (see
   [Tool results as TOON](tools.md#tool-results-as-toon)).
+
+### Without credentials, as the ServerQuery guest
+
+From TeamSpeak **6.0.0-beta13** on, a server can be reached with no credentials at all. Set the
+profile's `Username` to `guest` and leave `Password` and `ApiKey` empty:
+
+```
+TSMCP_TeamSpeak__Profiles__public__Host=ts.example.com
+TSMCP_TeamSpeak__Profiles__public__Username=guest
+```
+
+Over SSH the server takes that name with any password; over the WebQuery — add
+`__WebQueryUrl=http://ts.example.com:10080` and select it with `__Transport=WebQuery` — the request
+simply carries no key. `ts_profiles_list` marks such a profile as a guest.
+
+A guest is nobody on the server, and by default may do almost nothing: `ts_whoami`, the server
+version, and nothing else. Everything else comes back as *insufficient client permissions* or *out
+of scope*, which is the TeamSpeak server's answer, not this server's safety level. To make a guest
+profile useful, grant the permissions you want it to have to server group **1, `Guest Server
+Query`**, on the TeamSpeak side — that group covers guests on both interfaces. Grant read
+permissions only; a guest login is unauthenticated, and anyone else can use it too.
 
 **Claude Desktop** reads `claude_desktop_config.json`, in `%APPDATA%\Claude\` on Windows and
 `~/Library/Application Support/Claude/` on macOS. It takes the same `mcpServers` entry as the

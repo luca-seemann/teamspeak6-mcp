@@ -5,6 +5,10 @@ closes a gap once something becomes available, such as a Git remote or an arm64 
 [TODO.md](../TODO.md). How the server really behaves is in
 [teamspeak6-findings.md](teamspeak6-findings.md).
 
+All live evidence comes from one TeamSpeak server: 6.0.0-beta12.1 until 18 September 2026 and
+6.0.0-beta13 since. Nothing here has ever run against a released 6.0, against several virtual
+servers, or against a second TeamSpeak build.
+
 - **Reconnects are tested through a local relay, not a real network.** Live tests break a session
   right after a command goes out, in two ways:
   - a reset: the command fails within seconds, and the next one reconnects
@@ -28,7 +32,9 @@ closes a gap once something becomes available, such as a Git remote or an arm64 
   measured, because measuring it means being blocked again.
 - **The parsers are tested against 53 captured responses covering 31 commands**, not all 143. Exotic
   commands may still hold surprises. The 28 captured on 15 September 2026 keep the server's real
-  `\n\r` line endings; the earlier ones had them normalised.
+  `\n\r` line endings; the earlier ones had them normalised. All of them were captured from
+  6.0.0-beta12.1 and have not been re-captured since; the wire format looks unchanged on beta13,
+  where 38 of the 39 live tests pass on the same parsers, but nothing pins that fixture by fixture.
 - **The test server is small, and often has no human client.** It carries a permanent channel tree
   of about two dozen channels, but usually only the query session is connected, so the
   client-facing tools — client listing and decoding, effective permissions, complaints, talker status
@@ -66,6 +72,33 @@ closes a gap once something becomes available, such as a Git remote or an arm64 
   including the failing `-keepfiles` deploys described in
   [teamspeak6-findings.md](teamspeak6-findings.md). They have no automated live test,
   because a deploy renumbers every id on the server.
+- **`keepFiles` is verified on one server, for one deploy shape.** On 18 September 2026 two files
+  survived a deploy with the option and were gone after the same snapshot was deployed without it,
+  both through this project's tools against 6.0.0-beta13. That is one virtual server, small text
+  files in one channel, and a snapshot of the server itself; a snapshot from a different server, an
+  encrypted one, and channels holding many or large files have not been tried.
+- **The tool schema snapshot has been seen to generate differently once.** In one run out of about
+  ten on 18 September 2026, `ts_file_download` came out with the SDK-injected
+  `IProgress<ProgressNotificationValue>` parameter in its input schema, where every other run leaves
+  it out; the runs before and after, five of them in a row, were byte-identical. The cause is not
+  known — a race between the test classes that each build a host is the obvious suspect, since the
+  project runs them in parallel — so a snapshot regenerated in such a run would commit a schema the
+  server does not really serve. Compare the diff before committing a regenerated snapshot.
+- **The `serverstop` guard closes the known way in; it does not make a stop safe.** A pending file
+  transfer making the stop hang for good was reproduced deliberately on 6.0.0-beta13, and that is
+  what the refusal checks for. But the same virtual server then hung on every later stop as well,
+  with `ftlist` empty, the leftover files deleted and the process freshly restarted, so a virtual
+  server already in that state passes the check and hangs anyway — and nothing readable through the
+  query interface tells the two apart. Two further limits: which earlier versions share the bug is
+  unknown, since a stop with a transfer pending was never tried on 6.0.0-beta12.1, so the refusal
+  applies to every version; and a profile whose login may stop a server but not read `ftlist` cannot
+  stop one through this server at all, by design, because an unreadable list counts as "might be
+  busy".
+- **The guest login was probed by hand, not in a live test.** Connecting as the ServerQuery guest
+  over SSH and over the WebQuery, what such a session may do, and that a permission granted to
+  server group 1 reaches it, were all measured against 6.0.0-beta13 on 18 September 2026, through
+  this project's own transports. There is no automated live test for it: the test server's guest
+  group holds no permissions, and giving it some would change the server other tests read.
 
   These are covered by unit tests only, because on the shared test server they cannot be undone or
   would take something away:

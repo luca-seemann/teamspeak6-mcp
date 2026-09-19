@@ -29,6 +29,16 @@ lists everything that is unverified, including what cannot be checked on the tes
 - **Run the disruptive live test once more.** Waiting for a moment when a connected client may be
   kicked. `TSMCP_TEST_DISRUPTIVE=1` has not been run since the phase 9 transport changes; the other
   client tests passed afterwards.
-- **ServerQuery guest login.** The next TeamSpeak 6 beta reportedly adds a way to log in to the
-  ServerQuery as a guest. Once a server version with it is available, probe how it works, and support
-  it in the profiles, as an alternative to `serveradmin` credentials and API keys.
+- **Track down the one-off tool schema difference.** Waiting for it to happen again, or for someone
+  to sit down with it. Once in about ten runs the snapshot came out with `ts_file_download` carrying
+  its `IProgress` parameter in the input schema; see [docs/known-gaps.md](docs/known-gaps.md). Run
+  `tests/TeamSpeak.Mcp.Tests` in a loop with `TSMCP_UPDATE_SNAPSHOTS=1` and compare the bytes, and if
+  it reproduces, try putting every test class that builds a host into one xunit collection so they
+  cannot run at the same time.
+- **Act on the answer to the `serverstop` bug report.** Waiting for TeamSpeak. The report is
+  [`serverstop` never completes when a file transfer is pending](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376),
+  posted on 19 September 2026. Two answers would change code: if a version is named in which this is
+  fixed, the refusal in [KnownCrashes](src/TeamSpeak.Mcp/Safety/KnownCrashes.cs) should be gated on
+  it the way `-keepfiles` is, instead of applying to every version; and if the state can be cleared
+  without losing the virtual server, that belongs in the refusal message and in
+  [docs/teamspeak6-findings.md](docs/teamspeak6-findings.md).

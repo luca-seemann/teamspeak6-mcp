@@ -22,6 +22,10 @@ services:
     ports:
       - "9987:9987/udp"   # voice
       - "30033:30033"     # file transfer
+      # From 6.0.0-beta13 both query ports answer without credentials, as the ServerQuery guest:
+      # SSH takes the user "guest" with any password, and the WebQuery takes a request with no
+      # x-api-key header. Whatever the "Guest Server Query" group grants is granted to anyone who
+      # reaches these ports, so bind them to 127.0.0.1 when the host is not private.
       - "10022:10022"     # SSH query
       - "10080:10080"     # HTTP WebQuery
     volumes:

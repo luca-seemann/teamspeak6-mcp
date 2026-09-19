@@ -1,7 +1,9 @@
 # TeamSpeak 6 ServerQuery: what the documentation does not tell you
 
-Everything below was measured against server **6.0.0-beta12.1**. Each contradicted either the
-official documentation or a reasonable assumption, and each cost real time to find.
+Everything below was measured against server **6.0.0-beta12.1**, and re-checked against
+**6.0.0-beta13** where that release changed the answer; [what beta13 changed](#what-600-beta13-changed)
+collects those. Each finding contradicted either the official documentation or a reasonable
+assumption, and each cost real time to find.
 
 **There is no public command reference.** The official docs have four query pages and not one of
 them lists a command, an endpoint path, or a response shape. The real reference ships inside the
@@ -13,7 +15,10 @@ it lives in `reference/`.
 `serveradmin` credentials. It is refused — correct credentials still return `5124 missing apikey`,
 while a bad key returns the distinct `5122 invalid apikey`. Two different codes are what proves the
 header is the only channel the server reads. Keys come from `apikeyadd`, which runs over SSH only,
-so **SSH is the bootstrap path for using the WebQuery at all**.
+so **SSH is the bootstrap path for using the WebQuery at all**. On 6.0.0-beta13 a request with no
+header at all is no longer refused either, but answered as the ServerQuery guest — see
+[what beta13 changed](#what-600-beta13-changed); a wrong key is still `5122`, and everything worth
+reading still needs a key.
 
 **The SSH query refuses pseudo-terminals and sends no prompt.** The docs show an interactive session
 with a `TS6>` prompt; the greeting line is actually `TS3` and no prompt is ever emitted. The
@@ -49,7 +54,8 @@ This was found only because an event session, which never sends commands of its 
 events. The shared tool session had been reconnecting quietly after every longer pause. The
 keepalive now fires after 15 idle seconds (`KeepAliveSeconds`), and a session found disconnected
 is reopened at once. Several earlier probe runs, in which every session seemed to be cut off at the
-same moment, were this timeout and not a flood block.
+same moment, were this timeout and not a flood block. **6.0.0-beta13 behaves the same**: a session
+answered after 25 idle seconds and was gone after 35.
 
 **A session that ends without `quit` stays on the server for 30 seconds.** A second session,
 registered for server events, watched a query session leave:
@@ -60,7 +66,8 @@ registered for server events, watched a query session leave:
 The server log read through `logview` records neither. An earlier version of this note said the slot
 was freed at once; that was never measured, and it was wrong.
 
-**Events are SSH-only.** Over the WebQuery, `servernotifyregister` returns `5120 out of scope`.
+**Events are SSH-only.** Over the WebQuery, `servernotifyregister` returns `5120 out of scope —
+command not in api key scope`, on 6.0.0-beta13 as on beta12.1, even with a `manage` key.
 
 **What each event registration delivers is not documented, so it was measured one category at a
 time.**
@@ -90,7 +97,8 @@ A few other things showed up:
 
 **File transfer works only over SSH and raw TCP.** The reference offers `ftgetchannelfilehttptoken` for
 HTTP file transfer. On the test server it answers `2 not implemented`, over both interfaces. Over the
-WebQuery, every `ft*` command is `5120 out of scope`, even with a `manage` key. So the ticket comes
+WebQuery, every `ft*` command is `5120 out of scope`, even with a `manage` key. All of this was
+re-checked on 6.0.0-beta13 and is unchanged. So the ticket comes
 from the SSH query, and the bytes travel over port 30033. The protocol there is minimal: write the
 32-character key, then write or read the raw bytes. There is no acknowledgement. The server closes
 the connection when an upload is complete and after the last byte of a download, and closes a
@@ -194,9 +202,9 @@ and the IP address. Behind Docker Desktop that address was the bridge gateway `1
 every external client, so for as long as the ban lasted nobody could have connected from outside.
 Clients already connected stayed connected.
 
-**Deploying a snapshot with `-keepfiles` crashes the server.** The option is documented in the
-reference. It was tried three times. The last try was sent exactly in the documented form, with a
-file stored in a channel, on a server that had not just been restarted.
+**Deploying a snapshot with `-keepfiles` crashed the server before 6.0.0-beta13.** The option is
+documented in the reference. It was tried three times on beta12.1. The last try was sent exactly in
+the documented form, with a file stored in a channel, on a server that had not just been restarted.
 - **What happened:** once the deploy hung in `deploy running`. Twice the whole process crashed within
   seconds: "TeamSpeak server has crashed", a crashdump, and container exit code 139.
 - **What it left behind:** every time, the virtual server could not come back.
@@ -207,9 +215,29 @@ file stored in a channel, on a server that had not just been restarted.
 - **Without `-keepfiles`** the same deploy finished in about a second, also right after a restart.
 
 A normal deploy restarts the virtual server, drops the files stored in channels, and renumbers
-every channel, group and client database id. The option is refused on every path now. A bug report
-was posted to the TeamSpeak community forum on 14 September 2026:
+every channel, group and client database id. A bug report was posted to the TeamSpeak community
+forum on 14 September 2026:
 [`-keepfiles` crashes the server and leaves the virtual server unrecoverable](https://community.teamspeak.com/t/keepfiles-crashes-the-server-and-leaves-the-virtual-server-unrecoverable/65326).
+
+**6.0.0-beta13 fixes it.** Measured on 18 September 2026 on the same server, upgraded: the deploy
+that had killed beta12.1 answered `error id=0 msg=ok` in **0.3 seconds**, twice — once in the
+documented option-first form, once as the wire line this project actually sends
+(`serversnapshotdeploy version=3 data=… -mapping -keepfiles`, options last). The instance stayed up,
+the virtual server restarted and came back `online` with its 26 channels and a valid
+`virtualserver_default_server_group`, not the `0` that used to brick it. So the refusal is now a
+version check rather than a blanket one: `serversnapshotdeploy -keepfiles` is refused below
+6.0.0-beta13, on every path, including a server that will not say which version it is.
+
+**And the option does what it says: the files survive.** Measured the same day, through this
+project's own tools, with a control:
+- Two files were uploaded into the Lobby, channel 160, and listed there.
+- A deploy of a fresh snapshot **with** `keepFiles` renumbered the Lobby to 192, where both files
+  were still listed, with the same sizes.
+- Deploying the very same snapshot **without** the option renumbered it again, to 218, and that
+  channel was empty — `ftgetfilelist` answered `1281`.
+
+So the difference is real, and the old note that a deploy always drops the channels' files now holds
+only for a deploy without `-keepfiles`.
 
 **`channelmove` cannot reorder a channel within its parent.** Sent with the parent a channel already
 has, it is refused with `770 already member of channel`, whatever `order` says: a move meant to put
@@ -222,6 +250,142 @@ server's channels; it now reads the channel's parent first and sets the order wh
 permission rather than the `permskip` flag, and with it the server computed 75 talk power from
 Server Admin against a channel group granting 62. `ts_perm_effective` had missed it, because the
 live test happened to pick a guest until a deploy reordered the client list.
+
+## What 6.0.0-beta13 changed
+
+Measured on 18 September 2026 against the test server, upgraded from beta12.1 to
+**6.0.0-beta13 (build 1789645103)**.
+
+**The command set did not move at all.** `help` lists the same 143 commands as beta12.1, none added,
+none dropped, so `reference/serverquery-6.0.0-beta12.1.txt` and the command catalog still describe
+this server. `help serversnapshotdeploy` is unchanged too, `-keepfiles` included.
+
+**What else was re-measured and had not changed**, so everything above still holds on beta13: the
+no-match codes of the searches (`channelfind` 768, `clientfind` 512, `clientdbfind` 1281), `1540
+convert error` for an unknown client id and `768` for an unknown channel id, `ftgetchannelfilehttptoken`
+answering `2 not implemented`, every `ft*` command and `servernotifyregister` refused over the
+WebQuery with `5120` even with a `manage` key, `/help` answering 404 and `/help/<command>` `1538`,
+and the roughly 30-second idle timeout of a query session.
+
+**Both interfaces now let a guest in without credentials.**
+
+- Over SSH the user **`guest`** authenticates with any password, the empty one included. Any other
+  unknown user is still `Permission denied (password)`, so it is that name and nothing else.
+- Over the WebQuery a request **without an `x-api-key` header** is answered the same way. That is a
+  real change: on beta12.1 it was `401` with `5124 missing apikey`. A header carrying a key the
+  server does not know is still `5122 invalid apikey`, so sending an empty key is not the way in —
+  sending no header is.
+- Such a session is nobody: `whoami` reports `client_database_id=0` and an empty
+  `client_login_name`. `use <sid>` works and joins the virtual server as a query client named
+  `Unknown` (database id 2, `ServerQuery Guest`, in the `Guest Server Query` group and the server's
+  default server group). `version`, `whoami` and `use` are all it can do by default; `help` prints
+  an empty command list for it.
+- Everything else is refused in one of two ways: `2568 insufficient client permissions` with the
+  `failed_permid` (SSH) or `failed_permission` name (WebQuery) for anything permission-gated, and
+  `5120 out of scope` with `command not allowed for guest access` for commands guests may not reach
+  at all — `serverlist`, `serverinfo` and `login` over the WebQuery among them.
+- A guest can be made useful: granting a permission to server group 1, `Guest Server Query`, reaches
+  both interfaces at once. Granting `b_virtualserver_channel_list` there made `channellist` work for
+  the SSH guest and for `GET /1/channellist` without a key, and removing it closed both again.
+
+**`login` and `logout` work over SSH, in the session.** `login client_login_name=… client_login_password=…`,
+or positionally `login <name> <password>`, upgrades a guest session in place to that account, with
+full rights including `servernotifyregister`; wrong credentials answer `520 invalid loginname or
+password`. `logout` drops back to the guest and deselects the virtual server. Over the WebQuery
+`login` is refused for guests with `5120`, so there is no privilege upgrade there — an API key
+remains the only way.
+
+**`serversnapshotdeploy -keepfiles` no longer crashes**, as described above.
+
+**`logview` on a virtual server without a log file answers `2052 file input/output error`**, rather
+than an empty result. Seen right after the instance was restarted: the instance log
+(`logview instance=1`) answered normally, while the virtual server's own log did not exist, because
+that server logs almost nothing — its `virtualserver_log_client`, `_log_query`, `_log_channel` and
+`_log_server` are all 0. A single `logadd` created the file, and `logview` worked from then on. A
+live test caught this, and `ts_log_view` now explains the code instead of passing it on bare.
+
+**`serverstop` did not finish, and the virtual server could not be started again.** Seen once, on
+18 September 2026, in the live test that stops a virtual server, starts it again and checks that an
+event subscription recovers — a test that passed on beta12.1. After the stop:
+
+- `serverlist` reported `virtualserver_status=shutting down` and stayed there for over ten minutes.
+- `use 1` was refused with `1035 server got an invalid status for this operation`, so nothing
+  scoped to the virtual server could run, the event registration included.
+- `serverstart sid=1` was refused with `2816 virtualserver limit reached`: the hung server still
+  counts against the licence, while `hostinfo` reported `virtualservers_running_total=0`.
+- The instance's own log repeated, every ten seconds, from the moment of the stop:
+  `ERROR VirtualSvrMgr stopserver for sid: 1 still waiting for shutdown`.
+- The instance itself stayed healthy — SSH, the WebQuery and `hostinfo` all answered — so only
+  `serverprocessstop` and starting the process again brought the virtual server back.
+
+**The cause is a pending file transfer.** Five further attempts the same day narrowed it down:
+
+| What was running when the stop went out | Result |
+|---|---|
+| One session, nothing subscribed | `offline` before the first status read, started again fine |
+| One session with a `textserver` subscription and a two-second re-registration watchdog | the same |
+| That live test alone | passed, stop and start in seconds |
+| The whole live suite, as in the morning | hung again, identically |
+| **One unused `ftinitupload` ticket, nothing else** | **hung**, `serverstop` never answered |
+
+The last row is the trigger. A ticket was taken for a 1 MB upload into the Lobby and port 30033 was
+never connected to; `ftlist` showed the one transfer as `waiting`. `serverstop` then hit the
+30-second command timeout, the virtual server went to `shutting down` and **stayed there for at
+least six minutes**, long past the roughly two minutes after which such a ticket lapses, with
+`ERROR VirtualSvrMgr stopserver for sid: 1 still waiting for shutdown` in the instance log every ten
+seconds. `use 1` answered `1035` and `ftlist` `1024`, so nothing could be cleaned up through the
+query interface, and `serverprocessstop` plus a fresh start was again the only way back.
+
+So the event hub, the first suspect, is innocent: what the live suite adds is a file test a minute
+earlier that leaves a transfer behind. And it takes exactly one — this is not a load problem.
+
+**But the damage outlives the transfer, and that is the worse half.** Measured on 19 September 2026,
+after the process had been restarted three times:
+
+- A stop issued as the **first command after a fresh start**, with `ftlist` empty and nothing done
+  in between, hung exactly the same way. The three clean stops of the day before had all been on a
+  virtual server that had never been in this state.
+- Deleting the 0-byte files the unused tickets had left behind changed nothing: `ftgetfilelist`
+  answered `1281` for the channel, `ftlist` `1281` for the server, and `serverstop` still never
+  answered.
+- Since the first occurrence, **every** stop on that virtual server has hung, on every process
+  restart. In every other respect it is completely normal: online, channels, permissions, file
+  listings, clients.
+- **A snapshot deploy does not clear it, and it is not a way out.** Tried on 19 September 2026
+  because a deploy takes the virtual server down and brings it back up from the inside. The
+  container log shows both paths within the same minute, on the same virtual server:
+
+  ```
+  11:26:41.812686|INFO    |VirtualServer |1  |stopped                                ← the deploy's shutdown
+  11:26:41.988807|INFO    |VirtualSvrMgr |   |startServer() VirtualServer(1) started ← and its restart
+  11:26:55.594244|ERROR   |VirtualSvrMgr |   |stopserver for sid: 1 still waiting for shutdown
+  ```
+
+  The deploy's shutdown completes and says so; the `serverstop` fourteen seconds later waits
+  forever — that run was still repeating the line more than fifteen minutes later. So the internal
+  shutdown path works on a virtual server whose `serverstop` no longer does, which is the most
+  useful pointer there is for whoever fixes this, and a deploy is no escape from the state.
+
+An earlier note here claimed that `startServer() VirtualServer(1) started` stops being logged once a
+virtual server is in this state. That was wrong, and it came from reading the log through
+`logview instance=1` alone: the line is logged for a **restart**, such as the one inside a snapshot
+deploy, and apparently never for the virtual server coming up with the process. The container log
+above shows it appearing normally on a virtual server that cannot be stopped.
+
+So the thing `VirtualSvrMgr` waits for survives a full restart of the server process, and nothing
+reachable through the query interface clears it. A pending transfer is how a virtual server gets
+into this state; it is not what keeps it there.
+
+The two ways it presents are worth knowing apart: `serverstop` either answers `ok` and the virtual
+server never finishes shutting down, or the command never answers at all. Both leave the same
+wreckage. This server **refuses `serverstop` while any transfer is pending**, on every path
+including `ts_query_raw`, which closes the known way in — but a virtual server already in this state
+cannot be stopped at all, and no check this server can make will tell you which one you have.
+
+A bug report was posted to the TeamSpeak community forum on 19 September 2026:
+[`serverstop` never completes when a file transfer is pending, and the virtual server can never be stopped again](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376).
+It asks the two questions this leaves open: whether the state can be cleared without losing the
+virtual server, and whether earlier versions share the bug.
 
 ## Traps that were not TeamSpeak's fault
 

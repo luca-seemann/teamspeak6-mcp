@@ -65,7 +65,7 @@ When the code and `reference/serverquery-6.0.0-beta12.1.txt` disagree, the refer
 | ├ `QueryCommandScope` | Which commands address the instance rather than one virtual server; shared by both transports. |
 | ├ `QueryRecord` | Typed field access, decoding TeamSpeak's `1`/`0` booleans and Unix-second times in one place. |
 | ├ `SshQueryTransport` | One long-lived session, event routing, keepalive, reconnect with backoff. Sends `use` only when needed, under the same lock as the command, and runs exclusive sequences. Fails a waiting command as soon as the session is lost, and ends with `quit`. |
-| ├ `HttpQueryTransport` | WebQuery over `x-api-key`, no connection pooling. |
+| ├ `HttpQueryTransport` | WebQuery over `x-api-key`, or with no header at all for a guest profile. No connection pooling. |
 | ├ `FloodGuard` | Paces commands; honours the wait the server asks for. |
 | ├ `ConnectionThrottle` | Paces connections, which cost far more than commands. |
 | ├ `ProfileRegistry` | Named servers, validated at startup. |
