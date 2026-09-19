@@ -13,7 +13,9 @@ namespace TeamSpeak.Query.Transport;
 /// <para>
 /// Authentication is the <c>x-api-key</c> header and nothing else. HTTP Basic Auth is refused even
 /// with correct <c>serveradmin</c> credentials, despite what the official documentation says, and
-/// keys can only be minted over SSH with <c>apikeyadd</c>.
+/// keys can only be minted over SSH with <c>apikeyadd</c>. Since 6.0.0-beta13 a request without the
+/// header is not refused but answered as the ServerQuery guest, which is what a guest profile uses;
+/// <c>login</c> is not a way out of that, as guests are refused it with <c>5120 out of scope</c>.
 /// </para>
 /// <para>
 /// The server answers every request with <c>Connection: close</c>, so each command costs a fresh
@@ -36,7 +38,7 @@ public sealed class HttpQueryTransport : IQueryTransport
     /// An HTTP client to borrow. When omitted, one is created and disposed with this transport.
     /// </param>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when the profile lacks a WebQuery URL or an API key.
+    /// Thrown when the profile lacks a WebQuery URL, or an API key it is not a guest profile.
     /// </exception>
     public HttpQueryTransport(QueryProfile profile, HttpClient? httpClient = null)
     {
@@ -45,7 +47,7 @@ public sealed class HttpQueryTransport : IQueryTransport
         if (!profile.CanUseWebQuery)
         {
             throw new InvalidOperationException(
-                $"Profile '{profile.Name}' needs both a WebQuery URL and an API key.");
+                $"Profile '{profile.Name}' needs a WebQuery URL and either an API key or the guest login.");
         }
 
         _ownsClient = httpClient is null;
@@ -67,7 +69,9 @@ public sealed class HttpQueryTransport : IQueryTransport
         _http.BaseAddress ??= EnsureTrailingSlash(profile.WebQueryUrl!);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        if (!_http.DefaultRequestHeaders.Contains(ApiKeyHeader))
+        // A guest sends no key at all: the server answers a request without the header as the
+        // ServerQuery guest, while a header carrying nothing useful is an invalid key (5122).
+        if (!profile.IsGuest && !_http.DefaultRequestHeaders.Contains(ApiKeyHeader))
         {
             _http.DefaultRequestHeaders.Add(ApiKeyHeader, profile.ApiKey);
         }

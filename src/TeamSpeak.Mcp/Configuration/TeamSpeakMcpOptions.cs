@@ -97,6 +97,11 @@ public sealed class QueryProfileOptions
     public int SshPort { get; set; } = 10022;
 
     /// <summary>Gets or sets the query login name.</summary>
+    /// <remarks>
+    /// Set it to <c>guest</c> and leave <see cref="Password"/> and <see cref="ApiKey"/> empty to
+    /// reach a server without credentials, as the ServerQuery guest; see
+    /// <see cref="QueryProfile.GuestUsername"/>.
+    /// </remarks>
     public string Username { get; set; } = "serveradmin";
 
     /// <summary>Gets or sets the query admin password.</summary>

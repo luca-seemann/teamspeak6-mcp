@@ -255,11 +255,14 @@ public sealed class SshQueryTransport : IQueryTransport
         // Connections, not commands, are what earn an IP-level block from this server.
         await ConnectionThrottle.Shared.WaitForTurnAsync(profile.Host, cancellationToken).ConfigureAwait(false);
 
+        // A guest has no password, and the server accepts any for that user, so it sends an empty one.
+        var password = profile.Password ?? string.Empty;
+
         var connectionInfo = new ConnectionInfo(
             profile.Host,
             profile.SshPort,
             profile.Username,
-            new PasswordAuthenticationMethod(profile.Username, profile.Password!))
+            new PasswordAuthenticationMethod(profile.Username, password))
         {
             Timeout = TimeSpan.FromSeconds(30),
         };
@@ -502,9 +505,9 @@ public sealed class SshQueryTransport : IQueryTransport
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Measured on 6.0.0-beta12.1: the server closed a query session after 25 to 30 seconds without a
-    /// command, although its documentation speaks of 300. SSH-level keepalive packets did not stop
-    /// it, so this has to be a real command.
+    /// Measured on 6.0.0-beta12.1, and unchanged on 6.0.0-beta13: the server closed a query session
+    /// after 25 to 30 seconds without a command, although its documentation speaks of 300. SSH-level
+    /// keepalive packets did not stop it, so this has to be a real command.
     /// </para>
     /// <para>
     /// A session found disconnected is reopened here at once instead of on the next command. For a

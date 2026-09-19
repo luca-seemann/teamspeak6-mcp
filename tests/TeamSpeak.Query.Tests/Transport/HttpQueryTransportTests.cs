@@ -32,6 +32,24 @@ public class HttpQueryTransportTests
     }
 
     [Fact]
+    public async Task Sends_no_key_header_at_all_for_a_guest_profile()
+    {
+        // Measured on 6.0.0-beta13: a request without the header is answered as the ServerQuery
+        // guest, while a header carrying anything the server does not know is 5122 invalid apikey.
+        var guest = Profile();
+        guest.Username = QueryProfile.GuestUsername;
+        guest.ApiKey = null;
+
+        var handler = new StubHandler(Ok);
+        await using var transport = new HttpQueryTransport(guest, new HttpClient(handler));
+
+        await transport.SendAsync(new QueryCommand("version"), TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.False(request.Headers.Contains(HttpQueryTransport.ApiKeyHeader));
+    }
+
+    [Fact]
     public async Task Refuses_help_without_sending_anything()
     {
         // Measured: the WebQuery answers /help with 404 "not found".
