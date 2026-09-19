@@ -122,7 +122,7 @@ public class ToolSchemaSnapshotTests
                 "ts_file_info", "ts_file_list", "ts_file_transfers",
                 "ts_health_report",
                 "ts_instance_info", "ts_log_view", "ts_message_get", "ts_message_list", "ts_perm_assigned",
-                "ts_perm_effective", "ts_perm_find", "ts_perm_list", "ts_profiles_list",
+                "ts_perm_effective", "ts_perm_find", "ts_perm_list", "ts_perm_self", "ts_profiles_list",
                 "ts_querylogin_list", "ts_servergroup_list", "ts_servergroup_members", "ts_token_list",
                 "ts_vserver_info", "ts_vserver_list", "ts_whoami",
         };

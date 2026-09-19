@@ -264,4 +264,110 @@ public class PermissionToolsTests
         Assert.Equal(1, about.TotalMatches);
         Assert.Single(harness.Transport.SentCommands, command => command.Name == "permissionlist");
     }
+
+    [Fact]
+    public async Task The_session_sees_which_permissions_it_holds_itself()
+    {
+        await using var harness = Harness();
+        harness.Transport
+            .Returns("whoami", ToolHarness.Records(new Dictionary<string, string>
+            {
+                ["client_login_name"] = "serveradmin",
+                ["client_database_id"] = "1",
+                ["virtualserver_id"] = "1",
+                ["client_channel_id"] = "3",
+            }))
+            .Returns("servergroupsbyclientid", ToolHarness.Records(
+                new Dictionary<string, string> { ["name"] = "Admin Server Query", ["sgid"] = "2" }))
+            .Returns("permget", command => command.Parameters!["permsid"] == "i_client_talk_power"
+                ? ToolHarness.Records(new Dictionary<string, string> { ["permsid"] = "i_client_talk_power", ["permvalue"] = "75" })
+                : ToolHarness.Error(QueryErrorCode.EmptyResultSet, "database empty result set"));
+
+        var self = await Tools(harness).SelfPermissionsAsync(
+            ["i_client_talk_power", "i_channel_needed_join_power"],
+            channelId: 3,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(("serveradmin", 1, 3), (self.Login, self.DatabaseId, self.ChannelId));
+        Assert.Equal("Admin Server Query", Assert.Single(self.ServerGroups));
+        Assert.Equal(
+            [("i_client_talk_power", (int?)75, true), ("i_channel_needed_join_power", null, false)],
+            self.Permissions.Select(permission => (permission.Name, permission.Value, permission.Granted)));
+        Assert.Equal("3", harness.Transport.SentCommands.First(command => command.Name == "permget").Parameters!["cid"]);
+    }
+
+    [Fact]
+    public async Task A_guest_session_has_no_account_and_no_groups_to_read()
+    {
+        // A guest is nobody: client_database_id 0, so there is no membership to look up.
+        await using var harness = Harness();
+        harness.Transport
+            .Returns("whoami", ToolHarness.Records(new Dictionary<string, string>
+            {
+                ["client_login_name"] = "",
+                ["client_database_id"] = "0",
+                ["virtualserver_id"] = "1",
+            }))
+            .Returns("permget", ToolHarness.Error(QueryErrorCode.EmptyResultSet, "database empty result set"));
+
+        var self = await Tools(harness).SelfPermissionsAsync(
+            ["i_client_talk_power"], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Empty(self.ServerGroups);
+        Assert.False(Assert.Single(self.Permissions).Granted);
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name == "servergroupsbyclientid");
+    }
+
+    [Fact]
+    public async Task A_command_names_the_permissions_it_needs()
+    {
+        await using var harness = Harness();
+        harness.Transport
+            .Returns("whoami", ToolHarness.Records(new Dictionary<string, string> { ["client_database_id"] = "0" }))
+            .Returns("help", QueryResponseParser.Parse(
+                "Usage: serverstop sid={serverID}\n\rPermissions:\n\r  b_virtualserver_stop\n\rDescription:\n\r  Stops it.\n\rerror id=0 msg=ok\n\r"))
+            .Returns("permissionlist", ToolHarness.Records(
+                new Dictionary<string, string> { ["permid"] = "300", ["permname"] = "b_virtualserver_stop", ["permdesc"] = "Stop a virtual server" }))
+            .Returns("permget", ToolHarness.Records(new Dictionary<string, string> { ["permvalue"] = "1" }));
+
+        var self = await Tools(harness).SelfPermissionsAsync(
+            command: "serverstop", cancellationToken: TestContext.Current.CancellationToken);
+
+        var check = Assert.Single(self.Permissions);
+        Assert.Equal(("b_virtualserver_stop", (int?)1, true), (check.Name, check.Value, check.Granted));
+    }
+
+    [Fact]
+    public async Task Asking_about_nothing_is_refused_before_any_permission_is_read()
+    {
+        await using var harness = Harness();
+        harness.Transport.Returns("whoami", ToolHarness.Records(new Dictionary<string, string> { ["client_database_id"] = "0" }));
+
+        var ex = await Assert.ThrowsAsync<McpException>(() => Tools(harness).SelfPermissionsAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("ts_perm_list", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(harness.Transport.SentCommands, command => command.Name == "permget");
+    }
+
+    [Theory]
+    [InlineData(2562, "no permission by that name")]
+    [InlineData(2568, "may not read its own permissions")]
+    public async Task A_refusal_about_one_permission_is_reported_rather_than_thrown(int error, string expected)
+    {
+        // Measured on 6.0.0-beta13: an unknown name answers 2562, and a guest session is refused
+        // permget entirely with 2568, which is the answer to the question and not a failure.
+        await using var harness = Harness();
+        harness.Transport
+            .Returns("whoami", ToolHarness.Records(new Dictionary<string, string> { ["client_database_id"] = "0" }))
+            .Returns("permget", ToolHarness.Error(error, "refused"));
+
+        var self = await Tools(harness).SelfPermissionsAsync(
+            ["b_virtualserver_stop"], cancellationToken: TestContext.Current.CancellationToken);
+
+        var check = Assert.Single(self.Permissions);
+        Assert.False(check.Granted);
+        Assert.Null(check.Value);
+        Assert.Contains(expected, check.Status, StringComparison.Ordinal);
+    }
 }

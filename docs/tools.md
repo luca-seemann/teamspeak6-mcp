@@ -3,7 +3,7 @@
 What every tool does, what it needs, and how to leave some of them out. The setup guide is in
 [setup.md](setup.md), and the [README](../README.md) explains the server itself.
 
-84 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
+85 tools in all. The reading tools need `ReadOnly`, except `ts_token_list`, which needs `Write`
 because privilege keys are live credentials. The changing tools are listed further down with the
 level each needs.
 
@@ -20,7 +20,7 @@ all, usually as `total`.
 | People online | `ts_client_list`, `ts_client_info`, `ts_client_find` | Who is connected, with groups and away state. |
 | Known identities | `ts_clientdb_list`, `ts_clientdb_info`, `ts_clientdb_find`, `ts_client_resolve` | Everyone the server has seen; turn a session id, database id or unique identity into all three. |
 | Groups | `ts_servergroup_list`, `ts_servergroup_members`, `ts_channelgroup_list`, `ts_channelgroup_members`, `ts_client_groups` | Groups, their members, and every group one person is in. |
-| Permissions | `ts_perm_effective`, `ts_perm_find`, `ts_perm_assigned`, `ts_perm_list` | **Why can or can't someone do something**; who holds a permission; what one group, channel or client has. |
+| Permissions | `ts_perm_effective`, `ts_perm_find`, `ts_perm_assigned`, `ts_perm_list`, `ts_perm_self` | **Why can or can't someone do something**; who holds a permission; what one group, channel or client has; and what this server's own session may do. |
 | Moderation | `ts_ban_list`, `ts_complaint_list`, `ts_token_list` | Bans with expiry, complaints, unused privilege keys. |
 | Access and logs | `ts_apikey_list`, `ts_querylogin_list`, `ts_message_list`, `ts_message_get`, `ts_log_view`, `ts_custom_info`, `ts_custom_search` | API keys and query logins, the query inbox, the server log, custom client properties. |
 | Events | `ts_events_subscribe`, `ts_events_poll`, `ts_events_wait`, `ts_events_unsubscribe`, `ts_events_status` | **What is happening right now**: messages, people connecting and moving, channel and server changes, bans. |
@@ -132,6 +132,15 @@ every assignment behind it, marking the one that decided. It also shows when cha
 count: a skip flag keeps both channel layers out, and `b_client_skip_channelgroup_permissions`, which
 Server Admin holds by default, keeps out the channel group.
 
+`ts_perm_self` answers the same question about this server's own query session, which is the one
+`ts_perm_effective` cannot reach. Use it after a call came back as *insufficient client permissions*
+(`2568`), or before trying something that might be refused: it names the login, the server groups it
+holds and the value it has for each permission asked about, where a permission it holds nowhere
+comes back as `granted: false`. Rather than naming permissions, `command` looks up what a
+ServerQuery command requires, read from the server's own help — so `command: "serverstop"` answers
+"may this session stop a virtual server?" without sending `serverstop`. That lookup needs an SSH
+profile, because the WebQuery serves no help. A guest profile has no account, so it holds no groups.
+
 ## Events
 
 `ts_events_subscribe` starts collecting events from a virtual server:
@@ -241,7 +250,7 @@ actually change is still decided by the safety level.
 
 ## Tool groups
 
-A client sends every tool definition to the model with each request: about 34,000 tokens for all 84.
+A client sends every tool definition to the model with each request: about 34,000 tokens for all 85.
 A deployment that never needs some of them can switch whole groups off, for example
 `TSMCP_TeamSpeak__DisabledToolGroups=files,events`. An unknown name stops the start with the list of
 valid ones.

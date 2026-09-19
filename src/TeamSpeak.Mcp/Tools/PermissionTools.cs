@@ -140,6 +140,205 @@ public sealed partial class PermissionTools(QueryExecutor executor, PermissionNa
         return new PermissionHolders(definition.Name, sources.Select(source => source.Describe(groupNames)).ToList());
     }
 
+    /// <summary>Reports what this server's own query session is allowed to do.</summary>
+    /// <param name="permissions">Permission names to check.</param>
+    /// <param name="command">A ServerQuery command whose required permissions to check.</param>
+    /// <param name="channelId">The channel to read the values in.</param>
+    /// <param name="virtualServerId">The virtual server.</param>
+    /// <param name="profile">The profile.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>Who the session is, the groups it holds, and the value of each permission asked about.</returns>
+    [McpServerTool(Name = "ts_perm_self", Title = "Show what this session may do",
+        ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [Description("Shows what this MCP server's own query session may do on a TeamSpeak server: which " +
+                 "login it is, which server groups that login holds, and the value it has for the " +
+                 "permissions asked about. Use it when a call came back as 'insufficient client " +
+                 "permissions' (2568), or before trying something that might be refused. Name the " +
+                 "permissions directly, or pass command to look up what a ServerQuery command needs, " +
+                 "read from the server's own help; a permission the session does not hold at all comes " +
+                 "back as granted false, and each entry carries a status in words. Looking up a command needs a " +
+                 "profile that uses SSH, because " +
+                 "the WebQuery serves no help. A guest profile has no account, so it holds no groups.")]
+    public async Task<SessionPermissions> SelfPermissionsAsync(
+        [Description("Permission names to check, for example 'b_virtualserver_stop'. See ts_perm_list.")]
+        IReadOnlyList<string>? permissions = null,
+        [Description("A ServerQuery command whose required permissions to check, for example 'serverstop'.")]
+        string? command = null,
+        [Description("Read the values as they are inside this channel, where a channel or channel group could change them.")]
+        int? channelId = null,
+        [Description(ToolDescriptions.VirtualServerId)] int? virtualServerId = null,
+        [Description(ToolDescriptions.Profile)] string? profile = null,
+        CancellationToken cancellationToken = default)
+    {
+        var identity = await executor.RunAsync(
+            "ts_perm_self", SafetyLevel.ReadOnly, profile, new QueryCommand("whoami", VirtualServerId: virtualServerId), cancellationToken)
+            .ConfigureAwait(false);
+
+        var session = identity.Count > 0 ? identity[0] : throw new McpException("The server returned no session.");
+        var databaseId = session.GetInt32("client_database_id");
+
+        var names = await RequestedPermissionsAsync(permissions, command, profile, cancellationToken).ConfigureAwait(false);
+        var checks = new List<PermissionCheck>();
+
+        foreach (var name in names)
+        {
+            checks.Add(await CheckAsync(name, channelId, virtualServerId, profile, cancellationToken).ConfigureAwait(false));
+        }
+
+        return new SessionPermissions(
+            session.GetString("client_login_name"),
+            databaseId,
+            // What the values were read on, which is not what whoami reports: the session selects a
+            // virtual server only when a command needs one, and whoami needs none.
+            virtualServerId ?? executor.ResolveProfile(profile).DefaultVirtualServerId,
+            channelId ?? session.GetInt32("client_channel_id"),
+            // A guest has no account, so there is no membership to read: cldbid 0 is nobody.
+            databaseId == 0 ? [] : await GroupsOfAsync(databaseId, virtualServerId, profile, cancellationToken).ConfigureAwait(false),
+            checks);
+    }
+
+    /// <summary>Collects the permission names to check, from the caller and from a command's help.</summary>
+    private async Task<IReadOnlyList<string>> RequestedPermissionsAsync(
+        IReadOnlyList<string>? permissions,
+        string? command,
+        string? profile,
+        CancellationToken cancellationToken)
+    {
+        var names = new List<string>(permissions?.Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name.Trim()) ?? []);
+
+        if (!string.IsNullOrWhiteSpace(command))
+        {
+            var help = await new MetaTools(executor).CommandHelpAsync(command, profile, cancellationToken).ConfigureAwait(false);
+            names.AddRange(PermissionsNamedIn(help.Text));
+        }
+
+        if (names.Count == 0)
+        {
+            throw new McpException(
+                "Name at least one permission, or a command whose permissions to look up. " +
+                "ts_perm_list finds permission names, ts_command_help shows what a command needs.");
+        }
+
+        // More than a handful is a catalog dump, which ts_perm_assigned does better and in one command.
+        var distinct = names.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        return distinct.Count <= 20
+            ? distinct
+            : throw new McpException(
+                $"{distinct.Count} permissions is too many for one call; check at most 20. " +
+                "ts_perm_assigned lists everything a group or client holds in one command.");
+    }
+
+    /// <summary>Reads the permission names out of the Permissions section of a command's help page.</summary>
+    /// <remarks>
+    /// The page lists them one per line between the <c>Permissions:</c> and <c>Description:</c>
+    /// headings, indented; a command that needs none has the heading with nothing under it.
+    /// </remarks>
+    private static IEnumerable<string> PermissionsNamedIn(string help)
+    {
+        var lines = help.Split('\n');
+        var start = Array.FindIndex(lines, line => line.Trim().Equals("Permissions:", StringComparison.Ordinal));
+
+        if (start < 0)
+        {
+            yield break;
+        }
+
+        for (var i = start + 1; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+
+            if (line.EndsWith(':') || line.Equals("Usage", StringComparison.Ordinal))
+            {
+                yield break;
+            }
+
+            if (line.Length > 0 && line.All(character => char.IsAsciiLetterOrDigit(character) || character == '_'))
+            {
+                yield return line;
+            }
+        }
+    }
+
+    /// <summary>Asks the server for the session's own value of one permission.</summary>
+    /// <remarks>
+    /// The server validates the name itself, answering <c>2562</c> for one it does not know, so this
+    /// needs no permission catalog — which matters, because a session that may not read the catalog
+    /// can still be asked about itself. Every outcome is reported rather than thrown: measured on
+    /// 6.0.0-beta13, a guest session is refused <c>permget</c> entirely with <c>2568</c>, and "you may
+    /// not even ask" is the answer to the question, not a reason to abandon the other permissions.
+    /// </remarks>
+    private async Task<PermissionCheck> CheckAsync(
+        string permission,
+        int? channelId,
+        int? virtualServerId,
+        string? profile,
+        CancellationToken cancellationToken)
+    {
+        var name = RequireText(permission, nameof(permission));
+
+        if (!name.All(character => char.IsAsciiLetterOrDigit(character) || character == '_'))
+        {
+            throw new McpException($"'{name}' is not a permission name. See ts_perm_list for the exact names.");
+        }
+
+        var parameters = new Dictionary<string, string>(StringComparer.Ordinal) { ["permsid"] = name };
+
+        if (channelId is { } channel)
+        {
+            parameters["cid"] = Text(channel);
+        }
+
+        var response = await executor.RunForStatusAsync(
+            "ts_perm_self",
+            SafetyLevel.ReadOnly,
+            profile,
+            new QueryCommand("permget", parameters, VirtualServerId: virtualServerId),
+            cancellationToken).ConfigureAwait(false);
+
+        if (response.Error.Id == QueryErrorCode.InvalidPermissionId)
+        {
+            return new PermissionCheck(name, null, false, "the server has no permission by that name");
+        }
+
+        if (response.Error.Id == QueryErrorCode.InsufficientPermissions)
+        {
+            return new PermissionCheck(name, null, false, "this session may not read its own permissions");
+        }
+
+        if (!response.Error.IsSuccess && !response.Error.IsEmptyResult)
+        {
+            return new PermissionCheck(name, null, false, $"the server refused the question: {response.Error.Message}");
+        }
+
+        // A permission the session holds nowhere answers with an empty result set rather than a value.
+        if (response.Error.IsEmptyResult || response.Records.Count == 0)
+        {
+            return new PermissionCheck(name, null, false, "this session holds it nowhere");
+        }
+
+        var value = response.Records[0].GetInt32("permvalue");
+        return new PermissionCheck(name, value, value != 0, value != 0 ? "granted" : "held, but zero");
+    }
+
+    /// <summary>Reads the server groups a client database id belongs to.</summary>
+    private async Task<IReadOnlyList<string>> GroupsOfAsync(
+        int databaseId,
+        int? virtualServerId,
+        string? profile,
+        CancellationToken cancellationToken)
+    {
+        var records = await executor.RunSearchAsync(
+            "ts_perm_self",
+            SafetyLevel.ReadOnly,
+            profile,
+            new QueryCommand("servergroupsbyclientid", new Dictionary<string, string> { ["cldbid"] = Text(databaseId) }, VirtualServerId: virtualServerId),
+            QueryErrorCode.EmptyResultSet,
+            cancellationToken).ConfigureAwait(false);
+
+        return records.Select(record => record.GetString("name")).Where(name => name.Length > 0).ToList();
+    }
+
     /// <summary>Resolves a permission name, refusing one the server does not know.</summary>
     private async Task<PermissionDefinition> RequirePermissionAsync(string permission, string? profile, CancellationToken cancellationToken)
     {
@@ -275,3 +474,24 @@ internal sealed record PermissionSource(PermissionSourceKind Kind, int Id1, int 
     public PermissionHolder Describe(GroupNames names) =>
         new(KindName, ServerGroupId, ChannelGroupId, ChannelId, DatabaseId, GroupName(names));
 }
+/// <summary>What this server's own query session is and may do.</summary>
+/// <param name="Login">The query login name, empty for a guest session.</param>
+/// <param name="DatabaseId">The client database id behind the login, 0 for a guest.</param>
+/// <param name="VirtualServerId">The virtual server the permissions were read on.</param>
+/// <param name="ChannelId">The channel they were read in: the one asked for, or the one the session sits in, 0 for none.</param>
+/// <param name="ServerGroups">The server groups the login holds; empty for a guest, which has no account.</param>
+/// <param name="Permissions">One entry per permission asked about.</param>
+public sealed record SessionPermissions(
+    string Login,
+    int DatabaseId,
+    int VirtualServerId,
+    int ChannelId,
+    IReadOnlyList<string> ServerGroups,
+    IReadOnlyList<PermissionCheck> Permissions);
+
+/// <summary>The session's own value for one permission.</summary>
+/// <param name="Name">The permission name.</param>
+/// <param name="Value">The value the server reports, or <see langword="null"/> when the session holds it nowhere.</param>
+/// <param name="Granted">Whether the value allows the action: any non-zero value.</param>
+/// <param name="Status">Why it came out that way, in words, for the cases where no value was read.</param>
+public sealed record PermissionCheck(string Name, int? Value, bool Granted, string Status);

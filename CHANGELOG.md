@@ -151,6 +151,12 @@ All notable changes to this project are documented here. The format follows
   the refusal applies to every version until `KnownCrashes.StopFixedIn` names one. The message says
   what still works instead: a snapshot deploy restarts a virtual server from the inside, and
   stopping the instance takes its virtual servers with it.
+- `ts_perm_self` answers what this server's own query session may do: the login, the server groups
+  it holds, and its value for each permission asked about, with one it holds nowhere reported as not
+  granted. It takes permission names, or a `command` whose requirements it reads from the server's
+  own help, so "may I stop a virtual server?" can be answered without sending `serverstop`. Every
+  other permission tool asks about somebody else, which leaves the commonest question after a
+  refusal — what am *I* allowed to do — to guesswork.
 - Refusals explain themselves differently for a guest profile: `2568` names the server's
   `Guest Server Query` group rather than a query login it does not have, and `5120` says TeamSpeak
   does not allow guests that command at all.

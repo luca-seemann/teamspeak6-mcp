@@ -149,6 +149,13 @@ public static class QueryErrorCode
     /// </remarks>
     public const int AccessToDefaultGroupForbidden = 2564;
 
+    /// <summary>No permission by that id or name. Sent as <c>invalid permission ID</c>.</summary>
+    /// <remarks>
+    /// Measured on 6.0.0-beta13: this is how the server answers <c>permget permsid=</c> with a name it
+    /// does not know, which is why asking about one's own permissions needs no permission catalog.
+    /// </remarks>
+    public const int InvalidPermissionId = 2562;
+
     /// <summary>
     /// The query login lacks a permission. Sent as <c>insufficient client permissions</c>, naming it.
     /// </summary>

@@ -164,7 +164,7 @@ session that is broken, or still waiting for an answer, is simply closed.
 
 ## Tools
 
-84 tools in all, and [docs/tools.md](docs/tools.md) describes every one of them: what it answers,
+85 tools in all, and [docs/tools.md](docs/tools.md) describes every one of them: what it answers,
 which safety level it needs, and the MCP annotation it carries. In short:
 
 | Group | What it covers |

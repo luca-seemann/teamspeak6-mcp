@@ -141,6 +141,36 @@ public sealed class QueryExecutor
             : throw new McpException(DescribeRefusal(resolved.Name, command.Name, response.Error, resolved.IsGuest));
     }
 
+    /// <summary>
+    /// Checks safety, sends one command and returns whatever the server answered, refusal included.
+    /// </summary>
+    /// <param name="action">What is being attempted, usually the tool name.</param>
+    /// <param name="required">The safety level the command needs.</param>
+    /// <param name="profile">The profile name, or <see langword="null"/> when only one is configured.</param>
+    /// <param name="command">The command to send.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The response, successful or not.</returns>
+    /// <exception cref="McpException">
+    /// Thrown when the call is not allowed or the server cannot be reached. A refusal by the server
+    /// is returned rather than thrown.
+    /// </exception>
+    /// <remarks>
+    /// For the few tools whose answer is the status itself, such as asking permission by permission
+    /// what this session may do, where "you may not even ask" is a result worth reporting rather than
+    /// an error to abort on. Everywhere else a refusal should become an <see cref="McpException"/>
+    /// through <see cref="RunAsync"/>.
+    /// </remarks>
+    public async Task<QueryResponse> RunForStatusAsync(
+        string action,
+        SafetyLevel required,
+        string? profile,
+        QueryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var (_, response) = await SendUncheckedAsync(action, required, profile, command, cancellationToken).ConfigureAwait(false);
+        return response;
+    }
+
     /// <summary>Checks safety and sends one command, leaving the server's status to the caller.</summary>
     private async Task<(QueryProfile Profile, QueryResponse Response)> SendUncheckedAsync(
         string action,

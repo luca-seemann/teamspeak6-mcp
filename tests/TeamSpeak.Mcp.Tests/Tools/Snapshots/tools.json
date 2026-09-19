@@ -5936,6 +5936,129 @@
     }
   },
   {
+    "name": "ts_perm_self",
+    "title": "Show what this session may do",
+    "description": "Shows what this MCP server\u0027s own query session may do on a TeamSpeak server: which login it is, which server groups that login holds, and the value it has for the permissions asked about. Use it when a call came back as \u0027insufficient client permissions\u0027 (2568), or before trying something that might be refused. Name the permissions directly, or pass command to look up what a ServerQuery command needs, read from the server\u0027s own help; a permission the session does not hold at all comes back as granted false, and each entry carries a status in words. Looking up a command needs a profile that uses SSH, because the WebQuery serves no help. A guest profile has no account, so it holds no groups.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "permissions": {
+          "description": "Permission names to check, for example \u0027b_virtualserver_stop\u0027. See ts_perm_list.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "command": {
+          "description": "A ServerQuery command whose required permissions to check, for example \u0027serverstop\u0027.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "channelId": {
+          "description": "Read the values as they are inside this channel, where a channel or channel group could change them.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "virtualServerId": {
+          "description": "The virtual server to address, as listed by ts_vserver_list. Omit it to use the profile\u0027s default virtual server.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "profile": {
+          "description": "The configured TeamSpeak server to use, as listed by ts_profiles_list. Omit it when only one profile is configured.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "login": {
+          "type": "string"
+        },
+        "databaseId": {
+          "type": "integer"
+        },
+        "virtualServerId": {
+          "type": "integer"
+        },
+        "channelId": {
+          "type": "integer"
+        },
+        "serverGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "granted": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "granted",
+              "status"
+            ]
+          }
+        }
+      },
+      "required": [
+        "login",
+        "databaseId",
+        "virtualServerId",
+        "channelId",
+        "serverGroups",
+        "permissions"
+      ]
+    },
+    "annotations": {
+      "title": "Show what this session may do",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    }
+  },
+  {
     "name": "ts_perm_set",
     "title": "Grant or revoke a permission",
     "description": "Grants a permission with a value to one target, or revokes the assignment again. The target is a serverGroupId, a channelGroupId, a channelId alone (channel requirements such as needed join power), a databaseId alone (the identity itself), or channelId with databaseId (the identity in that channel). negated applies only to server groups; skip only to server groups and identities. Check the result with ts_perm_effective. On a server group or an identity, granting and revoking need Destructive, since they decide what someone may do server-wide; on a channel, channel group or identity in a channel they need Write.",
