@@ -69,8 +69,8 @@ All notable changes to this project are documented here. The format follows
 - File transfer: `ts_file_list`, `ts_file_info`, `ts_file_transfers`, `ts_file_download`,
   `ts_file_upload`, `ts_file_manage` and `ts_file_delete`, bringing the total to 83 tools at that
   point.
-  - Content travels inline (text or base64, up to `TeamSpeak:FileTransfer:MaxInlineBytes`, 100 KiB by
-    default), or as a local file inside `TeamSpeak:FileTransfer:LocalDirectory`. Local files are off
+  - Content travels inline (text or base64, up to `TeamSpeak:FileTransfer:MaxInlineBytes`), or as a
+    local file inside `TeamSpeak:FileTransfer:LocalDirectory`. Local files are off
     until that is set, and saving a download to one needs `Write`.
   - An upload's stored size is compared with what was sent, so a transfer that broke off is reported
     rather than taken for success. Its partial file is kept, and `resume=true` sends only the missing
