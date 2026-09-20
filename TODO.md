@@ -16,10 +16,10 @@ lists everything that is unverified, including what cannot be checked on the tes
   container refuses to start without `TSMCP_HTTP_TOKEN`, and the unprivileged user can write the
   remembered host keys to `/state/known_hosts` on the named volume, so a recreated container keeps
   trusting the same key.
-- **Read the first CI runs, and start the package job by hand.** The repository went to GitHub on
-  20 September 2026, so `.github/workflows/ci.yml` runs on every push to `master` from now on;
-  nobody has looked at a run yet. Check that build and test pass on Linux and Windows. The package
-  job starts by hand only and has still never run, so start it and check its artifacts.
+- **Start the CI package job by hand.** Waiting for someone to trigger it. The build and test job
+  passed on Linux and Windows on the first push, 20 September 2026, but the package job runs only
+  for a `v*` tag or a manual start, so it was skipped. Start it through workflow_dispatch and check
+  that the three binaries and the tool package come out as artifacts.
 - **Publish to nuget.org.** Waiting for the decision to release. The metadata is in place, so this
   is: tag a version, let the release workflow build the packages, push them with an API key, then
   check that `dnx TeamSpeak6.Mcp` works without `--add-source`. Publishing also lists the server in

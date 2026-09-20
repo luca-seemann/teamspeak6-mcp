@@ -19,10 +19,12 @@ servers, or against a second TeamSpeak build.
   a hard drop's reopen can take up to a minute under reconnect backoff.
 - **The container image has never been built.** Building it is listed in [TODO.md](../TODO.md). The
   Dockerfile publishes the same binary that was verified for linux-x64, cross-compiled for arm64.
-- **CI has only just become able to run.** `.github/workflows/ci.yml` had no GitHub repository to
-  run in until this one was pushed on 20 September 2026, and its package job starts by hand only, so
-  that job has still never run. The command sequences it uses, publish and pack among them, work
-  locally.
+- **The CI package job has never run.** `.github/workflows/ci.yml` first ran on 20 September 2026,
+  when the repository was pushed, and its build and test job passed on ubuntu-latest and on
+  windows-latest: restore, `dotnet format --verify-no-changes`, a Release build and the suite.
+  Without `TSMCP_TEST_HOST` the live tests skip themselves there, so that run says nothing about a
+  real server. The package job is gated on a `v*` tag or a start by hand and was skipped, so
+  publishing the three binaries and packing the tool package have still only been done locally.
 - **The packages are verified locally only.**
   - `dnx` ran the tool package from a local folder, not from nuget.org, where nothing is published.
   - The win-x64 binary ran over stdio and Streamable HTTP against the test server, and the linux-x64
@@ -159,10 +161,11 @@ servers, or against a second TeamSpeak build.
   A server whose key really changed, after a reinstall or behind an interception, was simulated only
   through that wrong pin. Two processes meeting a new server at the same moment were tried in unit
   tests, not across two real processes.
-- **The check of opened local files ran on two platforms only.** Windows, and Linux x64 with glibc in
-  WSL, where a self-contained build of the unit tests covered symbolic links, hard links and a
-  directory swapped for a link. It uses `statx`, `realpath` and `/proc/self/fd` on Linux, which were
-  not run on arm64, on musl or inside the container image.
+- **The check of opened local files ran on glibc x64 only.** Windows, Linux x64 with glibc in WSL,
+  where a self-contained build of the unit tests covered symbolic links, hard links and a directory
+  swapped for a link, and since 20 September 2026 the ubuntu-latest CI runner as well. It uses
+  `statx`, `realpath` and `/proc/self/fd` on Linux, which were not run on arm64, on musl or inside
+  the container image.
 - **Deletion confirmations are live-tested for some targets only.** The live suite confirmed deleting
   channels, server groups, channel groups and stored files, overwriting a file, deleting this query
   login's own API key by the login name `serveradmin`, and deleting a query login it created, which
