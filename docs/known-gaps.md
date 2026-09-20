@@ -54,9 +54,10 @@ servers, or against a second TeamSpeak build.
   of about two dozen channels, but usually only the query session is connected, so the
   client-facing tools, among them client listing and decoding, effective permissions, complaints and
   talker status, have met a real person only on the occasions someone was connected, and otherwise in unit tests.
-  Several live tests skip themselves when nobody is online. After the transport rework that moved
-  virtual server selection into each command, they ran again with a client connected and passed;
-  only the disruptive test was left out.
+  Several live tests skip themselves when nobody is online. With a client connected on
+  21 September 2026 the whole suite ran, the disruptive test included: it left the person an offline
+  message, kicked them off the server, and cleaned the message up again, 43 passed and 5 skipped,
+  none of them for want of a client.
 - **Only two instance-wide WebQuery paths were probed.** `serverstart` and `serveridgetbyport` are
   accepted both as `/{command}` and as `/{sid}/{command}`, so listing them as instance-wide costs
   nothing over HTTP. `serverstop`, `serverdelete` and `serverprocessstop` were not probed, for

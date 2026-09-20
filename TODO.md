@@ -27,9 +27,6 @@ lists everything that is unverified, including what cannot be checked on the tes
 - **Run the linux-arm64 binary on arm64 hardware.** Waiting for an arm64 machine. It has only been
   built. Start it over stdio and call a tool against the test server, as was done for win-x64 and
   linux-x64.
-- **Run the disruptive live test once more.** Waiting for a moment when a connected client may be
-  kicked. `TSMCP_TEST_DISRUPTIVE=1` has not been run since the transport rework that moved virtual
-  server selection into each command; the other client tests passed afterwards.
 - **Track down the one-off tool schema difference.** Waiting for it to happen again, or for someone
   to sit down with it. Once in about ten runs the snapshot came out with `ts_file_download` carrying
   its `IProgress` parameter in the input schema; see [docs/known-gaps.md](docs/known-gaps.md). Run
