@@ -1,19 +1,25 @@
 # Captured protocol reference
 
-> **Whose text this is.** `serverquery-6.0.0-beta12.1.txt` is TeamSpeak's own documentation, as the
+> **Whose text this is.** `serverquery-6.0.0-beta13.txt` is TeamSpeak's own documentation, as the
 > server itself prints it. It is © TeamSpeak Systems GmbH, is **not** covered by this repository's
 > licence, and is included unchanged so that this project's behaviour can be checked against it.
 > Everything else in this repository is the project's own work. If TeamSpeak Systems would rather it
-> were not here, open an issue and it goes; the section below explains how to capture it yourself in
-> a few minutes.
+> were not here, open an issue and it goes; [capturing it yourself](#capturing-it-yourself) takes
+> half a minute.
 
 TeamSpeak 6 ships **no public ServerQuery command reference**. The official documentation site has
 four query pages and none of them lists a command, an endpoint path, or a response shape. The real
 reference lives inside the server package, behind `--query-documentation-path`.
 
-`serverquery-6.0.0-beta12.1.txt` is that reference, captured from a live server by running `help`
-and then `help <command>` for all 141 commands. It is the source of truth for this project: when
-the code and this file disagree, this file wins.
+`serverquery-6.0.0-beta13.txt` is that reference, captured on 20 September 2026 from a live
+6.0.0-beta13 server by running `help` and then `help <command>` for each of the 141 commands that
+have a page of their own. It is the source of truth for this project: when the code and this file
+disagree, this file wins.
+
+The same capture from 6.0.0-beta12.1 carried the same 143 names with the same pages, down to the
+wording; the one difference is where the overview lists `customdelete`. So these pages describe both
+releases, `help serversnapshotdeploy` included, even though `-keepfiles`, which that page describes,
+behaves completely differently between the two.
 
 Alongside it, `tests/TeamSpeak.Query.Tests/Fixtures/` holds raw responses for the same commands over
 both transports: `ssh/` as raw query text, `http/` as raw WebQuery JSON. They are captured bytes,
@@ -21,32 +27,43 @@ not hand-written, and the parser tests run against them.
 
 ## Where the official docs are wrong
 
-Verified against server 6.0.0-beta12.1:
+Verified against 6.0.0-beta12.1 and again against 6.0.0-beta13:
 
 | Docs claim | Reality |
 |---|---|
-| WebQuery accepts HTTP Basic Auth with `serveradmin` | Rejected. `x-api-key` is the only accepted credential. Basic Auth with correct credentials still returns `5124 missing apikey`, while a bad `x-api-key` returns the distinct `5122 invalid apikey`. |
+| WebQuery accepts HTTP Basic Auth with `serveradmin` | Rejected. `x-api-key` is the only accepted credential. Basic Auth with correct credentials still returns `5124 missing apikey`, while a bad `x-api-key` returns the distinct `5122 invalid apikey`. On 6.0.0-beta13 a request carrying no key at all is answered as the ServerQuery guest rather than refused. |
 | SSH shows a `TS6>` prompt | The greeting line is `TS3` and no prompt is ever emitted. |
 | (undocumented) | The SSH query refuses PTY requests. An SSH client must open its channel without one. |
 
-**Still current on 6.0.0-beta13.** Its `help` lists exactly the same 143 commands, with the same
-descriptions, so this capture describes that release too, `help serversnapshotdeploy` included,
-even though `-keepfiles`, which the page describes, behaves completely differently there. What did
-change in beta13 is in [docs/teamspeak6-findings.md](../docs/teamspeak6-findings.md): both
-interfaces now let a guest in without credentials, and a request without an `x-api-key` header is
-answered rather than refused.
+What else beta13 changed is in [docs/teamspeak6-findings.md](../docs/teamspeak6-findings.md): both
+interfaces now let a guest in without credentials, and a session can `login` and `logout` in place.
 
-## Re-capturing
+## Capturing it yourself
 
-For a single command there is no need: `ts_command_help` asks the connected server for its page,
-for whatever version it runs.
+For a single command there is no need: `ts_command_help` asks the connected server for its page, in
+whatever version it runs.
 
-The capture scripts are not committed; they are throwaway. To rebuild the reference, open one SSH
-session and issue `help` followed by `help <command>` for each name in the first column, writing the
-raw bytes out unmodified.
+For the whole file, `capture.cs` beside it does the job. It is a .NET 10 file-based app, so it needs
+no project of its own:
 
-**Pace it: roughly 150 ms between commands is enough.** The reference above was captured that way,
-160 commands in one SSH session, without ever being throttled.
+```bash
+dotnet run reference/capture.cs <host> <query password> [port] [login] [output directory]
+```
+
+The port defaults to 10022 and the login to `serveradmin`. It opens one SSH session, reads the
+overview, and asks for every page listed in it: 143 commands, 31 seconds against the test server on
+a LAN. The file goes into `reference/` when you run it from the repository root, into the working
+directory otherwise, and is named after the version the server reports, so a capture never silently
+overwrites another release. Two runs on the same day produced the same bytes.
+
+Three details of the server shape how it is written, and each one cost an evening to find: the
+server refuses a pseudo-terminal, it sends no prompt, so answers can only be framed on the status
+line that closes them, and its lines end with `\n\r`, which the file keeps as the blank line it
+renders as.
+
+**Pace it: roughly 150 ms between commands is enough.** That is the pace `capture.cs` keeps, and
+neither of its runs was throttled. The longest session measured here carried 160 commands the same
+way, also without a single rejection.
 
 Send faster and the server rejects with a perfectly ordinary status that says exactly what is
 wrong:

@@ -257,8 +257,10 @@ Measured on 18 September 2026 against the test server, upgraded from beta12.1 to
 **6.0.0-beta13 (build 1789645103)**.
 
 **The command set did not move at all.** `help` lists the same 143 commands as beta12.1, none added,
-none dropped, so `reference/serverquery-6.0.0-beta12.1.txt` and the command catalog still describe
-this server. `help serversnapshotdeploy` is unchanged too, `-keepfiles` included.
+none dropped. `reference/serverquery-6.0.0-beta13.txt` was re-captured from this release on
+20 September 2026 and differs from the beta12.1 capture only in where the overview lists
+`customdelete`, so the command catalog describes both. `help serversnapshotdeploy` is unchanged too,
+`-keepfiles` included.
 
 **What else was re-measured and had not changed**, so everything above still holds on beta13: the
 no-match codes of the searches (`channelfind` 768, `clientfind` 512, `clientdbfind` 1281), `1540

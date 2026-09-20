@@ -11,7 +11,7 @@ namespace TeamSpeak.Mcp.Safety;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Covers all 143 commands in the index of <c>reference/serverquery-6.0.0-beta12.1.txt</c>; a test
+/// Covers all 143 commands in the index of <c>reference/serverquery-6.0.0-beta13.txt</c>; a test
 /// holds the two in step. A command this catalog does not know, for example one added by a later server version,
 /// needs <see cref="SafetyLevel.Destructive"/> until someone classifies it.
 /// </para>

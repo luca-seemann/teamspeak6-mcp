@@ -14,8 +14,8 @@ All notable changes to this project are documented here. The format follows
 - `FakeQueryTransport`, an in-memory stand-in used to test without a live TeamSpeak server.
 - The protocol core: value escaping, a parser for each transport, the command serialiser, and the
   status codes that drive control flow.
-- A captured ServerQuery command reference for 6.0.0-beta12.1, plus raw response fixtures from both
-  transports that the parser tests run against.
+- A captured ServerQuery command reference for 6.0.0-beta13, taken with `reference/capture.cs`, plus
+  raw response fixtures from both transports that the parser tests run against.
 - `QueryRecord`, giving typed access to response fields and decoding TeamSpeak's conventions in one
   place: booleans as `1`/`0`, times as Unix seconds, and a zero timestamp meaning never.
 - `SshQueryTransport` and `HttpQueryTransport`, both verified against a live server, with virtual
@@ -383,10 +383,10 @@ All notable changes to this project are documented here. The format follows
 - Everything measured on 6.0.0-beta12.1 was re-checked on 6.0.0-beta13 on 18 September 2026, and only
   two answers moved: the guest access above, and `-keepfiles`. The command set, the error codes the
   client reacts to, the SSH-only nature of events and file transfer, and the roughly 30-second idle
-  timeout are all unchanged, so the captured reference and the response fixtures still describe this
-  server. One thing did get worse: a `serverstop` issued while a file transfer is pending never
+  timeout are all unchanged, so the response fixtures still describe this server, and the captured
+  reference, re-taken from beta13 on 20 September 2026, differs from the beta12.1 one in nothing but
+  the order of a single entry in the overview. One thing did get worse: `serverstop` often never
   finishes and leaves the virtual server in `shutting down` until the whole TeamSpeak process is
-  restarted. It was found through a live suite run, then reproduced from nothing but one unused
-  upload ticket; it is described in
-  [docs/teamspeak6-findings.md](docs/teamspeak6-findings.md), the tools refuse such a stop, and the
-  live test that stops a virtual server waits for the transfers to lapse first.
+  restarted. It was found through a live suite run and then reproduced at will; it is described in
+  [docs/teamspeak6-findings.md](docs/teamspeak6-findings.md), the tools refuse such a stop until a
+  hotfix is named, and the live test that restarts a virtual server is skipped for as long.

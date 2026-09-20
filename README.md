@@ -217,7 +217,7 @@ states plainly what is untested.
 Copyright 2026 Luca Seemann. Licensed under the [GNU Affero General Public License, version 3
 or later](LICENSE).
 
-`reference/serverquery-6.0.0-beta12.1.txt` is the exception: it is TeamSpeak's own documentation,
+`reference/serverquery-6.0.0-beta13.txt` is the exception: it is TeamSpeak's own documentation,
 as the server prints it, and belongs to TeamSpeak Systems GmbH. See
 [reference/README.md](reference/README.md).
 

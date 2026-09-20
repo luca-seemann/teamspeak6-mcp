@@ -51,7 +51,7 @@ not cover.
 The tool schemas are pinned by a snapshot test. When a change is intended, run the tests with
 `TSMCP_UPDATE_SNAPSHOTS=1` and commit the diff of `tests/TeamSpeak.Mcp.Tests/Tools/Snapshots/tools.json`.
 
-When the code and `reference/serverquery-6.0.0-beta12.1.txt` disagree, the reference wins.
+When the code and `reference/serverquery-6.0.0-beta13.txt` disagree, the reference wins.
 
 ## Where things are
 
@@ -106,7 +106,7 @@ When the code and `reference/serverquery-6.0.0-beta12.1.txt` disagree, the refer
 Welcome, on the same terms as any other: you are the author of what you open a pull request for.
 Read it, run the tests, and be able to explain why the change is right, and where it touches the
 query protocol, say whether you checked it against a real TeamSpeak 6 server or against
-`reference/serverquery-6.0.0-beta12.1.txt`. What gets reviewed is the diff, not its origin.
+`reference/serverquery-6.0.0-beta13.txt`. What gets reviewed is the diff, not its origin.
 
 ## Commit messages
 

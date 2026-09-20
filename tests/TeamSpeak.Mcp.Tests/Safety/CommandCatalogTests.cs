@@ -12,7 +12,7 @@ public partial class CommandCatalogTests
     private static HashSet<string> ReferenceCommands()
     {
         var path = Path.GetFullPath(Path.Combine(
-            Path.GetDirectoryName(SourceFile())!, "..", "..", "..", "reference", "serverquery-6.0.0-beta12.1.txt"));
+            Path.GetDirectoryName(SourceFile())!, "..", "..", "..", "reference", "serverquery-6.0.0-beta13.txt"));
 
         return CommandIndexLine().Matches(File.ReadAllText(path))
             .Select(match => match.Groups[1].Value)
