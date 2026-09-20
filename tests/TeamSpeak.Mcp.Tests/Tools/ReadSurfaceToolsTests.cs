@@ -6,7 +6,7 @@ using TeamSpeak.Query.Protocol;
 
 namespace TeamSpeak.Mcp.Tests.Tools;
 
-/// <summary>The phase 5 read tools that are not about permissions.</summary>
+/// <summary>The reading tools that are not about permissions.</summary>
 public class ReadSurfaceToolsTests
 {
     [Fact]

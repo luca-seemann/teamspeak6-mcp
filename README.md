@@ -6,9 +6,9 @@
 [![MCP](https://img.shields.io/badge/MCP-server-orange.svg)](https://modelcontextprotocol.io)
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server for administering
-**TeamSpeak 6** servers, so an AI assistant can do the tedious parts of server administration:
-tidy up channel trees, explain why a user lacks a permission, work through bans and complaints,
-manage groups, and watch what is happening on the server.
+**TeamSpeak 6** servers. It puts the ServerQuery interface behind MCP tools, so an assistant can
+read a server, explain it and change it: permissions, channels, groups, bans, stored files and live
+events.
 
 > **Status: pre-release, 0.1.0-beta.** Reading, changing, events, file transfer and prompts are
 > complete and verified against a live TeamSpeak 6 server, which is itself still in beta. The server
@@ -58,8 +58,8 @@ tool call is its own request.
 TeamSpeak's permission system is powerful and genuinely hard to reason about: server groups,
 channel groups, client permissions and channel-client permissions all overlap, each with skip
 and negate flags. Answering "why can't this user upload a file here?" means cross-referencing
-several query commands by hand. That is exactly the kind of work a model with the right tools
-does well.
+several query commands by hand. It is mechanical work, which is what makes it worth handing to a
+model.
 
 ## How it talks to TeamSpeak
 
@@ -112,9 +112,10 @@ The level is set globally and can be overridden per profile, in either direction
 reference is classified, and anything unknown needs `Destructive`. Commands that reveal credentials,
 such as privilege key lists, temporary passwords and snapshots, are never `ReadOnly`. Commands that
 control the shared session (`use`, `login`, `logout`, `quit`, notification registration) are refused
-outright, and so are two that leave a virtual server unrecoverable on the TeamSpeak versions measured
-so far. A WebQuery API key has its own server-side scope: a `read` key keeps a profile read-only even
-if the configuration would allow more.
+outright. So are two that have left a virtual server unrecoverable: `serverstop`, until the hotfix
+TeamSpeak announced names a version, and `serversnapshotdeploy -keepfiles` on anything below
+6.0.0-beta13, which fixed it. A WebQuery API key has its own server-side scope as well: a `read` key
+keeps a profile read-only even if the configuration would allow more.
 
 ## Configuration
 

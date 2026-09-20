@@ -37,11 +37,10 @@ polling to see whether it has lifted keeps it alive.
 query from 4 172.20.0.1:49196 issued: login with account "serveradmin"
 ```
 
-for a connection from a LAN client at a completely different address. Per-IP allow lists
-therefore cannot match anything, which
-is why allow-listing a real client address achieved nothing however often it was tried. Native
-Docker on Linux forwards with DNAT and preserves the source, so this is deployment-specific: read
-the log line before trusting an allow list.
+for a connection from a LAN client at a completely different address. Per-IP allow lists therefore
+cannot match anything, which is why allow-listing a real client address achieved nothing however
+often it was tried. Native Docker on Linux forwards with DNAT and preserves the source, so this is
+deployment-specific: read the log line before trusting an allow list.
 
 **Idle query sessions are cut off after about 30 seconds, not 300.** The documentation speaks of
 300 seconds, and the transport's keepalive, sending a command after 120 idle seconds, was built on
@@ -98,8 +97,8 @@ A few other things showed up:
 **File transfer works only over SSH and raw TCP.** The reference offers `ftgetchannelfilehttptoken` for
 HTTP file transfer. On the test server it answers `2 not implemented`, over both interfaces. Over the
 WebQuery, every `ft*` command is `5120 out of scope`, even with a `manage` key. All of this was
-re-checked on 6.0.0-beta13 and is unchanged. So the ticket comes
-from the SSH query, and the bytes travel over port 30033. The protocol there is minimal: write the
+re-checked on 6.0.0-beta13 and is unchanged. So the ticket comes from the SSH query, and the bytes
+travel over port 30033. The protocol there is minimal: write the
 32-character key, then write or read the raw bytes. There is no acknowledgement. The server closes
 the connection when an upload is complete and after the last byte of a download, and closes a
 connection with an unknown key at once. Probed in three rounds:
@@ -285,7 +284,7 @@ and the roughly 30-second idle timeout of a query session.
 - Everything else is refused in one of two ways: `2568 insufficient client permissions` with the
   `failed_permid` (SSH) or `failed_permission` name (WebQuery) for anything permission-gated, and
   `5120 out of scope` with `command not allowed for guest access` for commands guests may not reach
-  at all, among them `serverlist`, `serverinfo` and `login` over the WebQuery among them.
+  at all, among them `serverlist`, `serverinfo`, and `login` over the WebQuery.
 - A guest can be made useful: granting a permission to server group 1, `Guest Server Query`, reaches
   both interfaces at once. Granting `b_virtualserver_channel_list` there made `channellist` work for
   the SSH guest and for `GET /1/channellist` without a key, and removing it closed both again.
@@ -320,7 +319,8 @@ event subscription recovers, a test that passed on beta12.1. After the stop:
 - The instance itself stayed healthy, with SSH, the WebQuery and `hostinfo` all answering, so only
   `serverprocessstop` and starting the process again brought the virtual server back.
 
-**The cause is a pending file transfer.** Five further attempts the same day narrowed it down:
+**A pending file transfer looked like the cause.** Five further attempts the same day seemed to
+narrow it down, and TeamSpeak has since said it was the wrong trail (below):
 
 | What was running when the stop went out | Result |
 |---|---|
@@ -330,16 +330,18 @@ event subscription recovers, a test that passed on beta12.1. After the stop:
 | The whole live suite, as in the morning | hung again, identically |
 | **One unused `ftinitupload` ticket, nothing else** | **hung**, `serverstop` never answered |
 
-The last row is the trigger. A ticket was taken for a 1 MB upload into the Lobby and port 30033 was
-never connected to; `ftlist` showed the one transfer as `waiting`. `serverstop` then hit the
-30-second command timeout, the virtual server went to `shutting down` and **stayed there for at
-least six minutes**, long past the roughly two minutes after which such a ticket lapses, with
+That last row is what the bug report was built on. A ticket was taken for a 1 MB upload into the
+Lobby and port 30033 was never connected to; `ftlist` showed the one transfer as `waiting`.
+`serverstop` then hit the 30-second command timeout, the virtual server went to `shutting down` and
+**stayed there for at least six minutes**, long past the roughly two minutes after which such a
+ticket lapses, with
 `ERROR VirtualSvrMgr stopserver for sid: 1 still waiting for shutdown` in the instance log every ten
 seconds. `use 1` answered `1035` and `ftlist` `1024`, so nothing could be cleaned up through the
 query interface, and `serverprocessstop` plus a fresh start was again the only way back.
 
-So the event hub, the first suspect, is innocent: what the live suite adds is a file test a minute
-earlier that leaves a transfer behind. And it takes exactly one, so this is not a load problem.
+So the event hub, which was the first thing suspected, is innocent: what the live suite adds is a
+file test a minute earlier that leaves a transfer behind. One ticket was enough, so it is not a load
+problem either.
 
 **But the damage outlives the transfer, and that is the worse half.** Measured on 19 September 2026,
 after the process had been restarted three times:
@@ -375,14 +377,15 @@ deploy, and apparently never for the virtual server coming up with the process. 
 above shows it appearing normally on a virtual server that cannot be stopped.
 
 So the thing `VirtualSvrMgr` waits for survives a full restart of the server process, and nothing
-reachable through the query interface clears it. A pending transfer is how a virtual server gets
-into this state; it is not what keeps it there.
+reachable through the query interface clears it. Whatever puts a virtual server into this state, a
+pending transfer is not what keeps it there.
 
 The two ways it presents are worth knowing apart: `serverstop` either answers `ok` and the virtual
 server never finishes shutting down, or the command never answers at all. Both leave the same
-wreckage. This server **refuses `serverstop` while any transfer is pending**, on every path
-including `ts_query_raw`, which closes the known way in. But a virtual server already in this state
-cannot be stopped at all, and no check this server can make will tell you which one you have.
+wreckage. This server therefore **refuses every `serverstop`**, on every path including
+`ts_query_raw`, until TeamSpeak names the version that carries the hotfix. There is no check it
+could make instead: nothing distinguishes a virtual server that will come back from one that will
+not.
 
 A bug report was posted to the TeamSpeak community forum on 19 September 2026:
 [`serverstop` never completes when a file transfer is pending, and the virtual server can never be stopped again](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376).
@@ -392,8 +395,8 @@ their own testing, a hotfix is coming, and this is the part that matters here: *
 start a file transfer, just trying to stop the server was causing trouble"*. So `serverstop` is
 broken in this build, full stop. The pending transfer was not the trigger; it was what happened to
 be there the first time, and the table above reads better as evidence that the state does not depend
-on it: rows 5 to 7 hung with nothing pending at all. That also explains rows 1 and 2, the two stops
-that worked, as the coin landing the other way rather than as a healthy server.
+on it, next to the stops the following day that hung with nothing pending at all. The three that did
+finish, the first three rows, were the coin landing the other way rather than a healthy server.
 
 ## Traps that were not TeamSpeak's fault
 
@@ -408,8 +411,8 @@ Windows reserves port ranges. Streamable HTTP on `127.0.0.1:7811` failed to star
 excludedportrange protocol=tcp` showed a reserved range that included it and the default 7801. Such
 reservations, often made for Hyper-V or WSL, can change when the machine restarts.
 
-`ShellStream.ReadAsync` returns zero because nothing has arrived yet, not because the stream ended
-Treating zero as EOF silently kills the reader after the greeting. And it ignores its
+`ShellStream.ReadAsync` returns zero because nothing has arrived yet, not because the stream
+ended. Treating zero as EOF silently kills the reader after the greeting. And it ignores its
 cancellation token, so disposal must dispose the stream rather than merely cancel.
 
 The test host appeared to hang for two minutes after every run. A thread dump showed no frames from

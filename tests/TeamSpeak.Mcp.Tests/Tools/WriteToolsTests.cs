@@ -6,7 +6,7 @@ using TeamSpeak.Query.Protocol;
 
 namespace TeamSpeak.Mcp.Tests.Tools;
 
-/// <summary>The phase 6 tools that change things: safety, safeguards, and the commands they send.</summary>
+/// <summary>The tools that change things: safety, safeguards, and the commands they send.</summary>
 public class WriteToolsTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

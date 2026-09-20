@@ -16,9 +16,10 @@ lists everything that is unverified, including what cannot be checked on the tes
   container refuses to start without `TSMCP_HTTP_TOKEN`, and the unprivileged user can write the
   remembered host keys to `/state/known_hosts` on the named volume, so a recreated container keeps
   trusting the same key.
-- **Run the CI workflow once.** Waiting for the push to GitHub. `.github/workflows/ci.yml` has never
-  run, its package job included. Push, let build and test pass on Linux and Windows, then start the
-  workflow by hand and check the package artifacts.
+- **Read the first CI runs, and start the package job by hand.** The repository went to GitHub on
+  20 September 2026, so `.github/workflows/ci.yml` runs on every push to `master` from now on;
+  nobody has looked at a run yet. Check that build and test pass on Linux and Windows. The package
+  job starts by hand only and has still never run, so start it and check its artifacts.
 - **Publish to nuget.org.** Waiting for the decision to release. The metadata is in place, so this
   is: tag a version, let the release workflow build the packages, push them with an API key, then
   check that `dnx TeamSpeak6.Mcp` works without `--add-source`. Publishing also lists the server in
@@ -27,14 +28,16 @@ lists everything that is unverified, including what cannot be checked on the tes
   built. Start it over stdio and call a tool against the test server, as was done for win-x64 and
   linux-x64.
 - **Run the disruptive live test once more.** Waiting for a moment when a connected client may be
-  kicked. `TSMCP_TEST_DISRUPTIVE=1` has not been run since the phase 9 transport changes; the other
-  client tests passed afterwards.
+  kicked. `TSMCP_TEST_DISRUPTIVE=1` has not been run since the transport rework that moved virtual
+  server selection into each command; the other client tests passed afterwards.
 - **Track down the one-off tool schema difference.** Waiting for it to happen again, or for someone
   to sit down with it. Once in about ten runs the snapshot came out with `ts_file_download` carrying
   its `IProgress` parameter in the input schema; see [docs/known-gaps.md](docs/known-gaps.md). Run
   `tests/TeamSpeak.Mcp.Tests` in a loop with `TSMCP_UPDATE_SNAPSHOTS=1` and compare the bytes, and if
   it reproduces, try putting every test class that builds a host into one xunit collection so they
-  cannot run at the same time.
+  cannot run at the same time. A second sighting may already have happened: one run of the suite
+  failed a single test on 20 September 2026 without its name being kept, and 23 runs afterwards were
+  green.
 - **Lift the `serverstop` refusal when the hotfix lands.** Waiting for TeamSpeak to name the version.
   They confirmed the bug on 19 September 2026 in
   [the report](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376)

@@ -19,8 +19,10 @@ servers, or against a second TeamSpeak build.
   a hard drop's reopen can take up to a minute under reconnect backoff.
 - **The container image has never been built.** Building it is listed in [TODO.md](../TODO.md). The
   Dockerfile publishes the same binary that was verified for linux-x64, cross-compiled for arm64.
-- **The CI workflow has never run on GitHub**, its package job included. The command
-  sequences, publish and pack among them, work locally.
+- **CI has only just become able to run.** `.github/workflows/ci.yml` had no GitHub repository to
+  run in until this one was pushed on 20 September 2026, and its package job starts by hand only, so
+  that job has still never run. The command sequences it uses, publish and pack among them, work
+  locally.
 - **The packages are verified locally only.**
   - `dnx` ran the tool package from a local folder, not from nuget.org, where nothing is published.
   - The win-x64 binary ran over stdio and Streamable HTTP against the test server, and the linux-x64
@@ -39,8 +41,9 @@ servers, or against a second TeamSpeak build.
   of about two dozen channels, but usually only the query session is connected, so the
   client-facing tools, among them client listing and decoding, effective permissions, complaints and
   talker status, have met a real person only on the occasions someone was connected, and otherwise in unit tests.
-  Several live tests skip themselves when nobody is online. After the phase 9 transport changes they
-  ran again with a client connected and passed; only the disruptive test was left out.
+  Several live tests skip themselves when nobody is online. After the transport rework that moved
+  virtual server selection into each command, they ran again with a client connected and passed;
+  only the disruptive test was left out.
 - **Only two instance-wide WebQuery paths were probed.** `serverstart` and `serveridgetbyport` are
   accepted both as `/{command}` and as `/{sid}/{command}`, so listing them as instance-wide costs
   nothing over HTTP. `serverstop`, `serverdelete` and `serverprocessstop` were not probed, for
@@ -72,6 +75,15 @@ servers, or against a second TeamSpeak build.
   including the failing `-keepfiles` deploys described in
   [teamspeak6-findings.md](teamspeak6-findings.md). They have no automated live test,
   because a deploy renumbers every id on the server.
+
+  These are covered by unit tests only, because on the shared test server they cannot be undone or
+  would take something away:
+  - deleting an identity (the live attempt was refused with `523` while the client was online)
+  - resetting permissions
+
+  `ts_vserver_create` has only ever been refused live. The TeamSpeak 6 beta test server refuses a
+  second virtual server with `2816 virtualserver limit reached`; there are no licences for the beta
+  yet that would lift the limit, so the success path cannot run there.
 - **`keepFiles` is verified on one server, for one deploy shape.** On 18 September 2026 two files
   survived a deploy with the option and were gone after the same snapshot was deployed without it,
   both through this project's tools against 6.0.0-beta13. That is one virtual server, small text
@@ -84,6 +96,12 @@ servers, or against a second TeamSpeak build.
   known. A race between the test classes that each build a host is the obvious suspect, since the
   project runs them in parallel, so a snapshot regenerated in such a run would commit a schema the
   server does not really serve. Compare the diff before committing a regenerated snapshot.
+- **The suite went red once, and which test it was is not known.** On 20 September 2026 one run of
+  686 reported `failed: 1`, and only the summary was kept, so the test never got a name. Twenty-three
+  runs since, eight of them of the project that holds the schema snapshot test, have all been green.
+  The one-off snapshot difference below is the obvious suspect, because it would fail exactly like
+  this, but nothing proves it. Read a red CI run with this in mind, and keep the failing test's name
+  when it happens again.
 - **`serverstop` is refused on every version, which is broader than what was measured.** The bug was
   measured on 6.0.0-beta13 only, and TeamSpeak confirmed it there. Whether 6.0.0-beta12.1 shares it
   was never tried, and the version that carries the announced hotfix is not known yet, so the
@@ -91,26 +109,20 @@ servers, or against a second TeamSpeak build.
   the hotfix ships until `KnownCrashes.StopFixedIn` is set to that version. The live test that
   restarts a virtual server is skipped for the same reason, so subscription recovery after a restart
   currently has no live coverage.
-- **Two claims in the documents were never measured here.** That TeamSpeak 6 no longer offers the
+- **Three claims in the documents were never measured here.** That TeamSpeak 6 no longer offers the
   raw TCP query of TeamSpeak 3 follows from the server having no setting for one and from
-  TeamSpeak's own documentation, but port 10011 was never probed on the test server. And a guest
+  TeamSpeak's own documentation, but port 10011 was never probed on the test server. A guest
   being refused a command with `5120 out of scope` is read as "guests may not have it at all",
   because the server says `command not allowed for guest access`; whether granting the permission to
-  the guest group changes that was not tried.
+  the guest group changes that was not tried. And the HTTPS WebQuery, which the README lists on port
+  10443, comes from TeamSpeak's settings rather than from a measurement: the test server only ever
+  ran the plain HTTP one, so nothing here has spoken to a TLS query port or met its certificate.
 - **The guest login was probed by hand, not in a live test.** Connecting as the ServerQuery guest
   over SSH and over the WebQuery, what such a session may do, and that a permission granted to
   server group 1 reaches it, were all measured against 6.0.0-beta13 on 18 September 2026, through
   this project's own transports. There is no automated live test for it: the test server's guest
   group holds no permissions, and giving it some would change the server other tests read.
 
-  These are covered by unit tests only, because on the shared test server they cannot be undone or
-  would take something away:
-  - deleting an identity (the live attempt was refused with `523` while the client was online)
-  - resetting permissions
-
-  `ts_vserver_create` has only ever been refused live. The TeamSpeak 6 beta test server refuses a
-  second virtual server with `2816 virtualserver limit reached`; there are no licenses for the beta
-  yet that would lift the limit, so the success path cannot run there.
 - **Some actions produce no event at all, and one was never tried.** Probed on a real client with
   every category registered:
   - A move by an admin, a channel kick (`reasonid=4`) and a server kick (`reasonid=5`, as

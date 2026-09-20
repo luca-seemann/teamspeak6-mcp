@@ -40,7 +40,7 @@ public static class ToolGroups
         ("files", [], ["ts_file_"]),
     ];
 
-    /// <summary>Gets every group name, in the order the README lists them.</summary>
+    /// <summary>Gets every group name, in the order docs/tools.md lists them.</summary>
     public static IReadOnlyList<string> Names { get; } = Rules.Select(rule => rule.Group).ToList();
 
     /// <summary>Finds the group a tool belongs to.</summary>

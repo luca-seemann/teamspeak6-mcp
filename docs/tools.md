@@ -96,11 +96,12 @@ below it, the way the `-keepfiles` one already does.
 A snapshot deploy restarts the virtual server and gives every channel, group and client database id
 a new number, so ids read before it are stale. It also drops the files stored in channels unless
 `keepFiles` is set, which was measured on 6.0.0-beta13: the files were still in their channel, under
-its new id, after a deploy with the option, and gone after the same snapshot was deployed without it. That option is allowed only against servers from **6.0.0-beta13** on, where it
-was measured to be harmless: on 6.0.0-beta12.1 it crashed the server, and the virtual server could
-not be started, selected or deleted afterwards, until its database was wiped. Below that version, and against a server that does not answer
-`version`, it is refused on every path, `ts_query_raw`
-included. The check costs one `version` command before the deploy.
+its new id, after a deploy with the option, and gone after the same snapshot was deployed without
+it. That option is allowed only against servers from **6.0.0-beta13** on, where it was measured to
+be harmless. On 6.0.0-beta12.1 it crashed the server, and the virtual server could not be started,
+selected or deleted afterwards until its database was wiped, so below that version, and against a
+server that does not answer `version`, it is refused on every path, `ts_query_raw` included. The
+check costs one `version` command before the deploy.
 
 `ts_client_kick` and `ts_ban_add` refuse to act on this server's own query session, which would
 cut off every tool call on the profile. A channel message has to move that session into the
@@ -251,12 +252,13 @@ actually change is still decided by the safety level.
 ## Tool groups
 
 A client sends every tool definition to the model with each request: about 34,500 tokens for all 85.
-The whole surface was counted once with a real tokeniser; the per-group figures below come from that
-count, scaled by how much each group weighs in the pinned schema snapshot, so read them as sizes to
-compare rather than exact numbers.
 A deployment that never needs some of them can switch whole groups off, for example
 `TSMCP_TeamSpeak__DisabledToolGroups=files,events`. An unknown name stops the start with the list of
 valid ones.
+
+The whole surface was counted once with a real tokeniser, and the per-group figures below are that
+count split by how much each group weighs in the pinned schema snapshot, so read them as sizes to
+compare rather than exact numbers.
 
 | Group | Tools | Tokens, about |
 |---|---|---|
@@ -314,5 +316,7 @@ Choose by client:
 Errors, resources and prompts stay as they are in both modes.
 
 Independent of this setting, results write text as it is. Emoji and umlauts in channel names and
-nicknames used to come back as `\u` escapes, twelve characters per emoji and six per umlaut.
+nicknames used to come back as `\u` escapes, twelve characters per emoji and six per umlaut. Only
+what JSON itself requires is escaped now, so a name reaches the model looking as it does on the
+server.
 

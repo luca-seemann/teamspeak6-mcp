@@ -154,6 +154,11 @@ claude mcp add teamspeak `
 - `TSMCP_TeamSpeak__ToolResultText=Toon` for fewer tokens on large lists (see
   [Tool results as TOON](tools.md#tool-results-as-toon)).
 
+**Claude Desktop** reads `claude_desktop_config.json`, in `%APPDATA%\Claude\` on Windows and
+`~/Library/Application Support/Claude/` on macOS. It takes the same `mcpServers` entry as the
+`.mcp.json` above, with the password written into `env` directly, since that file stays on your
+machine. Restart Claude Desktop after changing it.
+
 ### Without credentials, as the ServerQuery guest
 
 From TeamSpeak **6.0.0-beta13** on, a server can be reached with no credentials at all. Set the
@@ -174,12 +179,6 @@ of scope*, which is the TeamSpeak server's answer, not this server's safety leve
 profile useful, grant the permissions you want it to have to server group **1, `Guest Server
 Query`**, on the TeamSpeak side, because that group covers guests on both interfaces. Grant read
 permissions only; a guest login is unauthenticated, and anyone else can use it too.
-
-**Claude Desktop** reads `claude_desktop_config.json`, in `%APPDATA%\Claude\` on Windows and
-`~/Library/Application Support/Claude/` on macOS. It takes the same `mcpServers` entry as the
-`.mcp.json` above, with the password written into `env` directly, since that file stays on your
-machine. Restart Claude Desktop after changing it.
-
 
 ## Every setting
 
@@ -210,6 +209,7 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Profiles:<name>:DefaultVirtualServerId` | `TSMCP_TeamSpeak__Profiles__<name>__DefaultVirtualServerId` | `1` |
 | `TeamSpeak:Profiles:<name>:Safety` | `TSMCP_TeamSpeak__Profiles__<name>__Safety` | the global level |
 | `TeamSpeak:Profiles:<name>:KeepAliveSeconds` | `TSMCP_TeamSpeak__Profiles__<name>__KeepAliveSeconds` | `15`; keep it below the server's idle timeout, about 30 seconds on 6.0.0-beta12.1 and beta13 |
+
 ## Running over HTTP for longer
 
 For a server several people or machines use, run the Streamable HTTP transport as a service, bound

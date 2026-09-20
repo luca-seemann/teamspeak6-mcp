@@ -9,7 +9,7 @@ using TeamSpeak.Query.Transport;
 namespace TeamSpeak.Mcp.IntegrationTests;
 
 /// <summary>
-/// Live tests for what the first round of phase 6 live tests left out: tools never called live,
+/// Live tests for what the first round of live tests on the changing tools left out: tools never called live,
 /// actions only half covered, and the effective permission resolution checked against the value the
 /// server itself computes.
 /// </summary>

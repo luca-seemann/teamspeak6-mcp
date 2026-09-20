@@ -346,7 +346,7 @@ All notable changes to this project are documented here. The format follows
   others, and left that event session half-closed. Both now close everything and report the failures
   afterwards.
 
-### Changed (review of phase 6)
+### Changed (from the review of the changing tools)
 
 - `ts_client_edit` explains that talker status can only be granted to a client lacking the talk
   power its channel needs. For anyone who can already speak, the server refuses it with `1538`.

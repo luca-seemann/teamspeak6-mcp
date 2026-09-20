@@ -8,7 +8,7 @@ using TeamSpeak.Query.Protocol;
 
 namespace TeamSpeak.Mcp.Tests.Tools;
 
-/// <summary>The phase 5 tools and resources the first round of tests left uncovered.</summary>
+/// <summary>The reading tools and resources the first round of tests left uncovered.</summary>
 public class ReadSurfaceCoverageTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

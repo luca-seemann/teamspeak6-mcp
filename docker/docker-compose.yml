@@ -40,7 +40,7 @@ services:
     depends_on:
       - teamspeak
     environment:
-      # Settings bind from TeamSpeak:Profiles:<name>:<setting>; see the Configuration section of
+      # Settings bind from TeamSpeak:Profiles:<name>:<setting>; see "Every setting" in
       # docs/setup.md. A password enables the SSH interface, which is preferred when present.
       TSMCP_TeamSpeak__Profiles__default__Host: teamspeak
       TSMCP_TeamSpeak__Profiles__default__SshPort: "10022"
