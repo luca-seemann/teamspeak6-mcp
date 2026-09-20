@@ -1,6 +1,6 @@
 # Known gaps
 
-694 tests pass, and a live suite of 48 of them runs against a real TeamSpeak 6 server. This page is
+The suite is green, and 48 of its tests run against a real TeamSpeak 6 server. This page is
 the other half of that sentence, stated plainly, because it is easy to mistake a green suite for
 complete confidence. Work that closes a gap once something becomes available, such as an arm64
 machine, is in [TODO.md](../TODO.md); how the server really behaves is in
