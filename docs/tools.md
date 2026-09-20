@@ -47,7 +47,8 @@ needs `Write`.
 | Permissions | `ts_perm_set` (channel, channel group, identity in a channel) | `ts_perm_set` (server group, identity), `ts_perm_reset` |
 | Moderation | `ts_ban_delete`, `ts_complaint_delete`, `ts_token_manage` (delete) | `ts_ban_add`, `ts_token_manage` (add) |
 | Access and settings | `ts_temp_password` (list, delete), `ts_custom_property`, `ts_log_add` | `ts_temp_password` (add), `ts_apikey_manage`, `ts_querylogin_manage` |
-| Files | `ts_file_upload`, `ts_file_manage`, `ts_file_download` (to a local file) | `ts_file_upload` (overwrite), `ts_file_delete` |
+| Files | `ts_file_upload`, `ts_file_manage`, `ts_file_download` (to a local file) | `ts_file_upload` (overwrite), `ts_file_manage` (stop with deletePartial), `ts_file_delete` |
+| Events | `ts_events_subscribe` (with textChannelId, which moves the event session) | |
 
 Handing out server-wide power needs `Destructive`, even though it can be undone: otherwise a `Write`
 profile could make anyone a Server Admin. That covers adding someone to a server group, granting or
