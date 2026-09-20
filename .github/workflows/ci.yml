@@ -12,9 +12,11 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same branch or pull request makes the older run pointless.
+# A newer push to the same branch or pull request makes the older run pointless. The event is part
+# of the group so that a run started by hand, which is the only way to reach the package job, is not
+# cancelled by someone pushing in the meantime.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
