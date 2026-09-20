@@ -54,10 +54,12 @@ servers, or against a second TeamSpeak build.
   of about two dozen channels, but usually only the query session is connected, so the
   client-facing tools, among them client listing and decoding, effective permissions, complaints and
   talker status, have met a real person only on the occasions someone was connected, and otherwise in unit tests.
-  Several live tests skip themselves when nobody is online. With a client connected on
-  21 September 2026 the whole suite ran, the disruptive test included: it left the person an offline
-  message, kicked them off the server, and cleaned the message up again, 43 passed and 5 skipped,
-  none of them for want of a client.
+  Several live tests skip themselves when nobody is online. Two runs on 21 September 2026 covered
+  almost everything between them. With a client connected and `TSMCP_TEST_DISRUPTIVE=1`, 43 passed
+  and 5 skipped: the disruptive test left the person an offline message, kicked them off the server
+  and removed the message again. With a WebQuery key minted for the run and deleted afterwards,
+  46 passed and 2 skipped, which is every test the suite has except the disruptive one and the
+  restart one. No single run has had both a person and a key.
 - **Only two instance-wide WebQuery paths were probed.** `serverstart` and `serveridgetbyport` are
   accepted both as `/{command}` and as `/{sid}/{command}`, so listing them as instance-wide costs
   nothing over HTTP. `serverstop`, `serverdelete` and `serverprocessstop` were not probed, for
