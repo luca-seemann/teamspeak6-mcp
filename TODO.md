@@ -35,9 +35,10 @@ lists everything that is unverified, including what cannot be checked on the tes
   its `IProgress` parameter in the input schema; see [docs/known-gaps.md](docs/known-gaps.md). Run
   `tests/TeamSpeak.Mcp.Tests` in a loop with `TSMCP_UPDATE_SNAPSHOTS=1` and compare the bytes, and if
   it reproduces, try putting every test class that builds a host into one xunit collection so they
-  cannot run at the same time. A second sighting may already have happened: one run of the suite
-  failed a single test on 20 September 2026 without its name being kept, and 23 runs afterwards were
-  green.
+  cannot run at the same time. Twenty regenerations on 21 September 2026 did not reproduce it, so
+  that change stays unjustified for now. A second sighting may already have happened: one run of the
+  suite failed a single test on 20 September 2026 without its name being kept, and 23 runs
+  afterwards were green.
 - **Lift the `serverstop` refusal when the hotfix lands.** Waiting for TeamSpeak to name the version.
   They confirmed the bug on 19 September 2026 in
   [the report](https://community.teamspeak.com/t/serverstop-never-completes-when-a-file-transfer-is-pending-and-the-virtual-server-can-never-be-stopped-again/65376)

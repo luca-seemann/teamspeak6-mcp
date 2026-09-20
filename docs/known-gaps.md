@@ -108,7 +108,9 @@ servers, or against a second TeamSpeak build.
   it out; the runs before and after, five of them in a row, were byte-identical. The cause is not
   known. A race between the test classes that each build a host is the obvious suspect, since the
   project runs them in parallel, so a snapshot regenerated in such a run would commit a schema the
-  server does not really serve. Compare the diff before committing a regenerated snapshot.
+  server does not really serve. Twenty further regenerations on 21 September 2026 came out
+  byte-identical, which puts it at one deviation in about thirty runs and leaves the cause exactly
+  as unknown as before. Compare the diff before committing a regenerated snapshot.
 - **The suite went red once, and which test it was is not known.** On 20 September 2026 one run of
   686 reported `failed: 1`, and only the summary was kept, so the test never got a name. Twenty-three
   runs since, eight of them of the project that holds the schema snapshot test, have all been green.
