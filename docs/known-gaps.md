@@ -19,17 +19,22 @@ servers, or against a second TeamSpeak build.
   a hard drop's reopen can take up to a minute under reconnect backoff.
 - **The container image has never been built.** Building it is listed in [TODO.md](../TODO.md). The
   Dockerfile publishes the same binary that was verified for linux-x64, cross-compiled for arm64.
-- **The CI package job has never run.** `.github/workflows/ci.yml` first ran on 20 September 2026,
-  when the repository was pushed, and its build and test job passed on ubuntu-latest and on
+- **What CI has proved, and what it has not.** `.github/workflows/ci.yml` first ran on
+  20 September 2026, when the repository was pushed. Build and test passed on ubuntu-latest and on
   windows-latest: restore, `dotnet format --verify-no-changes`, a Release build and the suite.
   Without `TSMCP_TEST_HOST` the live tests skip themselves there, so that run says nothing about a
-  real server. The package job is gated on a `v*` tag or a start by hand and was skipped, so
-  publishing the three binaries and packing the tool package have still only been done locally.
-- **The packages are verified locally only.**
+  real TeamSpeak server. The package job, started by hand the same day, produced all four packages
+  and the three binaries as an artifact.
+- **The packages are built in CI, and tried by hand.**
+  - The artifact of that run was opened: the Linux binaries carry the right machine types in their
+    ELF headers (x86-64 and AArch64), and the win-x64 one answered an MCP `initialize` over stdio
+    with version `0.1.0-beta` and listed its 85 tools. Nothing from that artifact has spoken to a
+    TeamSpeak server.
   - `dnx` ran the tool package from a local folder, not from nuget.org, where nothing is published.
   - The win-x64 binary ran over stdio and Streamable HTTP against the test server, and the linux-x64
-    binary over stdio in WSL.
-  - The linux-arm64 binary was built but never run, for lack of an arm64 machine.
+    binary over stdio in WSL, both built locally.
+  - The linux-arm64 binary has been built twice, locally and in CI, and run neither time, for lack
+    of an arm64 machine.
   - No macOS build is offered.
 - **150 ms is a proven-safe spacing, not a measured threshold.** We know 150 ms works for 160
   commands and that no-delay bursts fail from about the fifth. The boundary between was never

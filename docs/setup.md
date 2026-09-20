@@ -33,8 +33,9 @@ There are three ways to run the server, and only building from source needs .NET
 ### As a NuGet tool, through `dnx`
 
 `dnx` comes with the .NET 10 SDK. It fetches the package for the machine it runs on and starts it
-without installing anything. The package holds the same self-contained binary as below, for
-win-x64, linux-x64 and linux-arm64.
+without installing anything. `TeamSpeak6.Mcp` itself is a few kilobytes and names one package per
+runtime identifier, `TeamSpeak6.Mcp.win-x64`, `.linux-x64` and `.linux-arm64`, each holding the same
+self-contained binary as below. Publishing means pushing all four.
 
 The package is not on nuget.org yet. Build it and point `dnx` at the folder:
 

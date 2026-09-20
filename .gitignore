@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Somewhere to drop a downloaded CI artifact without it landing in a commit.
+/tmp/

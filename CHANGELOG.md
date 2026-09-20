@@ -96,7 +96,7 @@ All notable changes to this project are documented here. The format follows
   - `dotnet publish -r <rid>` produces one self-contained, ReadyToRun-compiled executable for win-x64,
     linux-x64 or linux-arm64, with nothing beside it.
   - `dotnet pack` produces the `TeamSpeak6.Mcp` tool package, of type `McpServer` and with
-    `.mcp/server.json`, for `dnx`.
+    `.mcp/server.json`, for `dnx`, plus one package per runtime identifier that carries the binary.
   - The CI workflow builds the binaries and packages for tags.
 - The README explains how to prepare the TeamSpeak server and how to run this server through `dnx`,
   as a binary, in a container or from source.
