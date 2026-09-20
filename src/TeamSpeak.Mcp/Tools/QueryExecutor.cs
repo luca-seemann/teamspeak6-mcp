@@ -439,7 +439,7 @@ public sealed class QueryExecutor
             "the message names.",
         QueryErrorCode.OutOfScope =>
             " This profile connects as the ServerQuery guest, and TeamSpeak does not allow guests this " +
-            "command at all, whatever permissions the guest group holds. Give the profile a password or " +
+            "command at all, whatever the guest group may hold otherwise. Give the profile a password or " +
             "an API key.",
         _ => null,
     };

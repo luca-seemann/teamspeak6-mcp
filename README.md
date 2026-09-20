@@ -63,7 +63,8 @@ does well.
 
 ## How it talks to TeamSpeak
 
-TeamSpeak 6 removed the unencrypted raw TCP query that TeamSpeak 3 had. What remains is:
+TeamSpeak 6 offers two query interfaces, and the unencrypted raw TCP query of TeamSpeak 3 is not
+among them:
 
 | Interface | Default port | Enable with | Events | File transfer |
 |---|---|---|---|---|

@@ -251,11 +251,14 @@ actually change is still decided by the safety level.
 ## Tool groups
 
 A client sends every tool definition to the model with each request: about 34,500 tokens for all 85.
+The whole surface was counted once with a real tokeniser; the per-group figures below come from that
+count, scaled by how much each group weighs in the pinned schema snapshot, so read them as sizes to
+compare rather than exact numbers.
 A deployment that never needs some of them can switch whole groups off, for example
 `TSMCP_TeamSpeak__DisabledToolGroups=files,events`. An unknown name stops the start with the list of
 valid ones.
 
-| Group | Tools | Tokens, measured |
+| Group | Tools | Tokens, about |
 |---|---|---|
 | `core` | `ts_profiles_list`, `ts_whoami`, `ts_command_help`; cannot be switched off | ~700 |
 | `raw` | `ts_query_raw` | ~600 |

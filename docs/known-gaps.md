@@ -91,6 +91,12 @@ servers, or against a second TeamSpeak build.
   the hotfix ships until `KnownCrashes.StopFixedIn` is set to that version. The live test that
   restarts a virtual server is skipped for the same reason, so subscription recovery after a restart
   currently has no live coverage.
+- **Two claims in the documents were never measured here.** That TeamSpeak 6 no longer offers the
+  raw TCP query of TeamSpeak 3 follows from the server having no setting for one and from
+  TeamSpeak's own documentation, but port 10011 was never probed on the test server. And a guest
+  being refused a command with `5120 out of scope` is read as "guests may not have it at all",
+  because the server says `command not allowed for guest access`; whether granting the permission to
+  the guest group changes that was not tried.
 - **The guest login was probed by hand, not in a live test.** Connecting as the ServerQuery guest
   over SSH and over the WebQuery, what such a session may do, and that a permission granted to
   server group 1 reaches it, were all measured against 6.0.0-beta13 on 18 September 2026, through
