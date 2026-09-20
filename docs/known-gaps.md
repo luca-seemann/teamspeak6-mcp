@@ -33,8 +33,10 @@ servers, or against a second TeamSpeak build.
   commands and that no-delay bursts fail from about the fifth. The boundary between was never
   measured, because measuring it means being blocked again.
 - **The parsers are tested against 53 captured responses covering 31 commands**, not all 143. Exotic
-  commands may still hold surprises. The 28 captured on 15 September 2026 keep the server's real
-  `\n\r` line endings; the earlier ones had them normalised. All of them were captured from
+  commands may still hold surprises. 28 of them were captured on 15 September 2026, 14 commands
+  over both transports within the same minute, and the SSH half of that batch is what keeps the
+  server's real `\n\r` line endings: the 19 SSH captures before it had them normalised, and the
+  WebQuery ones are JSON, where the question does not arise. All of them were captured from
   6.0.0-beta12.1 and have not been re-captured since; the wire format looks unchanged on beta13,
   where 38 of the 39 live tests pass on the same parsers, but nothing pins that fixture by fixture.
 - **The test server is small, and often has no human client.** It carries a permanent channel tree
