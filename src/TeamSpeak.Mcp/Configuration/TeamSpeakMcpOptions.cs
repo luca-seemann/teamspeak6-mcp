@@ -35,6 +35,9 @@ public sealed class TeamSpeakMcpOptions
     /// <summary>Gets or sets who may use the Streamable HTTP endpoint.</summary>
     public HttpOptions Http { get; set; } = new();
 
+    /// <summary>Gets or sets whether TeamSpeak events are pushed into the session on their own.</summary>
+    public ChannelOptions Channel { get; set; } = new();
+
     /// <summary>Gets or sets the file remembering each server's SSH host key.</summary>
     /// <remarks>
     /// Defaults to <c>teamspeak6-mcp/known_hosts</c> in the user's local application data folder:
@@ -192,4 +195,24 @@ public sealed class QueryProfileOptions
         profile.Validate();
         return profile;
     }
+}
+/// <summary>
+/// Whether this server acts as a Claude Code channel, pushing TeamSpeak events into the session.
+/// </summary>
+/// <remarks>
+/// Off by default, and for two reasons. Channels are a Claude Code extension in research preview
+/// rather than part of MCP, and an ungated channel is a way for anyone on the TeamSpeak server to
+/// put text in front of a model. See <see cref="TeamSpeak.Mcp.Hosting.ChannelPush"/>.
+/// </remarks>
+public sealed class ChannelOptions
+{
+    /// <summary>Gets or sets whether events are pushed. Streamable HTTP refuses to start with this on.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>Gets or sets the unique identities whose chat may reach the model.</summary>
+    /// <remarks>
+    /// Empty by default, which pushes no chat at all. Everything else, such as people connecting or
+    /// moving, is pushed whoever they are, and carries nicknames those people chose.
+    /// </remarks>
+    public IList<string> AllowedSenders { get; set; } = [];
 }

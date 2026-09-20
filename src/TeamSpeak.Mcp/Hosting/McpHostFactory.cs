@@ -1,9 +1,12 @@
+using System.Text.Json.Nodes;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 using TeamSpeak.Mcp.Configuration;
@@ -48,7 +51,9 @@ public static class McpHostFactory
         builder.Configuration.AddEnvironmentVariables(EnvironmentPrefix);
         AddTeamSpeak(builder.Services, builder.Configuration);
 
-        AddPrimitives(builder.Services.AddMcpServer(ServerIdentity.Configure).WithStdioServerTransport(), builder.Configuration);
+        var server = builder.Services.AddMcpServer(ServerIdentity.Configure).WithStdioServerTransport();
+        AddPrimitives(server, builder.Configuration);
+        AddChannel(server, builder.Configuration);
 
         return builder.Build();
     }
@@ -73,6 +78,14 @@ public static class McpHostFactory
             url);
 
         AddTeamSpeak(builder.Services, builder.Configuration);
+
+        // A channel pushes into one session it holds open; this transport is stateless by design.
+        if (ChannelSettings(builder.Configuration).Enabled)
+        {
+            throw new InvalidOperationException(
+                "TeamSpeak:Channel:Enabled cannot be used with the Streamable HTTP transport, which answers each "
+                + "request on its own without a session to push into. Run the server over stdio for channel events.");
+        }
 
         AddPrimitives(builder.Services.AddMcpServer(ServerIdentity.Configure).WithHttpTransport(), builder.Configuration);
 
@@ -133,6 +146,47 @@ public static class McpHostFactory
                     }
                 }
             }
+        });
+    }
+
+    /// <summary>Reads the channel settings, so a mistyped one is seen before anything listens.</summary>
+    /// <param name="configuration">The configuration to read.</param>
+    /// <returns>The settings, or their defaults.</returns>
+    private static ChannelOptions ChannelSettings(IConfiguration configuration) =>
+        configuration.GetSection($"{TeamSpeakMcpOptions.SectionName}:{nameof(TeamSpeakMcpOptions.Channel)}")
+            .Get<ChannelOptions>() ?? new ChannelOptions();
+
+    /// <summary>
+    /// Declares the channel capability and starts the push, when configuration asks for it.
+    /// </summary>
+    /// <param name="builder">The MCP server being built.</param>
+    /// <param name="configuration">The configuration naming the senders whose chat may through.</param>
+    /// <remarks>
+    /// The capability has to be declared before the initialize answer goes out, which is also where
+    /// <see cref="ChannelSession"/> catches the session the push needs.
+    /// </remarks>
+    private static void AddChannel(IMcpServerBuilder builder, IConfiguration configuration)
+    {
+        var channel = ChannelSettings(configuration);
+
+        if (!channel.Enabled)
+        {
+            return;
+        }
+
+        var session = new ChannelSession();
+
+        builder.Services.AddSingleton(session);
+        builder.Services.AddSingleton(new ChannelPush(channel));
+        builder.Services.AddHostedService<ChannelPushService>();
+        builder.WithMessageFilters(filters => filters.AddOutgoingFilter(session.Capture));
+
+        builder.Services.PostConfigure<McpServerOptions>(options =>
+        {
+            options.Capabilities ??= new ServerCapabilities();
+            options.Capabilities.Experimental ??= new Dictionary<string, object>(StringComparer.Ordinal);
+            options.Capabilities.Experimental[ChannelPush.Capability] = new JsonObject();
+            options.ServerInstructions = $"{options.ServerInstructions?.TrimEnd()}\n{ChannelPush.InstructionsNote}";
         });
     }
 

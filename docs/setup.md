@@ -192,6 +192,8 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:EventBufferSize` | `TSMCP_TeamSpeak__EventBufferSize` | `1000` events per profile |
 | `TeamSpeak:DisabledToolGroups` | `TSMCP_TeamSpeak__DisabledToolGroups` | none (every group; comma-separated, see [Tool groups](tools.md#tool-groups)) |
 | `TeamSpeak:ToolResultText` | `TSMCP_TeamSpeak__ToolResultText` | `Json` (typed results); `Toon` returns text only, as TOON where shorter, see [Tool results as TOON](tools.md#tool-results-as-toon) |
+| `TeamSpeak:Channel:Enabled` | `TSMCP_TeamSpeak__Channel__Enabled` | `false`; `true` pushes events into the session as a Claude Code channel, see [Events that arrive without being asked for](tools.md#events-that-arrive-without-being-asked-for). stdio only |
+| `TeamSpeak:Channel:AllowedSenders:<n>` | `TSMCP_TeamSpeak__Channel__AllowedSenders__<n>` | none, so no chat is pushed at all; each entry is a client's unique identity, as `ts_client_info` reports it |
 | `TeamSpeak:FileTransfer:LocalDirectory` | `TSMCP_TeamSpeak__FileTransfer__LocalDirectory` | none, so file tools pass content inline only |
 | `TeamSpeak:FileTransfer:MaxInlineBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxInlineBytes` | `32768` (32 KiB, about 10,000 tokens) |
 | `TeamSpeak:FileTransfer:MaxLocalBytes` | `TSMCP_TeamSpeak__FileTransfer__MaxLocalBytes` | `1073741824` (1 GiB); `0` for no limit |

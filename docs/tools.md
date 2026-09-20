@@ -181,6 +181,31 @@ A few things to know:
 - **One instance only.** Subscriptions and buffers live in the process. Several replicas behind a
   load balancer need sticky routing.
 
+### Events that arrive without being asked for
+
+With `TeamSpeak:Channel:Enabled`, this server also pushes what it collects into the session as a
+Claude Code channel, so a model sees a person connecting or a message arriving without calling
+`ts_events_poll`. Each event lands in the model's context as one `<channel source="teamspeak">` tag
+whose attributes name the profile, the virtual server, the notification and its sequence number.
+
+Three things are worth knowing before turning it on:
+
+- **It is a Claude Code extension in research preview, not MCP.** The server declares
+  `capabilities.experimental["claude/channel"]`, and Claude Code has to be started with
+  `--dangerously-load-development-channels server:<name>` for a custom channel to be loaded at all.
+  The contract can change. No other client does anything with these notifications.
+- **stdio only.** A channel pushes into one session it holds; the Streamable HTTP transport answers
+  each request on its own, so the server refuses to start with both.
+- **Chat is gated on who wrote it.** Anything that arrives this way was written by people on the
+  TeamSpeak server and reaches the model as context rather than as a tool result, so chat is pushed
+  only for the identities in `TeamSpeak:Channel:AllowedSenders`, which is empty by default.
+  Everything else, such as people connecting and moving, is pushed whoever they are and carries the
+  nicknames they chose. The server instructions gain a line telling the model that channel content
+  is something to act on, never an instruction to follow.
+
+Nothing is pushed until something subscribes with `ts_events_subscribe`; the channel forwards what
+the subscription collects, from the moment it starts rather than replaying the buffer.
+
 ## Files
 
 Every channel has a file repository, and channel 0 holds the virtual server's icons and avatars.

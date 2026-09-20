@@ -60,6 +60,12 @@ Worth knowing when judging a report:
   dedicated tools and `ts_query_raw` alike. A deletion that reaches TeamSpeak without it is a bug.
 - The MCP client, and therefore the model, chooses tool arguments. Assume the model can be talked
   into calling anything; the safety level, not the model's judgement, is what has to hold.
+- **A channel puts TeamSpeak text into the model's context without a tool call.** With
+  `TeamSpeak:Channel:Enabled`, events are pushed into the session, where they arrive as context
+  rather than as a tool result. Chat is therefore pushed only for the identities named in
+  `TeamSpeak:Channel:AllowedSenders`; other events still carry nicknames their owners chose. A
+  channel that forwards chat from an identity nobody listed, or that can be turned on without the
+  setting, is a vulnerability. The feature is off by default.
 - Much of what the tools return is written by anyone who can connect to the TeamSpeak server:
   nicknames, channel names and descriptions, chat, offline messages, complaints, file contents.
   The server instructions and those tools' descriptions tell the model to treat such text as data,

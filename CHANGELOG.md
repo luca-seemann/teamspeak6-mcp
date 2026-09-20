@@ -134,6 +134,16 @@ All notable changes to this project are documented here. The format follows
   of 14,782. A channel tree or a single object stays JSON text, errors, resources and prompts are
   unchanged, and the server instructions explain the format. `Json`, with typed results, stays the
   default.
+- `TeamSpeak:Channel:Enabled` turns this server into a Claude Code channel: subscribed TeamSpeak
+  events are pushed into the session as `notifications/claude/channel`, so a model sees them without
+  calling `ts_events_poll`. It is the only documented way a server reaches a model on its own;
+  Claude Code shows `notifications/message` to nobody, does not subscribe to resources, and drops
+  notification methods it does not know. stdio only, since a channel needs a session to push into,
+  and the Streamable HTTP transport refuses to start with it. Chat is pushed only for the identities
+  in `TeamSpeak:Channel:AllowedSenders`, because channel content arrives as context rather than as a
+  tool result; everything else carries the nicknames people chose, and the server instructions say
+  that channel content is never an instruction. Channels are a Claude Code extension in research
+  preview.
 - Progress notifications for `ts_file_upload` and `ts_file_download` when the client sends a
   progress token, at most four a second plus the last one. `FileTransferClient` reports the bytes
   moved through an optional `IProgress<long>`.

@@ -4,9 +4,12 @@ Work and checks that wait for a trigger: things decided or announced but deliber
 and verification that needs something not at hand yet. [docs/known-gaps.md](docs/known-gaps.md)
 lists everything that is unverified, including what cannot be checked on the test server at all.
 
-- **Server→client push for events.** Deferred on 15 September 2026. Delivery stays `ts_events_poll`
-  and `ts_events_wait` for now. Push is feasible over stdio (`SendNotificationAsync`), impossible over
-  stateless Streamable HTTP, and how Claude Code shows such notifications is undocumented.
+- **See the channel arrive in an interactive Claude Code session.** Waiting for someone at a
+  terminal: start `claude --dangerously-load-development-channels server:teamspeak`, accept the
+  warning dialog, subscribe with `ts_events_subscribe`, and watch whether an event shows up as a
+  channel tag. The push itself was verified on 21 September 2026 against a live TeamSpeak server,
+  notification and sender gate included, but a `claude -p` session on 2.1.268 with the flag saw no
+  channel tag, and print mode may simply not deliver them.
 - **Build and run the container image.** Waiting for a Docker host.
   `docker/Dockerfile` publishes the same self-contained single-file binary that
   was run locally for linux-x64 (the linux-arm64 one was only built), but the image itself has never

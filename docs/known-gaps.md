@@ -154,6 +154,20 @@ servers, or against a second TeamSpeak build.
 - **Switching to another virtual server cannot be tested here.** The test server's licence allows
   one virtual server. Whether registrations survive a `use` of another virtual server is therefore
   unknown. The event session never switches, since it serves exactly one virtual server.
+- **The channel has never been read by Claude Code.** The push was measured on 21 September 2026
+  against a live server with a driver of this project's own: the capability appears in the
+  initialize answer, a client connecting and leaving arrive as `notifications/claude/channel` with
+  the documented `content` and `meta`, chat from an unlisted identity is not pushed, and chat from a
+  listed one is. What none of that shows is Claude Code putting the tag in front of a model, and
+  one attempt to show it failed: in a `claude -p` session on 2.1.268, started with
+  `--dangerously-load-development-channels server:teamspeak`, the server loaded and its tools
+  answered, but the model reported no channel tag while `ts_events_wait` returned the event
+  normally. Whether that version knows the flag at all is unclear, since `claude --help` does not
+  list it and the session's init payload names no channel; whether a print-mode session delivers
+  channel events, which the documentation describes as arriving "on the next turn", is equally
+  unclear. The confirmation the documentation describes, a notice under the startup banner, only
+  appears in an interactive session. Channels are a research preview, so the contract may change
+  under us.
 - **`ts_events_wait` and client timeouts were read from documentation, not tried.** According to
   the Claude Code documentation, a tool call there is aborted only after about 28 hours
   (`MCP_TOOL_TIMEOUT`), or after 30 minutes (stdio) or 5 minutes (HTTP) without a response. An HTTP
