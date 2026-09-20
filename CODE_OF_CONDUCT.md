@@ -30,11 +30,11 @@ corrective action in response to behaviour they deem inappropriate, up to and in
 permanent ban. They may remove or reject comments, commits, code, issues and other contributions
 that violate this code.
 
-Report unacceptable behaviour privately, through
-[GitHub's private vulnerability reporting](https://github.com/luca-seemann/teamspeak6-mcp/security/advisories/new)
-for anything sensitive, or by contacting a maintainer directly. Reports will be reviewed and
-investigated, and will remain confidential. For security problems in the software itself, see
-[SECURITY.md](SECURITY.md).
+Report unacceptable behaviour privately, by contacting a maintainer directly: the addresses are on
+their GitHub profiles, reachable from any commit in this repository. Reports will be reviewed and
+investigated, and will remain confidential. Please do not use the security advisory form for this;
+it asks for affected versions and a severity, and it goes to a queue meant for vulnerabilities in
+the software itself, which is what [SECURITY.md](SECURITY.md) covers.
 
 ## Attribution
 

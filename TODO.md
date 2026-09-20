@@ -20,6 +20,10 @@ lists everything that is unverified, including what cannot be checked on the tes
   passed on Linux and Windows on the first push, 20 September 2026, but the package job runs only
   for a `v*` tag or a manual start, so it was skipped. Start it through workflow_dispatch and check
   that the three binaries and the tool package come out as artifacts.
+- **Turn on private vulnerability reporting.** Waiting for the repository to become public: GitHub
+  offers the setting for public repositories only, and while this one is private nobody outside can
+  file a report anyway. On the day it opens, enable it under Settings, then open the link in
+  [SECURITY.md](SECURITY.md) while logged out and check that the form appears rather than a 404.
 - **Publish to nuget.org.** Waiting for the decision to release. The metadata is in place, so this
   is: tag a version, let the release workflow build the packages, push them with an API key, then
   check that `dnx TeamSpeak6.Mcp` works without `--add-source`. Publishing also lists the server in
