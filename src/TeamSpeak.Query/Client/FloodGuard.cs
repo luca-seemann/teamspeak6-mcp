@@ -24,8 +24,12 @@ public sealed class FloodGuard : IDisposable
     /// The default gap between commands.
     /// </summary>
     /// <remarks>
-    /// Measured, not guessed: capturing the command reference issued about 160 commands in one
-    /// session at this spacing without ever being throttled.
+    /// Runs at this spacing have never been refused, but every one of them came from an address the
+    /// test server allow-lists, so they settle nothing. A stock server allows 10 commands per
+    /// 3 seconds (<c>serverinstance_serverquery_flood_commands</c> and <c>_flood_time</c>, both
+    /// readable through <c>instanceinfo</c>), which this spacing exceeds, so against a server that
+    /// does not exempt the client expect a refusal about every tenth command and
+    /// <see cref="PenaliseFor"/> to absorb it.
     /// </remarks>
     public static readonly TimeSpan DefaultInterval = TimeSpan.FromMilliseconds(150);
 

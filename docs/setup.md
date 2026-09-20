@@ -210,6 +210,8 @@ prefixed `TSMCP_`, with the environment winning. Keep secrets in the environment
 | `TeamSpeak:Profiles:<name>:DefaultVirtualServerId` | `TSMCP_TeamSpeak__Profiles__<name>__DefaultVirtualServerId` | `1` |
 | `TeamSpeak:Profiles:<name>:Safety` | `TSMCP_TeamSpeak__Profiles__<name>__Safety` | the global level |
 | `TeamSpeak:Profiles:<name>:KeepAliveSeconds` | `TSMCP_TeamSpeak__Profiles__<name>__KeepAliveSeconds` | `15`; keep it below the server's idle timeout, about 30 seconds on 6.0.0-beta12.1 and beta13 |
+| `TeamSpeak:Profiles:<name>:CommandIntervalMs` | `TSMCP_TeamSpeak__Profiles__<name>__CommandIntervalMs` | `150`; the gap between commands. A stock server allows 10 per 3 seconds, so this provokes the occasional refusal, which the client absorbs and retries. `300` stays inside that budget; less is only safe where the server exempts this client |
+| `TeamSpeak:Profiles:<name>:CommandTimeoutSeconds` | `TSMCP_TeamSpeak__Profiles__<name>__CommandTimeoutSeconds` | `30`; how long one command may wait for its answer. A snapshot deploy gets ten minutes whatever this says |
 
 ## Running over HTTP for longer
 
@@ -247,8 +249,11 @@ TSMCP_TeamSpeak__Http__BearerToken=<at least 32 random characters, e.g. openssl 
 
 ## Exempting this server from flood protection
 
-Not required, since the client paces itself and works against a stock server, but it makes life easier
-where the MCP server and the TeamSpeak server are both yours.
+Not required. The client paces itself and honours a refusal, so it works against a stock server
+without ever escalating to a block. It does help, though: 150 ms between commands is twice what a
+stock server allows, 10 per 3 seconds, so on a server that does not exempt this client expect the
+occasional `524` and the wait that follows it. Worth doing where the MCP server and the TeamSpeak
+server are both yours.
 
 `TSSERVER_QUERY_ALLOW_LIST` names a **file of CIDRs**, not an address. Pointing the variable at an
 IP stops the query interfaces from starting at all. Its default is `query_ip_allowlist.txt` in the

@@ -7,11 +7,11 @@ namespace TeamSpeak.Query.Client;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Measured against a live TeamSpeak 6 server, connections are far more dangerous than commands:
-/// 160 commands over a single session at 150 ms spacing were never throttled, while five or six
-/// connections in quick succession earned an IP-level block that took both query interfaces down
-/// for minutes. <see cref="FloodGuard"/> paces commands within a session; this paces the sessions
-/// themselves.
+/// Connections are far more dangerous than commands, and the server says so itself:
+/// <c>serverinstance_serverquery_max_connections_per_ip</c> is 5 on a stock server, and
+/// <c>_ban_time</c> 600 seconds. Five or six connections in quick succession duly earned an
+/// IP-level block that took both query interfaces down for minutes.
+/// <see cref="FloodGuard"/> paces commands within a session; this paces the sessions themselves.
 /// </para>
 /// <para>
 /// The state is shared per host so that several profiles pointing at the same server, or a retry

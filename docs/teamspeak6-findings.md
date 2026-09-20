@@ -25,11 +25,49 @@ with a `TS6>` prompt; the greeting line is actually `TS3` and no prompt is ever 
 documented example only works because OpenSSH drops its PTY request when stdin is a pipe. A client
 must open the channel without a terminal and frame responses on the trailing `error id=` line.
 
-**Connections cost far more than commands.** 160 commands over one session at 150 ms spacing were
-never throttled. Five or six connections in quick succession earned an IP-level block that took
-*both* interfaces down for minutes. A command sent too fast gets a polite `524 client is flooding,
-please wait 1 seconds`; **sending on through that rejection** is what escalates to the block, and
-polling to see whether it has lifted keeps it alive.
+**Connections cost far more than commands, and the server states its own limits.**
+`instanceinfo` reports them: **10 commands per 3 seconds**
+(`serverinstance_serverquery_flood_commands`, `_flood_time`), **5 connections per IP**
+(`_max_connections_per_ip`) and a **600-second ban** (`_ban_time`). The connection limit is exactly
+what was learned the hard way: five or six connections in quick succession earned an IP-level block
+that took *both* interfaces down for minutes. A command sent too fast gets a polite `524 client is
+flooding, please wait 1 seconds`; **sending on through that rejection** is what escalates to the
+block, and polling to see whether it has lifted keeps it alive. The `virtualserver_antiflood_points_*`
+settings are a different mechanism, for voice clients, and do not govern this.
+
+**None of that can be measured from here any more, and that matters for the pacing advice.** On
+20 September 2026 one session sent 25 commands in 1.16 seconds without a single refusal, where a
+budget of 10 per 3 seconds should have refused the eleventh. The instance log says why:
+
+```
+CIDRManager | updated query_ip_allowlist ips: 127.0.0.1/32, ::1/128, 172.20.0.0/16,
+```
+
+The test server allow-lists the Docker bridge network, and `clientinfo` on this project's own query
+session reports `connection_client_ip=172.20.0.1`, the bridge gateway, because port publishing
+rewrites the source. So this machine is exempt from the flood protection there, and any run from it
+that was "never throttled" proves nothing about pacing.
+
+**With the entry taken out for a few minutes, the limit behaved exactly as configured.** Measured on
+20 September 2026, one session, no pacing at all: eleven commands answered inside 514 ms and the
+twelfth came back `524 client is flooding extra_msg=please wait 1 seconds`.
+
+**The client absorbs that refusal, and it was watched doing so.** Thirty `ts_whoami` calls through
+the MCP server, over one session:
+
+| Gap between commands | Time for 30 calls | Refusals | Errors reaching the caller |
+|---|---|---|---|
+| 150 ms, the default | 8.2 s | 1 | 0 |
+| 20 ms, to provoke them | 8.4 s | 5 | 0 |
+
+At 20 ms the pattern is plain: ten answers 62 ms apart, then the eleventh arrives 1.33 seconds late,
+which is the server's requested second plus the 250 ms the guard adds, and after that exactly four
+more fit before the next refusal, as the sliding window drains. Nothing escalated, and no caller
+ever saw an error.
+
+The useful conclusion for any client: **against a server that does not exempt you, sending faster
+than the budget buys nothing.** The server hands back the same throughput either way, and the only
+difference is how many refusals it has to write.
 
 **Behind Docker Desktop the server sees the bridge gateway, not your client.** Its own log:
 

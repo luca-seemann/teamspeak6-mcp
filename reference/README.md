@@ -61,12 +61,14 @@ server refuses a pseudo-terminal, it sends no prompt, so answers can only be fra
 line that closes them, and its lines end with `\n\r`, which the file keeps as the blank line it
 renders as.
 
-**Pace it: roughly 150 ms between commands is enough.** That is the pace `capture.cs` keeps, and
-neither of its runs was throttled. The longest session measured here carried 160 commands the same
-way, also without a single rejection.
+**Pace it.** `capture.cs` waits 150 ms between commands, and neither of its runs was refused. Take
+that for less than it looks: the test server allow-lists the network these runs came from, so an
+unpaced burst of 25 commands in 1.16 seconds was not refused there either. The server's own budget,
+from `instanceinfo`, is **10 commands per 3 seconds**, so on a server where you are not exempt,
+300 ms is the pace that fits.
 
-Send faster and the server rejects with a perfectly ordinary status that says exactly what is
-wrong:
+Send faster than that and the server rejects with a perfectly ordinary status that says exactly
+what is wrong:
 
 ```json
 {"status":{"code":524,"extra_message":"please wait 1 seconds","message":"client is flooding"}}
@@ -77,9 +79,10 @@ the SSH and the HTTP interface for several minutes**, and that block presents as
 closed before the SSH identification string, or an empty HTTP reply, which looks nothing like rate
 limiting. Polling to check whether it has lifted keeps it alive.
 
-Connections cost far more than commands. One session carrying 160 commands was fine; five or six
-connections in quick succession earned the block. A client that reuses one session is in far less
-danger than one that reconnects.
+Connections cost far more than commands, and the server puts a number on it:
+`serverinstance_serverquery_max_connections_per_ip=5`, which is exactly where five or six
+connections in quick succession earned the block, and `_ban_time=600` is how long it then lasts. A
+client that reuses one session is in far less danger than one that reconnects.
 
 Two settings that look like they should help do not. `TSSERVER_QUERY_POOL_SIZE` changes nothing
 (tested at 32), and `TSSERVER_QUERY_SKIP_BRUTE_FORCE_CHECK` covers failed *logins*, a different

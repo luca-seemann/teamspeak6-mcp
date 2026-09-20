@@ -20,7 +20,8 @@ var port = args.Length > 2 ? int.Parse(args[2], CultureInfo.InvariantCulture) : 
 var login = args.Length > 3 ? args[3] : "serveradmin";
 
 // Connections, not commands, are what earns an IP-level block, so this opens exactly one and keeps
-// a gap between commands. 150 ms carried 160 commands without ever being throttled.
+// a gap between commands. A stock server allows 10 per 3 seconds, so 150 ms is on the fast side;
+// it has never been refused here, but this machine is allow-listed on the test server.
 var pace = TimeSpan.FromMilliseconds(150);
 
 using var client = new SshClient(new ConnectionInfo(host, port, login, new PasswordAuthenticationMethod(login, password)));

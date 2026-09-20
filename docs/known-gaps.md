@@ -36,9 +36,13 @@ servers, or against a second TeamSpeak build.
   - The linux-arm64 binary has been built twice, locally and in CI, and run neither time, for lack
     of an arm64 machine.
   - No macOS build is offered.
-- **150 ms is a proven-safe spacing, not a measured threshold.** We know 150 ms works for 160
-  commands and that no-delay bursts fail from about the fifth. The boundary between was never
-  measured, because measuring it means being blocked again.
+- **The flood limit was measured in one sitting, and the exemption is back.** The test server
+  allow-lists the network this project connects from, so ordinarily nothing measured from here says
+  anything about pacing. On 20 September 2026 the entry was removed for a few minutes: an unpaced
+  burst was refused at the twelfth command, and thirty calls through this project's own client
+  absorbed five refusals with no error reaching the caller. That is one server, one build, one
+  evening. Everything measured from this machine before and after that window was exempt, and the
+  150 ms default is still twice the stock budget of 10 commands per 3 seconds.
 - **The parsers are tested against 53 captured responses covering 31 commands**, not all 143. Exotic
   commands may still hold surprises. 28 of them were captured on 15 September 2026, 14 commands
   over both transports within the same minute, and the SSH half of that batch is what keeps the
