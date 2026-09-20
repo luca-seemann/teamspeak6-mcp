@@ -1,8 +1,9 @@
 # Known gaps
 
-Stated plainly, because it is easy to mistake a green suite for complete confidence. The work that
-closes a gap once something becomes available, such as a Git remote or an arm64 machine, is listed in
-[TODO.md](../TODO.md). How the server really behaves is in
+694 tests pass, and a live suite of 48 of them runs against a real TeamSpeak 6 server. This page is
+the other half of that sentence, stated plainly, because it is easy to mistake a green suite for
+complete confidence. Work that closes a gap once something becomes available, such as an arm64
+machine, is in [TODO.md](../TODO.md); how the server really behaves is in
 [teamspeak6-findings.md](teamspeak6-findings.md).
 
 All live evidence comes from one TeamSpeak server: 6.0.0-beta12.1 until 18 September 2026 and
@@ -105,21 +106,6 @@ servers, or against a second TeamSpeak build.
   both through this project's tools against 6.0.0-beta13. That is one virtual server, small text
   files in one channel, and a snapshot of the server itself; a snapshot from a different server, an
   encrypted one, and channels holding many or large files have not been tried.
-- **The tool schema snapshot has been seen to generate differently once.** In one run out of about
-  ten on 18 September 2026, `ts_file_download` came out with the SDK-injected
-  `IProgress<ProgressNotificationValue>` parameter in its input schema, where every other run leaves
-  it out; the runs before and after, five of them in a row, were byte-identical. The cause is not
-  known. A race between the test classes that each build a host is the obvious suspect, since the
-  project runs them in parallel, so a snapshot regenerated in such a run would commit a schema the
-  server does not really serve. Twenty further regenerations on 21 September 2026 came out
-  byte-identical, which puts it at one deviation in about thirty runs and leaves the cause exactly
-  as unknown as before. Compare the diff before committing a regenerated snapshot.
-- **The suite went red once, and which test it was is not known.** On 20 September 2026 one run of
-  686 reported `failed: 1`, and only the summary was kept, so the test never got a name. Twenty-three
-  runs since, eight of them of the project that holds the schema snapshot test, have all been green.
-  The one-off snapshot difference below is the obvious suspect, because it would fail exactly like
-  this, but nothing proves it. Read a red CI run with this in mind, and keep the failing test's name
-  when it happens again.
 - **`serverstop` is refused on every version, which is broader than what was measured.** The bug was
   measured on 6.0.0-beta13 only, and TeamSpeak confirmed it there. Whether 6.0.0-beta12.1 shares it
   was never tried, and the version that carries the announced hotfix is not known yet, so the

@@ -51,6 +51,10 @@ not cover.
 The tool schemas are pinned by a snapshot test. When a change is intended, run the tests with
 `TSMCP_UPDATE_SNAPSHOTS=1` and commit the diff of `tests/TeamSpeak.Mcp.Tests/Tools/Snapshots/tools.json`.
 
+Read that diff before committing it. Once in about thirty regenerations, `ts_file_download` has come
+out carrying an `IProgress` parameter the server does not really serve; see [TODO.md](TODO.md). A
+schema with a parameter nobody can pass is worse than a red test.
+
 When the code and `reference/serverquery-6.0.0-beta13.txt` disagree, the reference wins.
 
 ## Where things are
