@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0-beta] - 2026-09-21
+
 ### Added
 
 - Project scaffolding: solution layout, central package management, CI on GitHub Actions,
@@ -400,3 +404,6 @@ All notable changes to this project are documented here. The format follows
   restarted. It was found through a live suite run and then reproduced at will; it is described in
   [docs/teamspeak6-findings.md](docs/teamspeak6-findings.md), the tools refuse such a stop until a
   hotfix is named, and the live test that restarts a virtual server is skipped for as long.
+
+[Unreleased]: https://github.com/luca-seemann/teamspeak6-mcp/compare/v0.1.0-beta...HEAD
+[0.1.0-beta]: https://github.com/luca-seemann/teamspeak6-mcp/releases/tag/v0.1.0-beta
