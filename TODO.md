@@ -26,10 +26,10 @@ all.
 
 ## Waiting for a decision
 
-- **Publish to nuget.org.** The metadata is in place, so this is: tag a version, let the release
-  workflow build the packages, push all four with an API key, then check that `dnx TeamSpeak6.Mcp`
-  works without `--add-source`. Publishing also lists the server in the MCP registry through
-  `.mcp/server.json`. It is the one step that cannot be taken back.
+- **Publish to nuget.org.** The packages exist: the v0.1.0-beta release carries all four, built by
+  the release workflow. What is left is pushing them with an API key and checking that
+  `dnx TeamSpeak6.Mcp` then works without `--add-source`. Publishing also lists the server in the
+  MCP registry through `.mcp/server.json`. It is the one step that cannot be taken back.
 
 ## Waiting for somebody else
 

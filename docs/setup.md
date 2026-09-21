@@ -62,7 +62,10 @@ inside and compiled ahead of time with ReadyToRun. It needs nothing installed.
   the first answer.
 
 Pushing a version tag builds all three binaries and the packages and attaches them to a GitHub
-release, with checksums. No release is tagged yet, and that workflow has never run.
+release, with checksums. It ran for the first time on 21 September 2026 and produced
+[v0.1.0-beta](https://github.com/luca-seemann/teamspeak6-mcp/releases/tag/v0.1.0-beta): three
+archives, four packages and `SHA256SUMS.txt`, marked a prerelease because the tag carries a hyphen.
+Downloading an asset and checking it against that file is how to know you have what was built.
 
 ```bash
 claude mcp add teamspeak \

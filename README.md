@@ -11,9 +11,10 @@ read a server, explain it and change it: permissions, channels, groups, bans, st
 events.
 
 > **Status: pre-release, 0.1.0-beta.** Reading, changing, events, file transfer and prompts are
-> complete and verified against a live TeamSpeak 6 server, which is itself still in beta. The server
-> builds as a NuGet tool package and as self-contained binaries, but nothing is published on
-> nuget.org and no release has been tagged yet, so today you build it yourself. See
+> complete and verified against a live TeamSpeak 6 server, which is itself still in beta.
+> [The release](https://github.com/luca-seemann/teamspeak6-mcp/releases/tag/v0.1.0-beta) carries a
+> self-contained binary for win-x64, linux-x64 and linux-arm64, with checksums; nothing is published
+> on nuget.org, so `dnx` still needs a package you built. See
 > [Installing](docs/setup.md#installing), [docs/known-gaps.md](docs/known-gaps.md) for what is not
 > verified, and [TODO.md](TODO.md) for what waits on a trigger.
 
