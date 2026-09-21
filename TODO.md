@@ -26,10 +26,6 @@ all.
 
 ## Waiting for a decision
 
-- **Turn on private vulnerability reporting.** GitHub offers the setting for public repositories
-  only, and while this one is private nobody outside can file a report anyway. On the day it opens,
-  enable it under Settings, then open the link in [SECURITY.md](SECURITY.md) while logged out and
-  check that the form appears rather than a 404.
 - **Publish to nuget.org.** The metadata is in place, so this is: tag a version, let the release
   workflow build the packages, push all four with an API key, then check that `dnx TeamSpeak6.Mcp`
   works without `--add-source`. Publishing also lists the server in the MCP registry through

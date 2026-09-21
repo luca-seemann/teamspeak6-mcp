@@ -35,7 +35,7 @@ servers, or against a second TeamSpeak build.
   - The win-x64 binary ran over stdio and Streamable HTTP against the test server, and the linux-x64
     binary over stdio in WSL, both built locally.
   - The linux-arm64 binary has been built twice, locally and in CI, and run neither time, for lack
-    of an arm64 machine.
+    of an arm64 machine. Now that the repository is public, GitHub's arm64 runners could start it.
   - No macOS build is offered.
 - **The flood limit was measured in one sitting, and the exemption is back.** The test server
   allow-lists the network this project connects from, so ordinarily nothing measured from here says
